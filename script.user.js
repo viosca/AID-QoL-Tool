@@ -14,21 +14,14 @@
 // @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
 // @license      MIT
-// @namespace    https://greasyfork.org/users/1294499
-// @downloadURL https://update.greasyfork.org/scripts/493886/AIDungeon%20QoL%20Tool.user.js
-// @updateURL https://update.greasyfork.org/scripts/493886/AIDungeon%20QoL%20Tool.meta.js
+// @namespace    https://greasyfork.org/users/1302066
 // ==/UserScript==
 
 /* global jQuery, $, waitForKeyElements, MonkeyConfig */
 
-// @match        https://*.aidungeon.com/adventure/*
-// @match        https://*.aidungeon.com/profile/*
-// @match        https://*.aidungeon.com/profile/*/*contentType=adventure-scenario*
-// @match        https://*.aidungeon.com/profile/*/*contentType=adventure
-// @match        https://*.aidungeon.com/profile/*/*contentType=scenario
-
-/// match        https://*.aidungeon.com/*/talk-with-mixy/*
 /// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
+/// @downloadURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.user.js
+/// @updateURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.meta.js
 
 const $ = jQuery.noConflict(true);
 
@@ -214,11 +207,21 @@ const actionArray = [
 ];
 
 const actionKeys = actionArray.map((action) => cfg.get(action.name));
+// Modified handleKeyPress function
+
+const isMac = window.navigator.userAgentData?.platform?.toLowerCase().includes('mac');
 
 const handleKeyPress = (e) => {
   if (e.repeat) return;
   const key = e.key.toUpperCase();
-  const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => e[`${mod.toLowerCase()}Key`]);
+
+  //const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => e[`${mod.toLowerCase()}Key`]);
+
+  const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => {
+    // For Mac, use Cmd instead of Ctrl
+    return (mod === 'CTRL' && isMac) ? e.metaKey : e[`${mod.toLowerCase()}Key`];
+  });
+
   const modifsActive = modifiers.every((value, index) => value === cfg.get('Modifier_Keys')[index]);
   const index = actionKeys.indexOf(key);
   if (modifsActive && index !== -1) {
@@ -404,8 +407,8 @@ GM_addStyle(`
   ._pb-1316335136 {
     padding-bottom: 6px !important;
   }
-      */
-/*
+  */
+  /*
   ._pr-1481558400 {
     padding-right: 0px !important;
   }
@@ -434,7 +437,33 @@ GM_addStyle(`
   ._pr-1481558307 {
     padding-right: 8px !important;
   }
-*/
+  */
+  /* Target: every storyCardsTab list of button type with pad or margin left or right */
+  div#modalInnerContent_storyCardsTab div[role="button"]._pl-1481558338 {
+    padding-left: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab div[role="button"]._pr-1481558338 {
+    padding-right: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab div[role="button"]._mr-1481558369 {
+    margin: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) {
+    width: 100% !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) > * {
+    width: 100% !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
+    padding-bottom: 0px !important;
+  }
+
   /* Make Modal bottom right border square for the resize icon. */
   div:has([aria-label="Modal" i]) {
     border-bottom-right-radius: 0px !important;
@@ -446,7 +475,6 @@ GM_addStyle(`
   ._bbrr-1881205710 {
     border-bottom-right-radius: 0px !important;
   }
-
   /* Tweak the padding for modals. */
   div[id^="modalHeader_" i] {
     padding: 8px !important;
@@ -504,7 +532,7 @@ GM_addStyle(`
     padding-right: 8px !important;
   }
   */
-    div[id^="modalContent_" i] div.has(p[role="heading"]) {
+    div[id^="modalContent_" i] + div.has(p[role="heading"]) {
     padding-left: 0px !important;
     padding-right: 0px !important;
     margin-left: 0px !important;
@@ -532,11 +560,34 @@ GM_addStyle(`
     max-height: 100% !important;
     max-width: 100% !important;
   }  
+  /*
   [id^="modalInnerContent_"] > div > div > div {
-    padding-left: 8px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
     margin: 0px !important;
   }
+*/
+  /* Target the specific modal with the selected "Story Cards" tab 
+  div[aria-label="Modal"] div[id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i] 
+  ~ div[id^="modelContent_"] [id^="modalInnerContent_"] > div > div > div {
+      padding-left: 0px !important;
+      padding-right: 0px !important;
+      margin: 0px !important;
+  }
+*/
   /*
+  #modalInnerContent_1722033353146 > div > div > div > div > div:nth-child(3) > div:nth-child(7) > div.css-175oi2r > div
+  [id^="modalInnerContent_"] > div > div > div {
+  [id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i] {
+    [id^="modalInnerContent_"] > div > div > div {
+      padding-left: 0px !important;
+    padding-right: 0px !important;
+    margin: 0px !important;
+  }
+      */
+
+  /*
+   > div > div:nth-child(1) > div > div > div > span > div
   [id^="modalInnerContent_"] > div {
     padding: 0px !important;
     padding-bottom: 0px !important;
@@ -1021,15 +1072,6 @@ function unsetOverflowRecursively(node) {
   }
 }
 
-function classListRemoveRecursively(node, classList) {
-  // Unset all overflow properties on the current node
-  classList.forEach(className => node.classList.remove(className));
-
-  // Recursively process child nodes
-  for (const child of node.children) {
-    classListRemoveRecursively(child);
-  }
-}
 
 const classListRemove = [
   '_h-512px',
@@ -1044,12 +1086,33 @@ const classListRemove = [
   'r-1wbh5a2', // flex-shrink: 1;
   'r-agouwx' // transform: translateZ(0);
 ];
+const classListRemove2 = [
+  '_mih-0px', '_miw-0px', '_fs-0',
+  /* Padding we want removed */
+  '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
+  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.) 
+  'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
+  'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
+  'r-eqz5dr', // flex-direction: column;
+  'r-16y2uox', // flex-grow: 1;
+  'r-1wbh5a2', // flex-shrink: 1;
+  'r-agouwx' // transform: translateZ(0);
+];
+
+function classListRemoveRecursively(node, classList) {
+  // Unset all overflow properties on the current node
+  //classList.forEach(className => node.classList.remove(className));
+
+  // Recursively process child nodes
+  for (const child of node.children) {
+    classListRemoveRecursively(child);
+  }
+}
 
 function fixStyles(modalNode) {
   const modalContent = modalNode.children[1];
   classListRemove.forEach(className => modalContent.classList.remove(className));
 }
-
 
 function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
   console.log("makeModalDraggableAndResizable");
@@ -1082,10 +1145,31 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
   // Called by both fixModalContent, and by a mutation observer that watches the modal content
   // incase of changes.
-  function fixModalInnerContent(timestamp, modalInnerContent) {
+  function fixModalInnerContent(timestamp, modalNode, modalInnerContent) {
     if (!modalInnerContent) return;
-
+    console.log("fixModalInnerContent");
     classListRemove.forEach(className => modalInnerContent.classList.remove(className));
+    const classListRemovez = [
+      '_mih-0px', '_miw-0px', '_fs-0',
+      '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
+      'r-150rngu', 'r-1rnoaur', 'r-11yh6sk',
+      '_mr-1481558369',
+      'r-agouwx'
+    ];
+    //'_h-512px',
+    // '_mih-0px', '_miw-0px', '_fs-0',
+    // // Padding we want removed
+    // '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
+    // 'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.) 
+    // 'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
+    // 'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
+    // 'r-eqz5dr', // flex-direction: column;
+    // 'r-16y2uox', // flex-grow: 1;
+    // 'r-1wbh5a2', // flex-shrink: 1;
+    // 'r-agouwx' // transform: translateZ(0);
+
+    classListRemoveRecursively(modalInnerContent.firstChild, classListRemovez);
+
     modalInnerContent.id = modalInnerContentId;
 
     //modalInnerContent.id = "modalInnerContentId_" + timestamp;
@@ -1095,6 +1179,25 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     modalInnerContent.style.overflowY = 'unset';
     modalInnerContent.style.maxHeight = '100%';
     modalInnerContent.style.maxWidth = '100%';
+
+    // When different tabs are selected, assign id's for CSS.
+    if (modalHeader.querySelectorAll(
+      'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i]'
+    ).length >= 1) {
+      modalInnerContent.firstChild.id = 'modalInnerContent_storyCardsTab';
+      modalInnerContent.firstChild.firstChild.classList.remove('r-150rngu', 'r-1rnoaur', 'r-11yh6sk');
+    }
+    else if (modalHeader.querySelectorAll(
+      'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab plot" i]'
+    ).length >= 1) {
+      modalInnerContent.firstChild.id = 'modalInnerContent_plotTab';
+    }
+    else if (modalHeader.querySelectorAll(
+      'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab details" i]'
+    ).length >= 1) {
+      modalInnerContent.firstChild.id = 'modalInnerContent_detailsTab';
+    }
+
   }
 
 
@@ -1110,7 +1213,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
   setTimeout(() => {
     fixStyles(modalNode);
-    fixModalInnerContent(timestamp, modalContent.children[0]);
+    fixModalInnerContent(timestamp, modalNode, modalInnerContent);
 
     // Center the modal initially (after a slight delay for rendering)
     // To allow dragging and resizing the modal, we have to disable centering.
@@ -1148,19 +1251,12 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
       if (1) { // Turned off to experiment with using the original scroller.
         const originalScroller = modalNode.closest('[data-remove-scroll-container="true"]');
         if (originalScroller) {
-          // Transfer the scrolling behavior to the modalInnerContent itself
-          //modalContent.style.overflowY = 'auto'; // Enable vertical scrolling on modalContent
-          //modalInnerContent.style.overflowY = 'auto'; // Enable vertical scrolling on modalInnerContent
           originalScroller.style.overflowY = 'hidden'; // Disable scrolling on the original element
-          //originalScroller.style.overflowY = 'hidden'; // Disable scrolling on the original element
           originalScroller.removeAttribute('data-remove-scroll-container'); // Remove the attribute
         } else {
           console.warn("Original scrolling element not found in modal.");
         }
       }
-      // Remove initial size constraints on the modal and apply styles through GM_addStyle
-      //modalNode.style.removeProperty('width'); /* causes continuous/endless horiz resizing. */
-      //modalNode.style.removeProperty('height');
 
     } else {
       console.warn("Content div not found in modal after delay.");
@@ -1176,7 +1272,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
         let newModalInnerContent = modalNode?.children[1]?.children[0]; // Look for updated content div
         if (newModalInnerContent) {
           modalInnerContent = newModalInnerContent;
-          fixModalInnerContent(timestamp, newModalInnerContent); // Apply styles to the new inner content element
+          fixModalInnerContent(timestamp, modalNode, newModalInnerContent); // Apply styles to the new inner content element
         }
       }
     }
@@ -1649,9 +1745,7 @@ function handleNewModal(modalNodeTree) {
     true  // Run immediately.
   );
 }
-document.addEventListener('modalOpened', (event) => {
-  console.log('modalOpened event detected!', event);
-});
+
 // Mutation observer to detect new div elements in document.body
 const bodyObserver = new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
@@ -1673,35 +1767,6 @@ const bodyObserver = new MutationObserver((mutationsList, observer) => {
 // Start observing the document body for new children added.
 bodyObserver.observe(document.body, { childList: true });
 
-/*
-const tablistSelector =
-'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="plot" i], ' +
-'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="Story Cards" i],' +
-'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i]';
-
-const tablistSelector = 'div.pill-switch-mask';
-
-// MutationObserver to monitor changes in ANY relevant tablist
-const tabListObserver = new MutationObserver((mutationsList, observer) => {
-  for (let mutation of mutationsList) {
-      if (mutation.type === 'childList' && mutation.target.getAttribute('role') === 'tablist') {
-          const activeTab = mutation.target.querySelector('[role="tab"][aria-selected="true"]');
-console.log("found a tablist");
-          if (activeTab) {
-              // Check if the active tab is "Plot" or "Details"
-              if (activeTab.getAttribute('aria-label').toLowerCase().includes('plot') || activeTab.getAttribute('aria-label').toLowerCase().includes('details')) {
-                  // Apply textarea resizer if in Plot or Details tab
-                  resizeAllTextareasInNode(activeTab);
-              } else if (activeTab.getAttribute('aria-label').toLowerCase().includes('story cards')) {
-                  // Handle Story Cards tab if needed (e.g., apply different styles or functionalities)
-                  // ...
-              }
-          }
-      }
-  }
-});
-tabListObserver.observe(tablistSelector, { childList: true, subtree: true });
-*/
 
 /**********************************
 ** Code for Play Pages.
@@ -1827,51 +1892,3 @@ waitForKeyElements("[role='article']", (targetNodes) => {
 
 });
 
-if (0) {
-
-  // Function to enable right-click on button-like links
-  function enableRightClickOnButtonLinks() {
-    // Select buttons that function like links (you may need to adjust this selector)
-    const buttonLinks = document.querySelectorAll('div[role="button"][aria-label^="Play scenario"], div[role="button"][aria-label^="Read adventure"], div[role="button"][aria-label^="Continue adventure"]');
-
-    buttonLinks.forEach(button => {
-      button.addEventListener("contextmenu", (event) => {
-        // Get the URL from the button's attributes or dataset (adjust as needed)
-        const url = button.getAttribute('href') || button.dataset.url;
-
-        if (url) {
-          // Create a new anchor element with the extracted URL
-          const tempLink = document.createElement('a');
-          tempLink.href = url;
-
-          // Trigger the browser's default context menu behavior for the link
-          const newEvent = new MouseEvent('contextmenu', {
-            bubbles: true,
-            cancelable: true,
-            view: window, // Use the same window object for the new event
-          });
-          tempLink.dispatchEvent(newEvent);
-        } else {
-          console.log("No url found for button: ", button);
-          // If no URL is found, allow the default context menu
-          event.stopPropagation();
-        }
-      });
-    });
-  }
-
-  // Mutation observer to handle dynamically added button-like links
-  const buttonLinkObserver = new MutationObserver((mutationsList, observer) => {
-    for (const mutation of mutationsList) {
-      if (mutation.type === "childList" && mutation.addedNodes.length) {
-        enableRightClickOnButtonLinks(); // Re-apply the fix to new button-like links
-      }
-    }
-  });
-
-  // Start observing the document body
-  buttonLinkObserver.observe(document.body, { childList: true, subtree: true });
-
-  // Call the function initially to handle existing button-like links
-  enableRightClickOnButtonLinks();
-}
