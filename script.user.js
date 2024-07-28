@@ -1739,7 +1739,7 @@ const bodyObserver = new MutationObserver((mutationsList, observer) => {
         if (node.nodeName === 'DIV') {
           // Check for modals and new buttons
           if (node.querySelector("div[aria-label='Modal' i]")) {
-            console.log("New modal detected in document.body");
+            console.log("New modal detected in document.bodyZ");
             setTimeout(() => {
               handleNewModal(node);
             }, 500); // adjust as needed
