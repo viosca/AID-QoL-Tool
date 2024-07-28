@@ -23,6 +23,8 @@
 /// @downloadURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.user.js
 /// @updateURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.meta.js
 
+/// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
+
 const $ = jQuery.noConflict(true);
 
 /********************************
@@ -1115,7 +1117,7 @@ function fixStyles(modalNode) {
 }
 
 function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
-  console.log("makeModalDraggableAndResizable");
+  //console.log("makeModalDraggableAndResizable");
   const modalDimensions = cfg.get('Modal_Dimensions');
   const [modalWidth, modalHeight] = modalDimensions;
 
@@ -1147,7 +1149,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
   // incase of changes.
   function fixModalInnerContent(timestamp, modalNode, modalInnerContent) {
     if (!modalInnerContent) return;
-    console.log("fixModalInnerContent");
+    //console.log("fixModalInnerContent");
     classListRemove.forEach(className => modalInnerContent.classList.remove(className));
     const classListRemovez = [
       '_mih-0px', '_miw-0px', '_fs-0',
@@ -1294,7 +1296,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     startY = e.clientY - modalNode.offsetTop;
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('mouseup', handleDragEnd);
-    console.log("handleDragStart");
+    //console.log("handleDragStart");
 
     // Prevent default behavior for touch events to avoid scrolling
     if (e.type === 'touchstart') {
@@ -1316,7 +1318,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     isDragging = false;
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('mouseup', handleDragEnd);
-    console.log("handleDragEnd");
+    //console.log("handleDragEnd");
   }
   /*
     // This is an alternate approach that handles touch events. 
@@ -1608,7 +1610,9 @@ function handleNewModal(modalNodeTree) {
       modalNode.style.borderBottomRightRadius = 0;
 
       waitForSubtreeElements(
-        "div[aria-label='Modal' i] > div:nth-child(2) button", // The selector for the element you want to wait for within the modal
+        'div[aria-label="Modal" i] div[role="button" i][aria-label="Close modal" i], ' + 
+        'div[aria-label="Modal" i] div[role="button" i][aria-label="back" i]', 
+        // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i] > div > div", // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i]:has(> div:nth-child(2))", // Wait for the 2nd child to appear.
         (modalSubNodes) => {
@@ -1694,9 +1698,10 @@ function handleNewModal(modalNodeTree) {
               //console.log("scEntryLable", modalNode);
 
               modalNodeTree.id += ".StoryCardEditor";
+              modalInnerContent.firstChild.id = "modalInnerContent_StoryCardEditor";
               modalHeader.padding = '8px';
               setTimeout(() => {
-                modalContent.style.maxHeight = 'calc(100% - ' + modalHeader.offsetHeight + 'px)';
+                //modalContent.style.maxHeight = 'calc(100% - ' + modalHeader.offsetHeight + 'px)';
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
                 modifyStoryCardEditor(modalNode);
                 const closeButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
