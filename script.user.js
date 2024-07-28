@@ -2,7 +2,7 @@
 // @name         AIDungeon QoL Tool10
 // @version      1.2.0
 // @description  A QoL script for AID, adding customizable hotkeys, also increases performance by removing the countless span elements from last response
-// @author       AliH2K
+// @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
 // @require      https://code.jquery.com/jquery-3.7.1.min.js
@@ -400,6 +400,10 @@ GM_addStyle(`
       user-select: text !important; 
   }
 `);
+
+const modalDimensions = cfg.get('Modal_Dimensions');
+const [modalWidthCfg, modalHeightCfg] = modalDimensions;
+
 //textarea:not(#game-text-input, #transition-opacity, #shadow-box, #do-not-copy) {
 GM_addStyle(`
   /*
@@ -440,36 +444,33 @@ GM_addStyle(`
     padding-right: 8px !important;
   }
   */
-  /* Target: every storyCardsTab list of button type with pad or margin left or right */
-  div#modalInnerContent_storyCardsTab div[role="button"]._pl-1481558338 {
-    padding-left: 0px !important;
-  }
-  div#modalInnerContent_storyCardsTab div[role="button"]._pr-1481558338 {
-    padding-right: 0px !important;
-  }
-  div#modalInnerContent_storyCardsTab div[role="button"]._mr-1481558369 {
-    margin: 0px !important;
-  }
-  div#modalInnerContent_storyCardsTab > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-  }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) {
-    width: 100% !important;
-  }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) > * {
-    width: 100% !important;
-  }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
-    padding-bottom: 0px !important;
-  }
-
-  /* Make Modal bottom right border square for the resize icon. */
+  /* Make Modal bottom right border square for the resize icon. 
   div:has([aria-label="Modal" i]) {
     border-bottom-right-radius: 0px !important;
   }
+  */
+
+  div[role="alertdialog"][aria-label="Modal" i] {
+    width: ${modalWidthCfg}px; /* Must not be important! */
+    min-width: 250px !important;
+    max-width: 100% !important;
+
+    height: ${modalHeightCfg}px;  /* Must not be important! */
+    min-height: 250px !important;
+    max-height: 100% !important;
+
+    resize: both !important;
+    overflow: hidden !important;
+    /*
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+    */
+    padding: 0px !important;
+    margin: 0px !important;
+    border-bottom-right-radius: 0px !important;
+  }
+
+
   /* These classes must be overridden to get the square corner. */
   ._bbrr-1307609874 {
     border-bottom-right-radius: 0px !important;
@@ -501,40 +502,7 @@ GM_addStyle(`
     margin-left: 0px !important;
     margin-right: 0px !important;
   }
-  div[id^="modalInnerContent_" i] button[type="button"] {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-  }
-  /*
-  [id^="modalInnerContent_" i] div.is_Column {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-  }
-  div[id^="modalContent_" i] + div:has(p[role="heading"]) {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-  }
-  div:has([id^="modalContent_" i] p[role="heading" i]) {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin-left: 0px !important;
-    margin-right: 0px !important;
-  }
-  [id^="modalContent_"] > div, [id^="modalContent_"]._pb-1481558400 {
-    padding: 8px !important;
-    padding-bottom: 8px !important;
-    padding-top: 8px !important;
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-  }
-  */
-    div[id^="modalContent_" i] + div.has(p[role="heading"]) {
+  div[id^="modalContent_" i] + div.has(p[role="heading"]) {
     padding-left: 0px !important;
     padding-right: 0px !important;
     margin-left: 0px !important;
@@ -562,6 +530,53 @@ GM_addStyle(`
     max-height: 100% !important;
     max-width: 100% !important;
   }  
+    /*
+    modalInnerContent.style.padding = '0px';
+    modalInnerContent.style.overflowX = 'unset';
+    modalInnerContent.style.overflowY = 'unset';
+    modalInnerContent.style.maxHeight = '100%';
+    modalInnerContent.style.maxWidth = '100%';
+*/
+div[id^="modalInnerContent_" i] button[type="button"] {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+  }
+
+  /* Target: every storyCardsTab list of button type with pad or margin left or right */
+  div#modalInnerContent_storyCardsTab div[role="button"]._pl-1481558338 {
+    padding-left: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab div[role="button"]._pr-1481558338 {
+    padding-right: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab div[role="button"]._mr-1481558369 {
+    margin: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+  }
+
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) {
+    width: 100% !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) > * {
+    width: 100% !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
+    padding-bottom: 0px !important;
+  }
+  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
+    padding-bottom: 0px !important;
+  }
+  div#modalInnerContent_StoryCardEditor {
+    padding-bottom: 8px !important;
+  }
+
   /*
   [id^="modalInnerContent_"] > div > div > div {
     padding-left: 0px !important;
@@ -1121,29 +1136,21 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
   const modalDimensions = cfg.get('Modal_Dimensions');
   const [modalWidth, modalHeight] = modalDimensions;
 
-  // Setup the initial modal dimensions from configure monkey.
-  modalNode.style.width = `${modalWidth}px`;
-  modalNode.style.maxWidth = `100%`;
-  modalNode.style.height = `${modalHeight}px`;
-  modalNode.style.maxHeight = `100%`;
-  modalNode.style.minHeight = '0px';
-
-  modalNode.style.resize = 'both';
-  modalNode.style.overflowY = 'hidden';
-  modalNode.style.overflowX = 'hidden';
-
-  // Get some references to important things and assign id's
+  // Get some references to important things.
   const modalHeader = modalNode?.children[0];
-  const modalHeaderId = "modalHeader_" + timestamp;
-  modalHeader.id = modalHeaderId;
-
   const modalContent = modalNode?.children[1];
-  modalContent.id = "modalContent_" + timestamp;
-
   let modalInnerContent = modalContent?.children[0];
-  let modalInnerContentId = null;
+  if (!modalInnerContent) {
+    console.error("modalInnerContent Failed.");
+    return;
+  }
 
-  modalInnerContentId = "modalInnerContent_" + timestamp;
+  let modalInnerContentId = "modalInnerContent_" + timestamp;
+  modalInnerContent.id = modalInnerContentId;
+
+  // The width and height must be removed so that the drag resize can work.
+  modalNode.style.removeProperty('width');
+  modalNode.style.removeProperty('height');
 
   // Called by both fixModalContent, and by a mutation observer that watches the modal content
   // incase of changes.
@@ -1172,10 +1179,13 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
     classListRemoveRecursively(modalInnerContent.firstChild, classListRemovez);
 
-    modalInnerContent.id = modalInnerContentId;
+    //modalInnerContent.id = modalInnerContentId;
 
-    //modalInnerContent.id = "modalInnerContentId_" + timestamp;
     unsetOverflowRecursively(modalInnerContent);
+
+    /* unfortunately these must be set by hand in JS.
+       After react remounts a tab, they are lost and CSS doesnt appear to reload.
+       */
     modalInnerContent.style.padding = '0px';
     modalInnerContent.style.overflowX = 'unset';
     modalInnerContent.style.overflowY = 'unset';
@@ -1199,18 +1209,6 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     ).length >= 1) {
       modalInnerContent.firstChild.id = 'modalInnerContent_detailsTab';
     }
-
-  }
-
-
-  if (modalInnerContent) {
-    modalInnerContent.id = modalInnerContentId;
-    modalInnerContent.style.overflowX = 'unset';
-    modalInnerContent.style.overflowY = 'unset';
-    modalInnerContent.style.maxHeight = '100%';
-    modalInnerContent.style.maxWidth = '100%';
-  } else {
-    console.log("modalInnerContent Failed.");
   }
 
   setTimeout(() => {
@@ -1221,47 +1219,37 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     // To allow dragging and resizing the modal, we have to disable centering.
     // But we don't want the modal to jump to the top left of the viewport.
     // So we center it manually.
-    if (modalNodeTree) {
-      const modalRect = modalNode.getBoundingClientRect();
+    const modalRect = modalNode.getBoundingClientRect();
 
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-      const left = (viewportWidth - modalRect.width) / 2.0;
-      const top = (viewportHeight - modalRect.height) / 2.0;
+    const left = (viewportWidth - modalRect.width) / 2.0;
+    const top = (viewportHeight - modalRect.height) / 2.0;
 
-      // The path to the div that is centering the modal preventing it from being moved.
-      const centeringParent = modalNodeTree.querySelector('div > span > span > div');
+    // The path to the div that is centering the modal preventing it from being moved.
+    const centeringParent = modalNodeTree.querySelector('div > span > span > div');
 
-      // Remove potentially conflicting classes before centering
-      centeringParent.classList.remove('_ai-center', '_jc-center', '_pos-fixed');
+    // Remove potentially conflicting classes before centering
+    centeringParent.classList.remove('_ai-center', '_jc-center', '_pos-fixed');
 
-      // Apply initial left and top positions
-      modalNode.style.left = `${Math.max(0, left)}px`; // Ensure left is not negative
-      modalNode.style.top = `${Math.max(0, top)}px`;   // Ensure top is not negative
+    // Apply initial left and top positions
+    modalNode.style.left = `${Math.max(0, left)}px`; // Ensure left is not negative
+    modalNode.style.top = `${Math.max(0, top)}px`;   // Ensure top is not negative
 
-      // Override centering styles on the parent (AFTER centering the modal)
-      centeringParent.style.justifyContent = 'unset';
-      centeringParent.style.alignItems = 'unset';
-    }
+    // Override centering styles on the parent (AFTER centering the modal)
+    centeringParent.style.justifyContent = 'unset';
+    centeringParent.style.alignItems = 'unset';
 
 
-    if (modalInnerContent) {
-      modalInnerContentId = "modalInnerContent_" + timestamp;
-      modalInnerContent.id = modalInnerContentId;
-
-      if (1) { // Turned off to experiment with using the original scroller.
-        const originalScroller = modalNode.closest('[data-remove-scroll-container="true"]');
-        if (originalScroller) {
-          originalScroller.style.overflowY = 'hidden'; // Disable scrolling on the original element
-          originalScroller.removeAttribute('data-remove-scroll-container'); // Remove the attribute
-        } else {
-          console.warn("Original scrolling element not found in modal.");
-        }
+    if (1) { // Turned off to experiment with using the original scroller.
+      const originalScroller = modalNode.closest('[data-remove-scroll-container="true"]');
+      if (originalScroller) {
+        originalScroller.style.overflowY = 'hidden'; // Disable scrolling on the original element
+        originalScroller.removeAttribute('data-remove-scroll-container'); // Remove the attribute
+      } else {
+        console.warn("Original scrolling element not found in modal.");
       }
-
-    } else {
-      console.warn("Content div not found in modal after delay.");
     }
 
   }, 100);
@@ -1583,7 +1571,8 @@ function toggleFullScreen(buttonTextElement) {
   }
 }
 
-// Function to handle new modals
+// Function to handle new modals.
+// modalNodeTree is the modal's branch div from document.body.
 //
 function handleNewModal(modalNodeTree) {
 
@@ -1591,8 +1580,9 @@ function handleNewModal(modalNodeTree) {
 
   // Wait for the specific modal structure
   waitForSubtreeElements(
-    "div[aria-label='Modal' i]",
+    "div[aria-label='Modal' i]:has(div[role='button'])",
     (modalNodes) => {
+      console.log(modalNodes);
       if (modalNodes.length !== 1) {
         console.warn("Modal nodes, there can be only 1. Found: ", modalNodes.length);
         return;
@@ -1604,31 +1594,33 @@ function handleNewModal(modalNodeTree) {
         return;
       }
 
-      modalNodeTree.id = "modalNodeTree";
-      modalNode.style.padding = 0;
-      modalNode.style.margin = 0;
-      modalNode.style.borderBottomRightRadius = 0;
+      modalNodeTree.id = "modalNodeTree_" + timestamp;
+
+      const modalHeader = modalNode?.children[0];
+      modalHeader.id = "modalHeader_" + timestamp;
+
+      /* Assign IDs for CSS. */
+      const modalContent = modalNode?.children[1];
+      modalContent.id = "modalContent_" + timestamp;
+
+      const modalHeaderTitleContainer = modalHeader?.firstChild;
+      modalHeaderTitleContainer.id = "modalHeaderTitleContainer_" + timestamp;
+
+      const modalInnerContent = modalContent?.children[0];
+      modalInnerContent.id = "modalInnerContent_" + timestamp;
+
+      makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
+
+      /// return;
 
       waitForSubtreeElements(
-        'div[aria-label="Modal" i] div[role="button" i][aria-label="Close modal" i], ' + 
-        'div[aria-label="Modal" i] div[role="button" i][aria-label="back" i]', 
+        'div[aria-label="Modal" i] div[role="button" i][aria-label="Close modal" i], ' +
+        'div[aria-label="Modal" i] div[role="button" i][aria-label="back" i]',
         // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i] > div > div", // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i]:has(> div:nth-child(2))", // Wait for the 2nd child to appear.
         (modalSubNodes) => {
           setTimeout(() => { // Need to wait some time for react to render the contents and post it.
-            const modalHeader = modalNode?.children[0];
-
-            /* Assign IDs for CSS. */
-            const modalContent = modalNode?.children[1];
-            modalContent.id = "modalContent_" + timestamp;
-
-            const modalHeaderTitleContainer = modalHeader?.firstChild;
-            modalHeaderTitleContainer.id = "modalHeaderTitleContainer_" + timestamp;
-
-            const modalInnerContent = modalContent?.children[0];
-            modalInnerContent.id = "modalInnerContent" + timestamp;
-
             // Add resizing and dragging for edit Adventure and Scenario modals.
             const tablistSelector =
               'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="plot" i], ' +
@@ -1637,28 +1629,16 @@ function handleNewModal(modalNodeTree) {
               'div[role="button"][aria-label="Close modal" i] > div > p';
 
             if (modalNode.querySelectorAll(tablistSelector).length >= 4) {
-
-              //centeringParent.classList.remove('_ai-center', '_jc-center', '_pos-fixed');
-
-              if (modalHeaderTitleContainer) {
-                //modalHeaderTitleContainer.style.justifyContent = 'space-between';
-
-              }
               waitForSubtreeElements(
                 tablistSelector,
                 (matchingElements) => {
                   if (matchingElements.length >= 4) { // Check if all 3 tabs are found
                     modalNodeTree.id += ".ScenarioAdventureEditor";
 
-                    makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
-
                     // Find the nested button
                     setTimeout(() => {
                       let closeButton = null;
                       let container = null;
-                      //modalInnerContent.style.justifyContent = 'space-between';
-                      //modalHeaderTitleContainer.style.justifyContent = 'space-between';
-
                       // Check for double button first.
                       let closeButtons = modalNode.querySelectorAll(
                         "button[role='button'][type='button' i] div[role='button'][aria-label='Close modal' i]");
@@ -1699,10 +1679,10 @@ function handleNewModal(modalNodeTree) {
 
               modalNodeTree.id += ".StoryCardEditor";
               modalInnerContent.firstChild.id = "modalInnerContent_StoryCardEditor";
-              modalHeader.padding = '8px';
+              //  modalHeader.padding = '8px';
               setTimeout(() => {
                 //modalContent.style.maxHeight = 'calc(100% - ' + modalHeader.offsetHeight + 'px)';
-                makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
+                /// makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
                 modifyStoryCardEditor(modalNode);
                 const closeButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
                 modalAddFullScreenButton(closeButton, modalHeader, toggleFullScreen);
@@ -1716,7 +1696,7 @@ function handleNewModal(modalNodeTree) {
             else if ($(modalHeader).find("h1:contains('Adventure')").length > 0) {
               setTimeout(() => {
                 modalNodeTree.id += ".ContentView.Adventure";
-                makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
+                /// makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
             }
             // Fix the irritating small window size for the script editor.
@@ -1760,7 +1740,9 @@ const bodyObserver = new MutationObserver((mutationsList, observer) => {
           // Check for modals and new buttons
           if (node.querySelector("div[aria-label='Modal' i]")) {
             console.log("New modal detected in document.body");
-            handleNewModal(node);
+            setTimeout(() => {
+              handleNewModal(node);
+            }, 500); // adjust as needed
           }
 
         }
