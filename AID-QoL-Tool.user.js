@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         AIDungeon QoL Tool
-// @version      1.2.0
+// @name         AID-QoL-Tool
+// @version      1.3.0.01
 // @description  A QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -14,15 +14,15 @@
 // @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
 // @license      MIT
-// @namespace    https://greasyfork.org/users/1302066
+// @namespace    https://github.com/
+// @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/WIP/AID-QoL-Tool.user.js
+// @updateURL    https://github.com/viosca/AID-QoL-Tool/raw/WIP/AID-QoL-Tool.user.js
 // ==/UserScript==
 
 /* global jQuery, $, waitForKeyElements, MonkeyConfig */
 
-/// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
 /// @downloadURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.user.js
 /// @updateURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.meta.js
-
 /// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
 
 const $ = jQuery.noConflict(true);
