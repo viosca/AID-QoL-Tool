@@ -1,5 +1,5 @@
-# QoL
-Enhanced Tampermonkey Script for AI Dungeon
+# AID-QoL-Tool
+Enhanced Tampermonkey Script for AI Dungeon.
 
 
 This script is based on AliH2K's script. It adds features and enhancements.
