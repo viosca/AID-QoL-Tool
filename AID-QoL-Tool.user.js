@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         AIDungeon QoL Tool10
+// @name         AIDungeon QoL Tool
 // @version      1.2.0
-// @description  A QoL script for AID, adding customizable hotkeys, also increases performance by removing the countless span elements from last response
+// @description  A QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
