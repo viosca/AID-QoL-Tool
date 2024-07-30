@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      1.3.0.01
+// @version      1.3.0.01a
 // @description  A QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -449,7 +449,11 @@ GM_addStyle(`
     border-bottom-right-radius: 0px !important;
   }
   */
-
+ 
+  div[id*="ScriptEditor"] div[role="alertdialog"]:last-of-type > :last-child {
+    flex-grow: 1;
+  }
+  
   div[role="alertdialog"][aria-label="Modal" i] {
     width: ${modalWidthCfg}px; /* Must not be important! */
     min-width: 250px !important;
@@ -1705,9 +1709,10 @@ function handleNewModal(modalNodeTree) {
               setTimeout(() => {
                 waitForKeyElements(".monaco-editor .view-lines", (editorElements) => {
                   modalNodeTree.id += ".ScriptEditor";
-                  const editorContainer = modalNode.children[1];
+                  const editorContainer = modalNode?.children[1];
+
                   if (editorContainer) {
-                    editorContainer.style.height = "90%";
+                    //editorContainer.style.height = "90%";
                   } else {
                     console.warn("Editor container div not found in script editor modal");
                   }
