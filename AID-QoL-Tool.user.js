@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         AID-QoL-Tool
-// @version      1.3.0.01a
+// @name         AID-QoL-ToolZ
+// @version      1.3.0.01z
 // @description  A QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -14,7 +14,7 @@
 // @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
 // @license      MIT
-// @namespace    https://github.com/
+// @namespace    https://github.com/viosca/AID-QoL-Tool/tree/WIP
 // @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/WIP/AID-QoL-Tool.user.js
 // @updateURL    https://github.com/viosca/AID-QoL-Tool/raw/WIP/AID-QoL-Tool.user.js
 // ==/UserScript==
@@ -106,9 +106,9 @@ const getSetTextFunc = (value, parent) => {
   const inputElem = $(parent || value).find('input');
   if (!parent) {
     const booleans = inputElem
-      .filter(':checkbox')
-      .map((_, el) => el.checked)
-      .get();
+    .filter(':checkbox')
+    .map((_, el) => el.checked)
+    .get();
     if (!booleans[0]) return inputElem.val().toUpperCase();
     return booleans;
   } else {
@@ -323,11 +323,11 @@ const handleKeyPress = (e) => {
             }
           },
         */
-          () => $('input#flameplayername').click(),  // Doesn't work.
+          () => $('input#flameplayername').click(), // Doesn't work.
           () => $('input#flameplayername').trigger('click'), // Doesn't work.
           () => $('input#flameplayername').focus() // Doesn't work.
         ]
-        );
+                     );
       }
       else if (action.type === 'Toggle_Site') {
         const currentURL = window.location.href;
@@ -342,8 +342,9 @@ const handleKeyPress = (e) => {
 
   }
   const selectKeys = ['ARROWLEFT', 'ENTER', 'ARROWRIGHT'];
-  if (selectKeys.includes(key) && $('[role="dialog"]').length)
+  if (selectKeys.includes(key) && $('[role="dialog"]').length) {
     setTimeout(() => $("[role='dialog']").find("[role='button']")[selectKeys.indexOf(key)].click(), 50);
+  }
 };
 
 const delayedClicks = (clicks, i = 0) => {
@@ -396,16 +397,238 @@ class DOMObserver {
 }
 
 GM_addStyle(`
-  .css-11aywtz,._dsp_contents { 
-      user-select: text !important; 
+  .css-11aywtz,._dsp_contents {
+      user-select: text !important;
   }
 `);
 
 const modalDimensions = cfg.get('Modal_Dimensions');
-const [modalWidthCfg, modalHeightCfg] = modalDimensions;
+let [modalWidthCfg, modalHeightCfg] = modalDimensions;
+
+modalHeightCfg = !modalHeightCfg ? '50%' : `${modalHeightCfg}px`;
+modalWidthCfg = !modalWidthCfg ? '50%' : `${modalWidthCfg}px`;
 
 //textarea:not(#game-text-input, #transition-opacity, #shadow-box, #do-not-copy) {
+//div#__next > div > span > div > div > div > div > div > div:nth-child(3) > div._mah-960px,
+//div#__next > div > span > div > div > div > div > div > div._mah-960px {
+//div#__next > div > span > div > div > div > div > div > div > div > div > div
+//div#__next > div > span > div > div > div > div > div.is_Column._dsp-flex._ai-stretch._fd-column._fb-auto._bxs-border-box._pos-relative._mih-0px._miw-0px._fs-0._pt-1316335167._pr-0px._pb-1316335167._pl-0px
+//div#__next > div > span > div > div > div > div > div.is_Column > div.is_Row._pr-1316335167._pl-1316335167
+//div#__next > div > span > div > div > div > div > div.is_Column
+//div#__next > div > span > div > div > div > div > div.is_Column._dsp-flex._ai-stretch._fd-column._fb-auto._bxs-border-box._pos-relative._mih-0px._miw-0px._fs-0._pt-1316335167._pr-0px._pb-1316335167._pl-0px
+//div#__next > div > span > div > div > div > div > div.is_Column > div.is_Row > div > div > div > span > div
+//div#__next > div > span > div > div > div > div > div.is_Column > div._mah-960px
+//._pt-1316335167._pr-1316335167._pb-1316335167._pl-1316335167
+//  div#__next ._pr-1316335167,
+//  div#__next ._pl-1316335167 {
+//    padding: 8px !important;
+//  }
 GM_addStyle(`
+  div#__next > div > span {
+    & > div._dsp-flex:nth-child(1) { /* Home screen. */ }
+    & > div._dsp-flex:nth-child(2) { /* Play. */
+      & > div.css-175oi2r:nth-child(1) { /* Game Window. */
+        & > div[role="toolbar"][aria-label="Navigation bar" i] {
+        }
+        & > div.game-text-mask { /* The game log. */
+        }
+        & > div.css-175oi2r { /* Action Entry Area. */
+        }
+      }
+      & > div._dsp-flex:nth-child(2) { /* Gear1 Window. */
+        & > div.css-175oi2r { /* Gear2 Window. */
+          & > div.is_Column { /* Gear3 Window. */
+            & > div.is_Column:nth-child(1) { /* Gear Header. */
+            }
+            & > div.is_Column:nth-child(2) { /* Gear Content. */
+              & > div.is_Row:nth-child(1) { /* PILL MENU */
+              }
+              & > div:nth-child(2) { /* A Gap */
+              }
+              & > div[aria-hidden="false"]:nth-child(3) { /*********** PLOT ***********/
+                max-height: 100% !important;
+                margin-left: 0px !important;
+                margin-right: 0px !important;
+              }
+              & > div._dsp-flex:nth-child(4):has(+ :nth-child(5)) { /*********** STORY CARDS ***********/
+                max-width: 100% !important;
+                & > div.css-175oi2r {
+                  & > div.css-175oi2r {
+                    & > div.css-175oi2r {
+                      padding-left: 0px !important;
+                      padding-right: 0px !important;
+                      & > div.css-175oi2r:nth-child(1) {
+                        & > div.css-175oi2r:nth-child(1) { } /* Spacer. */
+                        & > div.css-175oi2r:nth-child(2) { } /* Search and Filter */
+                        & > div.css-175oi2r:nth-child(3) { /* Story Card List. */
+                          width: 100% !important;
+                          & > * {
+                            max-width: 100% !important;
+                            width: 100% !important;
+                          }
+                          & > * [role="button" i] {
+                            margin-right: 0px !important;
+                          }
+                        }
+                        & > div.css-175oi2r:nth-child(4) { } /* Spacer. */
+                        & > div.css-175oi2r:nth-child(5) { /* Bottom Padding */
+                          padding-bottom: 100px !important;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+              & > div[aria-hidden="false"]._dsp-flex:last-child { /*********** DETAILS ***********/
+                max-height: 100% !important;
+                ._pl-1481558338 { padding-left: 8px !important; }
+                ._pr-1481558338 { padding-right: 8px !important; }
+                ._pl-1481558307 { padding-left: 8px !important; }
+                ._pr-1481558307 { padding-right: 8px !important; }
+                ._ml-1481558338 { margin-left: 0px !important; }
+                ._gap-1481558369 {
+                  row-gap: 8px !important;
+                  column-gap: 8px !important;
+                }
+                ._gap-1481558338 {
+                  row-gap: 8px !important;
+                  column-gap: 8px !important;
+                }
+                & > div.css-175oi2r {
+                  padding-bottom: 0px !important;
+                  & > div.css-175oi2r {
+                    & > div.is_Column:nth-child(1) {
+                      & > div.is_Column {
+                        /* gap: var(--space-1) !important;*/
+                        & > div.is_Column {
+                          & > div.is_Column:nth-child(1) { /* Title, Desc, and Tags. */
+                            & > div.is_Column:nth-child(1) { /* The Adventure Image. */
+                            }
+                            & > div.is_Column:nth-child(2) { /* Title */
+                              padding-left: 8px !important;
+                              padding-right: 8px !important;
+                            }
+                            & > div.is_Column:nth-child(3) { /* Desc */
+                              padding-left: 8px !important;
+                              padding-right: 8px !important;
+                            }
+                            & > div.is_Column:nth-child(4) { /* Tags */
+                              padding-left: 0px !important;
+                              padding-right: 0px !important;
+                              margin-left: 0px !important;
+                              margin-right: 0px !important;
+                            }
+                          }
+                          & > div.is_Column:nth-child(2) { /* Visibility and Content Rating. */
+                            & > div.is_Column:nth-child(1) {
+                              margin-left: 8px !important;
+                              margin-right: 8px !important;
+                            }
+                            & > div.is_Column:nth-child(2) {
+                              margin-left: 8px !important;
+                              margin-right: 8px !important;
+                            }
+                          }
+                          & > div.is_Column:nth-child(3) {  /* Story Card Management. */
+                            padding-bottom: 8px !important;
+                          }
+                        }
+                      }
+                      & > div._dsp-flex {
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Pill menu stuff.  */
+  div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:nth-child(1) {
+    margin: 0px !important;
+    padding: 0px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  /* Pill menu left padding turn off. */
+  div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:nth-child(1) > div > div > div:nth-child(1) {
+    display: none !important;
+  }
+  /* Pill menu right padding turn off. */
+  div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:nth-child(1) > div > div > div:nth-child(3) {
+    display: none !important;
+  }
+
+  /* These are the scroll buttons for the pill menu. Since the sidebar is wider, we don't need them.
+  div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:has(div[aria-label="scroll right"], div[aria-label="scroll left"]) {
+    margin: 0px !important;
+    max-width: 100% !important;
+  }
+
+  /* This is the overall container for the Pill menu AND switchable context. */
+  div#__next > div > span > div > div:nth-child(2) > div > div.is_Column > div:nth-child(2).is_Column {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  /* This is the pill menu. :has(.pill-switch-mask)) */
+  div#__next > div > span > div > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div.is_Row {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+  /* Make this container full sized.
+  div#__next > div > span > div > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div.is_Row._mah-960px {
+    max-height: 100% !important;
+  }*/
+
+  /* This is for the story card list container including the search and create new.
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }*/
+
+  /* This is for the story card list container, only the story cards.:not(:has(.pill-switch-mask))
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }*/
+
+  /* This is for each story card in the list container. :not(:has(.pill-switch-mask))
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div > * {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    margin-right: 0px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }*/
+
+  /* This is for each story card in the list container.:not(:has(.pill-switch-mask))
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div > * > div > div.is_Button {
+    margin-right: 0px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }*/
+  /*
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2) > div > div > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2) > div > div > div > div > div {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+  */
+
+/*
+  div#__next ._mah-1611765696 {
+    max-height: 100% !important;
+  }
+*/
   /*
   ._pt-1316335136 {
     padding-top: 6px !important;
@@ -414,6 +637,7 @@ GM_addStyle(`
     padding-bottom: 6px !important;
   }
   */
+
   /*
   ._pr-1481558400 {
     padding-right: 0px !important;
@@ -424,42 +648,46 @@ GM_addStyle(`
   ._pr-1481558338 {
     padding-right: 8px !important;
   }
+*/
 
+/*
   ._pt-1316335167 {
     padding-top: 8px !important;
-  }  
+  }
   ._pb-1316335167 {
     padding-bottom: 8px !important;
-  }  
+  }
   ._pl-1316335167 {
     padding-left: 8px !important;
-  }  
+  }
   ._pr-1316335167 {
     padding-right: 8px !important;
   }
+*/
+/*
   ._pl-1481558307 {
     padding-left: 8px !important;
   }
   ._pr-1481558307 {
     padding-right: 8px !important;
   }
-  */
-  /* Make Modal bottom right border square for the resize icon. 
+*/
+/* Make Modal bottom right border square for the resize icon.
   div:has([aria-label="Modal" i]) {
     border-bottom-right-radius: 0px !important;
   }
-  */
- 
+*/
+
   div[id*="ScriptEditor"] div[role="alertdialog"]:last-of-type > :last-child {
     flex-grow: 1;
   }
-  
+
   div[role="alertdialog"][aria-label="Modal" i] {
-    width: ${modalWidthCfg}px; /* Must not be important! */
+    width: ${modalWidthCfg}; /* Must not be important! */
     min-width: 250px !important;
     max-width: 100% !important;
 
-    height: ${modalHeightCfg}px;  /* Must not be important! */
+    height: ${modalHeightCfg};  /* Must not be important! */
     min-height: 250px !important;
     max-height: 100% !important;
 
@@ -484,9 +712,30 @@ GM_addStyle(`
   }
   /* Tweak the padding for modals. */
   div[id^="modalHeader_" i] {
+    padding: 0px !important;
+    flex-grow: 0 !important;
+    border-bottom-style: solid !important;
+    border-bottom-width: 1px !important;
+    border-bottom-color: var(--color-61) !important;
+    /* overflow: hidden hidden !important; */
+  }
+  div[id^="modalHeader_Title_" i] {
     padding: 8px !important;
     flex-grow: 0 !important;
     /* overflow: hidden hidden !important; */
+  }
+  div[id^="modalHeader_Menu_" i] {
+    padding: 8px !important;
+    flex-grow: 0 !important;
+    /* overflow: hidden hidden !important; */
+  }
+  div[id^="modalHeader_" i]._gap-1481558338 {
+    gap: 0px !important;
+    column-gap: 0px !important;
+    row-gap: 0px !important;
+  }
+  div[id^="modalHeader_" i]._h-137px {
+    height: unset !important;
   }
   div[id^="modalContent_" i] {
     max-height: 100% !important;
@@ -524,7 +773,7 @@ GM_addStyle(`
     margin-left: 0px !important;
     margin-right: 0px !important;
   }
-  div[id^="modalInnerContent_" i] {
+  div[id^="modalContent_Inner_" i] {
     max-height: 100% !important;
     padding: 0px !important;
     margin: 0px !important;
@@ -533,15 +782,15 @@ GM_addStyle(`
     overflow-y: unset !important;
     max-height: 100% !important;
     max-width: 100% !important;
-  }  
+  }
     /*
-    modalInnerContent.style.padding = '0px';
-    modalInnerContent.style.overflowX = 'unset';
-    modalInnerContent.style.overflowY = 'unset';
-    modalInnerContent.style.maxHeight = '100%';
-    modalInnerContent.style.maxWidth = '100%';
+    modalContent_Inner.style.padding = '0px';
+    modalContent_Inner.style.overflowX = 'unset';
+    modalContent_Inner.style.overflowY = 'unset';
+    modalContent_Inner.style.maxHeight = '100%';
+    modalContent_Inner.style.maxWidth = '100%';
 */
-div[id^="modalInnerContent_" i] button[type="button"] {
+div[id^="modalContent_Inner_" i] button[type="button"] {
     padding-left: 8px !important;
     padding-right: 8px !important;
     margin-left: 0px !important;
@@ -549,58 +798,64 @@ div[id^="modalInnerContent_" i] button[type="button"] {
   }
 
   /* Target: every storyCardsTab list of button type with pad or margin left or right */
-  div#modalInnerContent_storyCardsTab div[role="button"]._pl-1481558338 {
+  div#modalContent_Inner_detailsTab._gap-1481558338 {
+    gap: var(--space-1) !important;
+  }
+  div#modalContent_Inner_storyCardsTab._gap-1481558338 {
+    gap: var(--space-1) !important;
+  }
+  div#modalContent_Inner_storyCardsTab div[role="button"]._pl-1481558338 {
     padding-left: 0px !important;
   }
-  div#modalInnerContent_storyCardsTab div[role="button"]._pr-1481558338 {
+  div#modalContent_Inner_storyCardsTab div[role="button"]._pr-1481558338 {
     padding-right: 0px !important;
   }
-  div#modalInnerContent_storyCardsTab div[role="button"]._mr-1481558369 {
+  div#modalContent_Inner_storyCardsTab div[role="button"]._mr-1481558369 {
     margin: 0px !important;
   }
-  div#modalInnerContent_storyCardsTab > div > div {
+  div#modalContent_Inner_storyCardsTab > div > div {
     padding-left: 0px !important;
     padding-right: 0px !important;
     margin-left: 0px !important;
     margin-right: 0px !important;
   }
 
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) {
+  div#modalContent_Inner_storyCardsTab > div > div > div > div:nth-child(3) {
     width: 100% !important;
   }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(3) > * {
+  div#modalContent_Inner_storyCardsTab > div > div > div > div:nth-child(3) > * {
     width: 100% !important;
   }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
+  div#modalContent_Inner_storyCardsTab > div > div > div > div:nth-child(5) {
     padding-bottom: 0px !important;
   }
-  div#modalInnerContent_storyCardsTab > div > div > div > div:nth-child(5) {
+  div#modalContent_Inner_storyCardsTab > div > div > div > div:nth-child(5) {
     padding-bottom: 0px !important;
   }
-  div#modalInnerContent_StoryCardEditor {
+  div#modalContent_Inner_StoryCardEditor {
     padding-bottom: 8px !important;
   }
 
   /*
-  [id^="modalInnerContent_"] > div > div > div {
+  [id^="modalContent_Inner_"] > div > div > div {
     padding-left: 0px !important;
     padding-right: 0px !important;
     margin: 0px !important;
   }
 */
-  /* Target the specific modal with the selected "Story Cards" tab 
-  div[aria-label="Modal"] div[id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i] 
-  ~ div[id^="modelContent_"] [id^="modalInnerContent_"] > div > div > div {
+  /* Target the specific modal with the selected "Story Cards" tab
+  div[aria-label="Modal"] div[id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i]
+  ~ div[id^="modelContent_"] [id^="modalContent_Inner_"] > div > div > div {
       padding-left: 0px !important;
       padding-right: 0px !important;
       margin: 0px !important;
   }
 */
   /*
-  #modalInnerContent_1722033353146 > div > div > div > div > div:nth-child(3) > div:nth-child(7) > div.css-175oi2r > div
-  [id^="modalInnerContent_"] > div > div > div {
+  #modalContent_Inner_1722033353146 > div > div > div > div > div:nth-child(3) > div:nth-child(7) > div.css-175oi2r > div
+  [id^="modalContent_Inner_"] > div > div > div {
   [id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i] {
-    [id^="modalInnerContent_"] > div > div > div {
+    [id^="modalContent_Inner_"] > div > div > div {
       padding-left: 0px !important;
     padding-right: 0px !important;
     margin: 0px !important;
@@ -609,11 +864,11 @@ div[id^="modalInnerContent_" i] button[type="button"] {
 
   /*
    > div > div:nth-child(1) > div > div > div > span > div
-  [id^="modalInnerContent_"] > div {
+  [id^="modalContent_Inner_"] > div {
     padding: 0px !important;
     padding-bottom: 0px !important;
   }
-  [id^="modalInnerContent_"] > div > div > div > div > div {
+  [id^="modalContent_Inner_"] > div > div > div > div > div {
     padding: 0px !important;
     margin: 0px !important;
   }
@@ -626,7 +881,7 @@ div[id^="modalInnerContent_" i] button[type="button"] {
     min-height: 200px !important;
   }
   input._h-606181821 {
-    height: var(--size-6) !important;  
+    height: var(--size-6) !important;
   }
   input._gap-1481558338 {
     gap: var(--space-1) !important;
@@ -652,6 +907,7 @@ div[id^="modalInnerContent_" i] button[type="button"] {
   /* Put vertical resizers on all textareas. */
   textarea:not([aria-label="Text input field" i], #game-text-input, #shadow-box) {
     min-height: 50px !important;  /* Or min-height: 0; */
+    max-height: unset !important;
     resize: vertical !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable !important;
@@ -664,17 +920,17 @@ div[id^="modalInnerContent_" i] button[type="button"] {
   }
   /* Experiments with offing the dimming gradient.
   .game-text-mask {
-    transition: mask-position .3s ease, -webkit-mask-position .3s ease !important; 
-    -webkit-mask-image: linear-gradient(rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%) !important; 
+    transition: mask-position .3s ease, -webkit-mask-position .3s ease !important;
+    -webkit-mask-image: linear-gradient(rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%) !important;
     mask-image: linear-gradient(rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 100%) !important;
     -webkit-mask-size: 100% 100% !important;
     mask-size: 100% 100% !important;
   }
   .game-text-mask {
-    transition: mask-position .3s ease, mask-size .3s ease; 
-    -webkit-mask-image: linear-gradient(transparent, rgba(0, 0, 0, 0) 10%, #000 20%, #000); 
+    transition: mask-position .3s ease, mask-size .3s ease;
+    -webkit-mask-image: linear-gradient(transparent, rgba(0, 0, 0, 0) 10%, #000 20%, #000);
     mask-image: linear-gradient(transparent, rgba(0, 0, 0, 0) 10%, #000 20%, #000);
-    -webkit-mask-size: 100% 100%; 
+    -webkit-mask-size: 100% 100%;
     mask-size: 100% 100%;
   }
   */
@@ -959,9 +1215,11 @@ function modifyStoryCardEditor(modalNode) {
   const entryLabel = modalNode.querySelector("p#scEntryLabel");
   const entrySection = entryLabel.parentNode;
 
-  const delimEntryButton = cloneAndModifyModalButton(modalNode, "div[role='button'][aria-label='Close modal']", "Insert", "w_add");
+  //const delimEntryButton = cloneAndModifyModalButton(modalNode, "div[role='button'][aria-label='Close modal']", "Insert", "w_add");
+  const delimEntryButton = cloneAndModifyModalButton(modalNode, "div[role='button' i][aria-label='More' i]", "Insert", "w_add");
   if (!delimEntryButton) return; // Handle the case where the button wasn't found
-  const buttonText = delimEntryButton.querySelector('.is_ButtonText');
+  //const buttonText = delimEntryButton.querySelector('.is_ButtonText');
+  const buttonText = delimEntryButton.querySelector('.is_Paragraph');
   delimEntryButton.id = "scDelimInsertButton";
   //delimEntryButton.classList.add('is_Button', 'is_ButtonText', 'insert-button', 'css-11aywtz', 'r-6taxm2'); // Add classes for styling
 
@@ -1014,11 +1272,11 @@ function modifyStoryCardEditor(modalNode) {
     if (selectionStart !== selectionEnd) {
       // Bracket the selected text
       const newValue =
-        currentValue.slice(0, selectionStart) +
-        startDelim +
-        currentValue.slice(selectionStart, selectionEnd) +
-        endDelim +
-        currentValue.slice(selectionEnd);
+            currentValue.slice(0, selectionStart) +
+            startDelim +
+            currentValue.slice(selectionStart, selectionEnd) +
+            endDelim +
+            currentValue.slice(selectionEnd);
 
       entryField.focus();
       textFieldInsert(entryField, newValue);
@@ -1028,9 +1286,9 @@ function modifyStoryCardEditor(modalNode) {
     } else {
       // If no text is selected, insert delimiters at cursor position
       const newValue =
-        currentValue.slice(0, selectionStart) +
-        startDelim + endDelim +
-        currentValue.slice(selectionStart);
+            currentValue.slice(0, selectionStart) +
+            startDelim + endDelim +
+            currentValue.slice(selectionStart);
 
       entryField.focus();
       textFieldInsert(entryField, newValue);
@@ -1099,7 +1357,7 @@ const classListRemove = [
   '_mih-0px', '_miw-0px', '_fs-0',
   /* Padding we want removed */
   '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
-  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.) 
+  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.)
   'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
   'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
   'r-eqz5dr', // flex-direction: column;
@@ -1111,7 +1369,7 @@ const classListRemove2 = [
   '_mih-0px', '_miw-0px', '_fs-0',
   /* Padding we want removed */
   '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
-  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.) 
+  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.)
   'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
   'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
   'r-eqz5dr', // flex-direction: column;
@@ -1141,16 +1399,16 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
   const [modalWidth, modalHeight] = modalDimensions;
 
   // Get some references to important things.
-  const modalHeader = modalNode?.children[0];
-  const modalContent = modalNode?.children[1];
-  let modalInnerContent = modalContent?.children[0];
-  if (!modalInnerContent) {
-    console.error("modalInnerContent Failed.");
+  const modalHeader = getModalHeader(modalNode);
+  const modalContent = getModalContent(modalNode);
+  let modalContent_Inner = getModalContent_Inner(modalNode);
+  if (!modalContent_Inner) {
+    console.error("modalContent_Inner Failed.");
     return;
   }
 
-  let modalInnerContentId = "modalInnerContent_" + timestamp;
-  modalInnerContent.id = modalInnerContentId;
+  let modalContent_InnerId = "modalContent_Inner_" + timestamp;
+  modalContent_Inner.id = modalContent_InnerId;
 
   // The width and height must be removed so that the drag resize can work.
   modalNode.style.removeProperty('width');
@@ -1158,10 +1416,10 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
   // Called by both fixModalContent, and by a mutation observer that watches the modal content
   // incase of changes.
-  function fixModalInnerContent(timestamp, modalNode, modalInnerContent) {
-    if (!modalInnerContent) return;
-    //console.log("fixModalInnerContent");
-    classListRemove.forEach(className => modalInnerContent.classList.remove(className));
+  function fixModalContent_Inner(timestamp, modalNode, modalContent_Inner) {
+    if (!modalContent_Inner) return;
+    //console.log("fixModalContent_Inner");
+    classListRemove.forEach(className => modalContent_Inner.classList.remove(className));
     const classListRemovez = [
       '_mih-0px', '_miw-0px', '_fs-0',
       '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
@@ -1173,7 +1431,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     // '_mih-0px', '_miw-0px', '_fs-0',
     // // Padding we want removed
     // '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
-    // 'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.) 
+    // 'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.)
     // 'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
     // 'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
     // 'r-eqz5dr', // flex-direction: column;
@@ -1181,43 +1439,43 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     // 'r-1wbh5a2', // flex-shrink: 1;
     // 'r-agouwx' // transform: translateZ(0);
 
-    classListRemoveRecursively(modalInnerContent.firstChild, classListRemovez);
+    classListRemoveRecursively(modalContent_Inner.firstChild, classListRemovez);
 
-    //modalInnerContent.id = modalInnerContentId;
+    //modalContent_Inner.id = modalContent_InnerId;
 
-    unsetOverflowRecursively(modalInnerContent);
+    unsetOverflowRecursively(modalContent_Inner);
 
     /* unfortunately these must be set by hand in JS.
        After react remounts a tab, they are lost and CSS doesnt appear to reload.
        */
-    modalInnerContent.style.padding = '0px';
-    modalInnerContent.style.overflowX = 'unset';
-    modalInnerContent.style.overflowY = 'unset';
-    modalInnerContent.style.maxHeight = '100%';
-    modalInnerContent.style.maxWidth = '100%';
+    modalContent_Inner.style.padding = '0px';
+    modalContent_Inner.style.overflowX = 'unset';
+    modalContent_Inner.style.overflowY = 'unset';
+    modalContent_Inner.style.maxHeight = '100%';
+    modalContent_Inner.style.maxWidth = '100%';
 
     // When different tabs are selected, assign id's for CSS.
     if (modalHeader.querySelectorAll(
       'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i]'
     ).length >= 1) {
-      modalInnerContent.firstChild.id = 'modalInnerContent_storyCardsTab';
-      modalInnerContent.firstChild.firstChild.classList.remove('r-150rngu', 'r-1rnoaur', 'r-11yh6sk');
+      modalContent_Inner.firstChild.id = 'modalContent_Inner_storyCardsTab';
+      modalContent_Inner.firstChild.firstChild.classList.remove('r-150rngu', 'r-1rnoaur', 'r-11yh6sk');
     }
     else if (modalHeader.querySelectorAll(
       'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab plot" i]'
     ).length >= 1) {
-      modalInnerContent.firstChild.id = 'modalInnerContent_plotTab';
+      modalContent_Inner.firstChild.id = 'modalContent_Inner_plotTab';
     }
     else if (modalHeader.querySelectorAll(
       'div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab details" i]'
     ).length >= 1) {
-      modalInnerContent.firstChild.id = 'modalInnerContent_detailsTab';
+      modalContent_Inner.firstChild.id = 'modalContent_Inner_detailsTab';
     }
   }
 
   setTimeout(() => {
     fixStyles(modalNode);
-    fixModalInnerContent(timestamp, modalNode, modalInnerContent);
+    fixModalContent_Inner(timestamp, modalNode, modalContent_Inner);
 
     // Center the modal initially (after a slight delay for rendering)
     // To allow dragging and resizing the modal, we have to disable centering.
@@ -1239,7 +1497,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
     // Apply initial left and top positions
     modalNode.style.left = `${Math.max(0, left)}px`; // Ensure left is not negative
-    modalNode.style.top = `${Math.max(0, top)}px`;   // Ensure top is not negative
+    modalNode.style.top = `${Math.max(0, top)}px`; // Ensure top is not negative
 
     // Override centering styles on the parent (AFTER centering the modal)
     centeringParent.style.justifyContent = 'unset';
@@ -1263,10 +1521,11 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     for (let mutation of mutationsList) {
       if (mutation.type === 'childList') {
         //let modalNode.offsetWidth; // Trigger a reflow
-        let newModalInnerContent = modalNode?.children[1]?.children[0]; // Look for updated content div
-        if (newModalInnerContent) {
-          modalInnerContent = newModalInnerContent;
-          fixModalInnerContent(timestamp, modalNode, newModalInnerContent); // Apply styles to the new inner content element
+        //let newModalContent_Inner = modalNode?.children[1]?.children[0]; // Look for updated content div
+        let newModalContent_Inner = getModalContent_Inner(modalNode); // Look for updated content div
+        if (newModalContent_Inner) {
+          modalContent_Inner = newModalContent_Inner;
+          fixModalContent_Inner(timestamp, modalNode, newModalContent_Inner); // Apply styles to the new inner content element
         }
       }
     }
@@ -1275,6 +1534,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
   let startX = null;
   let startY = null;
+  let isDragging = null;
 
   // New event listeners for touch events (passive) for dragging
   modalHeader.addEventListener('mousedown', handleDragStart);
@@ -1313,18 +1573,18 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
     //console.log("handleDragEnd");
   }
   /*
-    // This is an alternate approach that handles touch events. 
+    // This is an alternate approach that handles touch events.
     // But it is a bit jumpy and needs work.
-  
+
     modalHeader.addEventListener('mousedown', handleDragStart);
     modalHeader.addEventListener('touchstart', handleDragStart);  // Remove passive here
-  
+
     let activeTouches = 0; // Counter for active touch points
-  
+
     function handleDragStart(e) {
       activeTouches++;
       if (activeTouches > 1) return; // Allow multi-touch for zoom/pinch gestures
-  
+
       if (e.type === 'touchstart') {
         startX = e.touches[0].clientX - modalHeader.getBoundingClientRect().left;
         startY = e.touches[0].clientY - modalHeader.getBoundingClientRect().top;
@@ -1332,7 +1592,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
         startX = e.offsetX;
         startY = e.offsetY;
       }
-  
+
       // Add touchmove and touchend listeners ONLY when touchstart occurs
       if (e.type === 'touchstart') {
         document.addEventListener('touchmove', handleDragMove);
@@ -1341,25 +1601,25 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
         document.addEventListener('mousemove', handleDragMove);
         document.addEventListener('mouseup', handleDragEnd);
       }
-  
+
       console.log("handleDragStart e.type: ", e.type);
     }
-  
+
     function handleDragMove(e) {
       if (activeTouches > 1) return; // Allow multi-touch for zoom/pinch gestures
-  
+
       const x = e.clientX || e.touches[0].clientX; // Get x position for mouse or touch
       const y = e.clientY || e.touches[0].clientY; // Get y position for mouse or touch
       modalNode.style.left = `${x - startX}px`;
       modalNode.style.top = `${y - startY}px`;
-  
+
       e.stopPropagation(); // Stop event propagation ONLY during dragging
     }
-  
+
     function handleDragEnd(e) {
       activeTouches--;
       if (activeTouches > 0) return; // Wait for all touch points to be released
-  
+
       // Remove touchmove and touchend listeners when touch ends
       if (e.type === 'touchend') {
         document.removeEventListener('touchmove', handleDragMove);
@@ -1513,7 +1773,40 @@ if (appRootDiv) {
 }
 */
 
-// ... (rest of your existing code) ...
+function skipSpan(node) {
+  const tagName = node.tagName.toLowerCase();
+  if (tagName === 'span') {
+    return node.children[0];
+  } else {
+    return node;
+  }
+}
+
+function getModalHeader(modalNode) {
+  return modalNode?.children[0];
+}
+function getModalHeader_Title(modalNode) {
+  return getModalHeader(modalNode)?.children[0];
+}
+function getModalHeader_Menu(modalNode) {
+  return getModalHeader(modalNode)?.children[1];
+}
+
+function getModalContent(modalNode) {
+  return skipSpan(modalNode?.children[1]);
+}
+
+function getModalContent_Inner(modalNode) {
+  return getModalContent(modalNode).firstChild;
+}
+
+function getModalFooter(modalNode) {
+  if (modalNode?.children.length < 3) {
+    return null;
+  }
+  return modalNode.lastChild;
+}
+
 
 function modalAddFullScreenButton(cloneRef, container, eventHandler) {
   if (!cloneRef) {
@@ -1523,7 +1816,7 @@ function modalAddFullScreenButton(cloneRef, container, eventHandler) {
   const fullScreenButton = buttonClone(
     cloneRef,
     "[ ]", // Button label (you can customize this)
-    eventHandler  // Function to handle the toggle
+    eventHandler // Function to handle the toggle
   );
   container.insertBefore(fullScreenButton, container.lastChild);
 
@@ -1597,21 +1890,76 @@ function handleNewModal(modalNodeTree) {
         console.warn("Null Modal node found in handleNewModle.");
         return;
       }
+      // Skip a wrapping span element.
+      function skipSpan(node) {
+        const tagName = node.tagName.toLowerCase();
+        if (tagName === 'span') {
+          return node.children[0];
+        } else {
+          return node;
+        }
+      }
 
+      function getModalHeader(modalNode) {
+        return modalNode?.children[0];
+      }
+      function getModalHeader_Title(modalNode) {
+        return getModalHeader(modalNode)?.children[0];
+      }
+      function getModalHeader_Menu(modalNode) {
+        return getModalHeader(modalNode)?.children[1];
+      }
+
+      function getModalContent(modalNode) {
+        return skipSpan(modalNode?.children[1]);
+      }
+
+      function getModalContent_Inner(modalNode) {
+        return getModalContent(modalNode).firstChild;
+      }
+
+      function getModalFooter(modalNode) {
+        if (modalNode?.children.length < 3) {
+          return null;
+        }
+        return modalNode.lastChild;
+      }
+
+      // Assign IDs for CSS.
+
+      // This is the root node for the entire modal in document.body.
       modalNodeTree.id = "modalNodeTree_" + timestamp;
 
-      const modalHeader = modalNode?.children[0];
+      // This is the Header for the Modal.
+      const modalHeader = getModalHeader(modalNode);
       modalHeader.id = "modalHeader_" + timestamp;
 
-      /* Assign IDs for CSS. */
-      const modalContent = modalNode?.children[1];
+      // The header contains a title and an optional menu.
+      const modalHeader_Title = getModalHeader_Title(modalNode);
+      modalHeader_Title.id = "modalHeader_Title_" + timestamp;
+
+      // Check for an optional menu container.
+      let modalHeader_Menu = getModalHeader_Menu(modalNode);
+      if (modalHeader_Menu) {
+        //const modalPillMenu = modalHeader_MenuContainer.querySelectorAll('div[role="tablist"][aria-label="Section Tabs"]');
+        modalHeader_Menu.id = "modalHeader_Menu_" + timestamp;
+      }
+
+      // const modalContent = modalNode?.children[1];
+      // const modalContent = modalNode.children[1].querySelector('span > div') || modalNode.children[1];
+      //const modalContent = modalNode.querySelector(':scope > span > div, :scope > div:nth-child(2)');
+      // The modalContent may be wrappered in span classes.
+      //const modalContent = modalNode.querySelector(':scope > span > div, :scope > div:nth-child(2)');
+      const modalContent = getModalContent(modalNode);
       modalContent.id = "modalContent_" + timestamp;
 
-      const modalHeaderTitleContainer = modalHeader?.firstChild;
-      modalHeaderTitleContainer.id = "modalHeaderTitleContainer_" + timestamp;
+      const modalContent_Inner = getModalContent_Inner(modalNode);
+      modalContent_Inner.id = "modalContent_Inner_" + timestamp;
 
-      const modalInnerContent = modalContent?.children[0];
-      modalInnerContent.id = "modalInnerContent_" + timestamp;
+      const modalFooter = getModalFooter(modalNode);
+      if (modalFooter) {
+        modalFooter.id = "modalFooter_" + timestamp;
+      }
 
       makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
 
@@ -1619,7 +1967,7 @@ function handleNewModal(modalNodeTree) {
 
       waitForSubtreeElements(
         'div[aria-label="Modal" i] div[role="button" i][aria-label="Close modal" i], ' +
-        'div[aria-label="Modal" i] div[role="button" i][aria-label="back" i]',
+        'div[aria-label="Modal" i] div[role="button" i]',
         // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i] > div > div", // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i]:has(> div:nth-child(2))", // Wait for the 2nd child to appear.
@@ -1627,10 +1975,10 @@ function handleNewModal(modalNodeTree) {
           setTimeout(() => { // Need to wait some time for react to render the contents and post it.
             // Add resizing and dragging for edit Adventure and Scenario modals.
             const tablistSelector =
-              'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="plot" i], ' +
-              'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="Story Cards" i],' +
-              'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i],' +
-              'div[role="button"][aria-label="Close modal" i] > div > p';
+                  'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="plot" i], ' +
+                  'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="Story Cards" i],' +
+                  'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i],' +
+                  'div[role="button"][aria-label="Close modal" i] > div > p';
 
             if (modalNode.querySelectorAll(tablistSelector).length >= 4) {
               waitForSubtreeElements(
@@ -1651,7 +1999,7 @@ function handleNewModal(modalNodeTree) {
                         // Find the enclosing button element.
                         container = closeButton.closest("button[role='button'][type='button' i]")?.parentNode;
                       }
-                      // It's not a double button. 
+                      // It's not a double button.
                       else {
                         closeButtons = modalNode.querySelectorAll("div[role='button'][aria-label='Close modal' i]");
                         if (closeButtons.length > 0) {
@@ -1667,7 +2015,7 @@ function handleNewModal(modalNodeTree) {
                       } else {
                         modalAddFullScreenButton(closeButton, container, toggleFullScreen);
                         container.style.justifyContent = 'space-between';
-                        modalInnerContent.style.minHeight = '0px';
+                        modalContent_Inner.style.minHeight = '0px';
                       }
                     }, 100); // adjust as needed
                   }
@@ -1682,7 +2030,7 @@ function handleNewModal(modalNodeTree) {
               //console.log("scEntryLable", modalNode);
 
               modalNodeTree.id += ".StoryCardEditor";
-              modalInnerContent.firstChild.id = "modalInnerContent_StoryCardEditor";
+              modalContent_Inner.firstChild.id = "modalContent_Inner_StoryCardEditor";
               //  modalHeader.padding = '8px';
               setTimeout(() => {
                 //modalContent.style.maxHeight = 'calc(100% - ' + modalHeader.offsetHeight + 'px)';
@@ -1728,11 +2076,11 @@ function handleNewModal(modalNodeTree) {
 
         },
         modalNode, // Use the modal node as the targetNode
-        true  // Run immediately.
+        true // Run immediately.
       );
     },
     modalNodeTree, // Use the modal node as the targetNode
-    true  // Run immediately.
+    true // Run immediately.
   );
 }
 
@@ -1833,7 +2181,7 @@ let fixNavigationBarObserver = new DOMObserver(
 
 function handlePlayPage(targetNode) {
   // handleChanges();
-  handleChangesObserver = new DOMObserver(handleChanges, targetNode, { childList: true, subtree: true });
+  let handleChangesObserver = new DOMObserver(handleChanges, targetNode, { childList: true, subtree: true });
   handleChangesObserver.observe();
 
   const CSS = `
