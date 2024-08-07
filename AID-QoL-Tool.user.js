@@ -408,22 +408,8 @@ let [modalWidthCfg, modalHeightCfg] = modalDimensions;
 modalHeightCfg = !modalHeightCfg ? '50%' : `${modalHeightCfg}px`;
 modalWidthCfg = !modalWidthCfg ? '50%' : `${modalWidthCfg}px`;
 
-//textarea:not(#game-text-input, #transition-opacity, #shadow-box, #do-not-copy) {
-//div#__next > div > span > div > div > div > div > div > div:nth-child(3) > div._mah-960px,
-//div#__next > div > span > div > div > div > div > div > div._mah-960px {
-//div#__next > div > span > div > div > div > div > div > div > div > div > div
-//div#__next > div > span > div > div > div > div > div.is_Column._dsp-flex._ai-stretch._fd-column._fb-auto._bxs-border-box._pos-relative._mih-0px._miw-0px._fs-0._pt-1316335167._pr-0px._pb-1316335167._pl-0px
-//div#__next > div > span > div > div > div > div > div.is_Column > div.is_Row._pr-1316335167._pl-1316335167
-//div#__next > div > span > div > div > div > div > div.is_Column
-//div#__next > div > span > div > div > div > div > div.is_Column._dsp-flex._ai-stretch._fd-column._fb-auto._bxs-border-box._pos-relative._mih-0px._miw-0px._fs-0._pt-1316335167._pr-0px._pb-1316335167._pl-0px
-//div#__next > div > span > div > div > div > div > div.is_Column > div.is_Row > div > div > div > span > div
-//div#__next > div > span > div > div > div > div > div.is_Column > div._mah-960px
-//._pt-1316335167._pr-1316335167._pb-1316335167._pl-1316335167
-//  div#__next ._pr-1316335167,
-//  div#__next ._pl-1316335167 {
-//    padding: 8px !important;
-//  }
 GM_addStyle(`
+  /* This is nested CSS, it mostly mirrors the AID site. */
   div#__next > div > span {
     & > div._dsp-flex:nth-child(1) { /* Home screen. */ }
     & > div._dsp-flex:nth-child(2) { /* Play. */
@@ -435,13 +421,69 @@ GM_addStyle(`
         & > div.css-175oi2r { /* Action Entry Area. */
         }
       }
-      & > div._dsp-flex:nth-child(2) { /* Gear1 Window. */
-        & > div.css-175oi2r { /* Gear2 Window. */
-          & > div.is_Column { /* Gear3 Window. */
-            & > div.is_Column:nth-child(1) { /* Gear Header. */
+      & > div._dsp-flex:nth-child(2) { /* Gear 1 Menu. Box + Padding. */
+        & > div.css-175oi2r:only-child { /* Gear 2 Menu. Flex + overflow + border. */
+          & > div.is_Column:only-child { /* Gear 3 Menu. Column setup. */
+            & ._gap-1481558307 { gap: 8px !important; }
+            & ._gap-1481558369 { gap: 8px !important; }
+            & ._gap-1481558338 { gap: 8px !important; }
+
+            & ._pl-1316335167 { padding-left: 8px !important; }
+            & ._pr-1316335167 { padding-right: 8px !important; }
+            & ._pt-1316335167 { padding-top: 8px !important; }
+            & ._pb-1316335167 { padding-bottom: 8px !important; }
+
+            & ._pl-1481558338 { padding-left: 8px !important; }
+            & ._pr-1481558338 { padding-right: 8px !important; }
+            & ._pt-1481558338 { padding-top: 8px !important; }
+            & ._pb-1481558338 { padding-bottom: 8px !important; }
+
+            & ._pl-1481558307 { padding-left: 8px !important; }
+            & ._pr-1481558307 { padding-right: 8px !important; }
+            & ._pt-1481558307 { padding-top: 8px !important; }
+            & ._pb-1481558307 { padding-bottom: 8px !important; }
+
+            & ._ml-1481558338 { margin-left: 0px !important; }
+            & ._ml-1481558369 { margin-left: 0px !important; }
+
+            & > div.is_Column:nth-child(1) { /***************** Gear Header. *****************/
+              & > div.is_Row:only-child {
+
+                & > div[role="tablist"].is_Row:nth-child(1) {
+                  & > span:nth-child(1) > div[role="tab"].is_Button:only-child {  /* Adventure Tab */
+                      & > div._dsp-flex:nth-child(1) > p:only-child { /* w_scroll */ }
+                      & > span.is_ButtonText:nth-child(2) { /* Adventure Tab Button Text*/ }
+                    }
+                  }
+                  & > span:nth-child(2) > div[role="tab"].is_Button:only-child {  /* Gameplay Tab */
+                      & > div._dsp-flex:nth-child(1) { p:only-child { /* w_controller */ } }
+                      & > span.is_ButtonText:nth-child(2) { /* Gameplay Tab Button Text*/ content: "yikes"; }
+                    }
+                  }
+                }
+                & > span:nth-child(2) {
+                  & > div[role="button"][aria-label="Close settings i"]:only-child { /* Gear Close */
+                  }
+                }
+              }
             }
-            & > div.is_Column:nth-child(2) { /* Gear Content. */
+            & > div.css-175oi2r:nth-child(2) { /***************** Gear Content Mount - Gameplay. *****************/
+              & > div.css-175oi2r:only-child { /* Gear Content 2 - Gameplay. */
+                & > div.is_Column:only-child { /* Gear Content 3 - Gameplay. */
+                  & > div.is_Column:nth-child(1) { /* Gear Content 4 - Gameplay. */
+                    & > div.css-175oi2r:nth-child(1) { /*  */
+                      ._h-606181883 { height: var(--size-4); }
+                    }
+                    & > div._dsp-flex:nth-child(2) { /* Looks like pad. */ }
+                  }
+                  & > div._dsp-flex:nth-child(2) { /* Looks like pad. */ }
+                }
+              }
+            }
+            & > div.is_Column:nth-child(2) { /***************** Gear Content Mount - Adventure. *****************/
               & > div.is_Row:nth-child(1) { /* PILL MENU */
+                padding-left: 0px !important;
+                padding-right: 0px !important;
               }
               & > div:nth-child(2) { /* A Gap */
               }
@@ -468,6 +510,7 @@ GM_addStyle(`
                           }
                           & > * [role="button" i] {
                             margin-right: 0px !important;
+                            align-items: center !important;
                           }
                         }
                         & > div.css-175oi2r:nth-child(4) { } /* Spacer. */
@@ -499,7 +542,6 @@ GM_addStyle(`
                   & > div.css-175oi2r {
                     & > div.is_Column:nth-child(1) {
                       & > div.is_Column {
-                        /* gap: var(--space-1) !important;*/
                         & > div.is_Column {
                           & > div.is_Column:nth-child(1) { /* Title, Desc, and Tags. */
                             & > div.is_Column:nth-child(1) { /* The Adventure Image. */
@@ -546,8 +588,53 @@ GM_addStyle(`
       }
     }
   }
+  /* Generic Pill Container
+  div.is_Row._dsp-flex.zippo {
 
-  /* Pill menu stuff.  */
+    & > div._dsp-flex:only-child {
+      & > div:nth-child(1) {
+        margin: 0px !important;
+        padding: 0px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        & ._pl-1316335167 { padding-left: 8px !important; }
+        & ._pr-1316335167 { padding-right: 8px !important; }
+        & > div[role="tablist"][aria-label="Section Tabs" i].css-175oi2r:nth-child(1) {
+          & > div.css-175oi2r.r-18u37iz:only-child {
+            & ._gap-1481558369 { gap: 8px !important; }
+            & > div.css-175oi2r:nth-child(1) {
+              display: none !important;
+            }
+            & > div.is_Row._dsp-flex:nth-child(2) {
+              & > span > div[role="tab"].is_Button {
+                & > div._dsp-flex > p {
+                }
+                & > span > p {
+                }
+              }
+            }
+            & > div.css-175oi2r:nth-child(3) {
+              display: none !important;
+            }
+          }
+        }
+      }
+      & > div[aria-hidden="false"].css-175oi2r.r-633pao:nth-child(2) {
+        display: none !important;
+        & > div.css-175oi2r.r-633pao:only-child {
+          & > span:only-child > div[role="button"][aria-label="scroll right" i]:only-child {
+            & > div._dsp-flex:only-child {
+              & > p[area-hidden="false"] {
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+*/
+
+  /* Pill menu stuff.*/
   div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:nth-child(1) {
     margin: 0px !important;
     padding: 0px !important;
@@ -563,7 +650,7 @@ GM_addStyle(`
     display: none !important;
   }
 
-  /* These are the scroll buttons for the pill menu. Since the sidebar is wider, we don't need them.
+  /* These are the scroll buttons for the pill menu. Since the sidebar is wider, we don't need them. */
   div#__next > div > span > div > div:nth-child(2) > div > div > div.is_Column > div:nth-child(1).is_Row > div > div:has(div[aria-label="scroll right"], div[aria-label="scroll left"]) {
     margin: 0px !important;
     max-width: 100% !important;
@@ -579,110 +666,13 @@ GM_addStyle(`
     padding-left: 0px !important;
     padding-right: 0px !important;
   }
-  /* Make this container full sized.
-  div#__next > div > span > div > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div.is_Row._mah-960px {
-    max-height: 100% !important;
-  }*/
 
-  /* This is for the story card list container including the search and create new.
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-  }*/
-
-  /* This is for the story card list container, only the story cards.:not(:has(.pill-switch-mask))
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }*/
-
-  /* This is for each story card in the list container. :not(:has(.pill-switch-mask))
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div > * {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin-right: 0px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }*/
-
-  /* This is for each story card in the list container.:not(:has(.pill-switch-mask))
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2).is_Column > div > div > div > div > div > div > * > div > div.is_Button {
-    margin-right: 0px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }*/
-  /*
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2) > div > div > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-  }
-  div#__next > div > span > div:nth-child(2) > div:nth-child(2) > div > div > div:nth-child(2) > div > div > div > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-  }
-  */
-
-/*
-  div#__next ._mah-1611765696 {
-    max-height: 100% !important;
-  }
-*/
-  /*
-  ._pt-1316335136 {
-    padding-top: 6px !important;
-  }
-  ._pb-1316335136 {
-    padding-bottom: 6px !important;
-  }
-  */
-
-  /*
-  ._pr-1481558400 {
-    padding-right: 0px !important;
-  }
-  ._pl-1481558338 {
-    padding-left: 8px !important;
-  }
-  ._pr-1481558338 {
-    padding-right: 8px !important;
-  }
-*/
-
-/*
-  ._pt-1316335167 {
-    padding-top: 8px !important;
-  }
-  ._pb-1316335167 {
-    padding-bottom: 8px !important;
-  }
-  ._pl-1316335167 {
-    padding-left: 8px !important;
-  }
-  ._pr-1316335167 {
-    padding-right: 8px !important;
-  }
-*/
-/*
-  ._pl-1481558307 {
-    padding-left: 8px !important;
-  }
-  ._pr-1481558307 {
-    padding-right: 8px !important;
-  }
-*/
-/* Make Modal bottom right border square for the resize icon.
-  div:has([aria-label="Modal" i]) {
-    border-bottom-right-radius: 0px !important;
-  }
-*/
-
+  /* This is the fix for the script editor */
   div[id*="ScriptEditor"] div[role="alertdialog"]:last-of-type > :last-child {
     flex-grow: 1;
   }
 
-  div[role="alertdialog"][aria-label="Modal" i] {
+  div[role="alertdialog"][aria-label*="Modal" i] {
     width: ${modalWidthCfg}; /* Must not be important! */
     min-width: 250px !important;
     max-width: 100% !important;
@@ -717,17 +707,14 @@ GM_addStyle(`
     border-bottom-style: solid !important;
     border-bottom-width: 1px !important;
     border-bottom-color: var(--color-61) !important;
-    /* overflow: hidden hidden !important; */
   }
   div[id^="modalHeader_Title_" i] {
     padding: 8px !important;
     flex-grow: 0 !important;
-    /* overflow: hidden hidden !important; */
   }
   div[id^="modalHeader_Menu_" i] {
     padding: 8px !important;
     flex-grow: 0 !important;
-    /* overflow: hidden hidden !important; */
   }
   div[id^="modalHeader_" i]._gap-1481558338 {
     gap: 0px !important;
@@ -783,14 +770,8 @@ GM_addStyle(`
     max-height: 100% !important;
     max-width: 100% !important;
   }
-    /*
-    modalContent_Inner.style.padding = '0px';
-    modalContent_Inner.style.overflowX = 'unset';
-    modalContent_Inner.style.overflowY = 'unset';
-    modalContent_Inner.style.maxHeight = '100%';
-    modalContent_Inner.style.maxWidth = '100%';
-*/
-div[id^="modalContent_Inner_" i] button[type="button"] {
+
+  div[id^="modalContent_Inner_" i] button[type="button"] {
     padding-left: 8px !important;
     padding-right: 8px !important;
     margin-left: 0px !important;
@@ -836,68 +817,6 @@ div[id^="modalContent_Inner_" i] button[type="button"] {
     padding-bottom: 8px !important;
   }
 
-  /*
-  [id^="modalContent_Inner_"] > div > div > div {
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin: 0px !important;
-  }
-*/
-  /* Target the specific modal with the selected "Story Cards" tab
-  div[aria-label="Modal"] div[id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i]
-  ~ div[id^="modelContent_"] [id^="modalContent_Inner_"] > div > div > div {
-      padding-left: 0px !important;
-      padding-right: 0px !important;
-      margin: 0px !important;
-  }
-*/
-  /*
-  #modalContent_Inner_1722033353146 > div > div > div > div > div:nth-child(3) > div:nth-child(7) > div.css-175oi2r > div
-  [id^="modalContent_Inner_"] > div > div > div {
-  [id^="modalHeader_"] div[role="tablist"][aria-label="Section Tabs"] div[role="tab"][aria-label^="Selected tab story cards" i] {
-    [id^="modalContent_Inner_"] > div > div > div {
-      padding-left: 0px !important;
-    padding-right: 0px !important;
-    margin: 0px !important;
-  }
-      */
-
-  /*
-   > div > div:nth-child(1) > div > div > div > span > div
-  [id^="modalContent_Inner_"] > div {
-    padding: 0px !important;
-    padding-bottom: 0px !important;
-  }
-  [id^="modalContent_Inner_"] > div > div > div > div > div {
-    padding: 0px !important;
-    margin: 0px !important;
-  }
-    */
-  /*
-  ._mah-1611765696 {
-    max-height: unset !important;
-  }
-  ._mih-1611762875 {
-    min-height: 200px !important;
-  }
-  input._h-606181821 {
-    height: var(--size-6) !important;
-  }
-  input._gap-1481558338 {
-    gap: var(--space-1) !important;
-  }
-    */
-
-  /* max-height: none !important;  /* auto does not work, shows error. */
-  /*max-height: 1024px !important;  /* auto does not work, shows error. */
-  /* min-height: auto !important;  /* Or min-height: 0; */
-  /* height: unset !important;  /* This seems to set the height to a value that that's not resizable. */
-  /* height: initial !important;  /* This seems to set the height to a smaller value that that's not resizable. */
-  /* height: 300px !important; /* This seems to set the height to a value that that's not resizable. */
-  /* height: 100% !important;  /* This seems seems to set it 100% the size of the text area, but it isn't resizable. */
-  /* height: 25% !important;  /* This seems seems to set the internal textarea scrollable region to 25% of the size of the text area, but it isn't resizable. */
-  /* height: '' !important;       /* Makes the text area resizable, but shows as error, and it's the full size of the text. */
-  /* height: 400px !important;       /* Makes the text area resizable, but shows as error, and it's the full size of the text. */
 
   /* Chrome/Opera Fatten up the scroll bar a bit. This also fixes textarea resize icon. */
   ::-webkit-scrollbar {
@@ -908,6 +827,22 @@ div[id^="modalContent_Inner_" i] button[type="button"] {
   textarea:not([aria-label="Text input field" i], #game-text-input, #shadow-box) {
     min-height: 50px !important;  /* Or min-height: 0; */
     max-height: unset !important;
+    maxlength: 1000000 !important;
+    resize: vertical !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable !important;
+    /* This doesn't work the class is overriding it. */
+    border-bottom-right-radius: 0px !important;
+    /* None of these appear to do anything in chrome (maybe for Mozilla): */
+    --scrollbar-width: 8px !important;
+    color-scheme: dark !important;
+    --vh: 11.76px !important;
+  }
+  /* Put vertical resizers on all textareas. */
+  textarea[aria-label="Notes" i] {
+    min-height: 50px !important;  /* Or min-height: 0; */
+    max-height: unset !important;
+    maxlength: 1000000 !important;
     resize: vertical !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable !important;
@@ -1877,7 +1812,7 @@ function handleNewModal(modalNodeTree) {
 
   // Wait for the specific modal structure
   waitForSubtreeElements(
-    "div[aria-label='Modal' i]:has(div[role='button'])",
+    "div[aria-label*='Modal' i]:has(div[role='button'])",
     (modalNodes) => {
       console.log(modalNodes);
       if (modalNodes.length !== 1) {
@@ -1966,8 +1901,8 @@ function handleNewModal(modalNodeTree) {
       /// return;
 
       waitForSubtreeElements(
-        'div[aria-label="Modal" i] div[role="button" i][aria-label="Close modal" i], ' +
-        'div[aria-label="Modal" i] div[role="button" i]',
+        'div[aria-label*="Modal" i] div[role="button" i][aria-label="Close modal" i], ' +
+        'div[aria-label*="Modal" i] div[role="button" i]',
         // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i] > div > div", // The selector for the element you want to wait for within the modal
         //"div[aria-label='Modal' i]:has(> div:nth-child(2))", // Wait for the 2nd child to appear.
@@ -2091,7 +2026,7 @@ const bodyObserver = new MutationObserver((mutationsList, observer) => {
       for (const node of mutation.addedNodes) {
         if (node.nodeName === 'DIV') {
           // Check for modals and new buttons
-          if (node.querySelector("div[aria-label='Modal' i]")) {
+          if (node.querySelector("div[aria-label*='Modal' i]")) {
             console.log("New modal detected in document.bodyZ");
             setTimeout(() => {
               handleNewModal(node);
