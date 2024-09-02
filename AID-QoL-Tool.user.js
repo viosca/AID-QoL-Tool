@@ -31,6 +31,11 @@
 
 const $ = jQuery.noConflict(true);
 
+/**
+ * Attempts to retrieve and parse JSON data from a script tag with the ID '__NEXT_DATA__'.
+ * 
+ * @returns {Object|undefined} The parsed JSON data if found and successfully parsed, otherwise undefined.
+ */
 function getNextData() {
   const nextDataTag = document.getElementById('__NEXT_DATA__');
   if (nextDataTag) {
@@ -49,9 +54,7 @@ function getNextData() {
 const nextData = getNextData();
 
 
-/********************************
-* Code for handling the configuration menu and for handling shortcuts.
-*/
+if (0) {
 function addEventListeners(element, events, handler) {
   events.forEach((event) => {
     if (event.startsWith('touch')) {
@@ -61,8 +64,7 @@ function addEventListeners(element, events, handler) {
     }
   });
 }
-if (0) {
-  function disableCustomContextMenu(button) {
+function disableCustomContextMenu(button) {
     console.log("called disableCustomContextMenu");
     // Remove existing listeners (optional, but good practice)
     button.removeEventListener('contextmenu', event => { });
@@ -91,6 +93,14 @@ if (0) {
 
 }
 
+/**
+ * Waits for elements matching a given selector to appear within a target node's subtree, then executes a callback.
+ * 
+ * @param {string} selector - A CSS selector to identify the desired elements.
+ * @param {function} callback - A function to be executed when the elements are found. It receives an array of the found elements as its argument.
+ * @param {Node} targetNode - The DOM node within whose subtree to search for the elements.
+ * @param {boolean} [runImmediately=false] - If true, the callback is executed immediately if elements are already present; otherwise, it waits for new elements to appear.
+ */
 function waitForSubtreeElements(selector, callback, targetNode, runImmediately = false) {
   function mutationObserverCallback(mutationsList, observer) {
     const elements = targetNode.querySelectorAll(selector);
@@ -124,6 +134,22 @@ function waitForSubtreeElements(selector, callback, targetNode, runImmediately =
   */
 }
 
+/********************************
+* Code for handling the configuration menu and for handling shortcuts.
+*/
+
+/**
+ * Retrieves or sets the value of an input element within a parent container. 
+ * Handles both text inputs and checkboxes.
+ *
+ * @param {string|boolean[]} value - The value to set for the input element(s). 
+ *                                 If `parent` is provided, this can be an array of booleans for checkboxes or a string for text inputs.
+ *                                 If `parent` is not provided, this is the selector for the input element.
+ * @param {string|HTMLElement|jQuery} [parent] - (Optional) The parent container or selector to find the input element(s) within.
+ *
+ * @returns {string|boolean[]|undefined} - If `parent` is not provided, returns the uppercase value of the input element or an array of boolean values for checkboxes.
+ *                                        If `parent` is provided, returns `undefined` (the function modifies the input elements in-place).
+ */
 const getSetTextFunc = (value, parent) => {
   const inputElem = $(parent || value).find('input');
   if (!parent) {
@@ -144,6 +170,9 @@ const getSetTextFunc = (value, parent) => {
 const dummy = (value, parent) => {
 };
 
+/**
+ * Configuration object for the MonkeyConfig extension, used to customize user interactions and behavior.
+ */ 
 const cfg = new MonkeyConfig({
   title: 'Configure',
   menuCommand: true,
@@ -217,6 +246,15 @@ const cfg = new MonkeyConfig({
   }
 });
 
+/**
+ * An array defining available actions within the application, potentially tied to UI elements.
+ * 
+ * Each action object has the following properties:
+ * - `name`: A unique identifier for the action (e.g., 'Take_Turn', 'Retry').
+ * - `type`: Categorizes the action (e.g., 'Command', 'Mode', 'History').
+ * - `aria-Label`: Provides an accessible label for screen readers.
+ * - `active`: An array of routes/URLs where this action should be enabled/visible.
+ */
 const actionArray = [
   { name: 'Take_Turn', type: 'Command', 'aria-Label': 'Command: take a turn', active: ["/play"] },
   { name: 'Continue', type: 'Command', 'aria-Label': 'Command: continue', active: ["/play"] },
@@ -240,6 +278,11 @@ const actionKeys = actionArray.map((action) => cfg.get(action.name));
 
 const isMac = window.navigator.userAgentData?.platform?.toLowerCase().includes('mac');
 
+/**
+ * Handles key press events, ensuring non-repeating keys and normalizing key values.
+ *
+ * @param {KeyboardEvent} e - The keyboard event object.
+ */
 const handleKeyPress = (e) => {
   if (e.repeat) return;
   const key = e.key.toUpperCase();
@@ -377,6 +420,7 @@ const handleKeyPress = (e) => {
     setTimeout(() => $("[role='dialog']").find("[role='button']")[selectKeys.indexOf(key)].click(), 50);
   }
 };
+
 /*
 const delayedClicks = (clicks, i = 0) => {
   if (i < clicks.length) {
@@ -387,6 +431,13 @@ const delayedClicks = (clicks, i = 0) => {
   }
 };
 */
+
+/**
+ * Executes a series of click events with a delay between each, using requestAnimationFrame for optimal timing.
+ *
+ * @param {Function[]} clicks - An array of functions representing click events to be executed.
+ * @param {number} [i=0] - An optional index indicating the current click event being processed (used for recursion).
+ */
 const delayedClicks = (clicks, i = 0) => {
   if (i < clicks.length) {
     requestAnimationFrame(() => {
@@ -396,7 +447,18 @@ const delayedClicks = (clicks, i = 0) => {
   }
 };
 
+/**
+ * A class that encapsulates a MutationObserver, providing convenient methods to manage and interact with it.
+ */
 class DOMObserver {
+  /**
+   * Creates a new DOMObserver instance.
+   * 
+   * @param {MutationCallback} callback - The callback function to execute when mutations are observed.
+   * @param {Node} targetNode - The DOM node to observe for mutations.
+   * @param {MutationObserverInit} options - The configuration options for the MutationObserver.
+   * @param {boolean} [startImmediately=false] - Whether to start observing immediately upon creation.
+   */
   constructor(callback, targetNode, options, startImmediately = false) {
     this.observer = new MutationObserver(callback);
     this.targetNode = targetNode;
@@ -407,6 +469,9 @@ class DOMObserver {
     }
   }
 
+  /**
+   * Destroys the DOMObserver instance, disconnecting the observer and clearing references.
+   */
   destroy() {
     this.disconnect();
     this.observer = null;
@@ -414,6 +479,12 @@ class DOMObserver {
     this.options = null;
   }
 
+  /**
+   * Starts observing the target node for mutations.
+   * 
+   * @param {Node} [targetNode=this.targetNode] - The DOM node to observe (defaults to the one provided in the constructor).
+   * @param {MutationObserverInit} [options=this.options] - The configuration options (defaults to the ones provided in the constructor).
+   */
   observe(targetNode = this.targetNode, options = this.options) {
     if (this.observer && targetNode && targetNode.nodeType === Node.ELEMENT_NODE) { // Ensure targetNode is an Element
       this.observer.observe(targetNode, options);
@@ -421,16 +492,30 @@ class DOMObserver {
       console.warn("Target node is not a valid element:", targetNode); // For debugging
     }
   }
+
+  /**
+   * Disconnects the MutationObserver, stopping observation.
+   */
   disconnect() {
     if (this.observer !== null) {
       this.observer.disconnect();
     }
   }
 
+  /**
+   * Retrieves any pending mutation records from the observer and empties its record queue.
+   * 
+   * @returns {MutationRecord[]} An array of MutationRecord objects representing the observed mutations.
+   */
   takeRecords() {
     return this.observer ? this.observer.takeRecords() : []; // Return empty array if observer is null
   }
 
+  /**
+   * Checks if the observer is connected and actively observing.
+   * 
+   * @returns {boolean} True if the observer is connected, false otherwise.
+   */
   get isConnected() {
     return this.observer && this.observer.isConnected(); // Check if observer exists and is connected
   }
@@ -447,8 +532,8 @@ let [modalWidthCfg, modalHeightCfg] = modalDimensions;
 
 GM_addStyle(`
   /* This is nested CSS, it mostly mirrors the AID site. */
-  div#__next > div > span,
-  div#__next > div > span > span {
+  div#__next > div > span, /* beta and prod. */
+  div#__next > div > span > span { /* alpha */
     & > div._dsp-flex:nth-child(1) { /* Home screen. */ }
     & > div._dsp-flex:nth-child(2) { /* Play. */
       & > div.css-175oi2r:nth-child(1) { /* Game Window. */
@@ -792,54 +877,6 @@ GM_addStyle(`
       }
     }
   }
-            /*
-                & div:nth-child(1) {
-                  resize: vertical !important;
-                  max-height: 100% !important;
-                  max-width: 100% !important;
-                  overflow: auto !important;
-                  flex-grow: 1 !important; 
-                  & > div:nth-child(2) { 
-                    flex-grow: 1 !important; 
-                    & > img[alt="Content Image" i][data-nimg="fill"] { 
-                      object-fit: contain !important;
-                    }
-                  }
-                }
-            */
-
-                    /*
-                    & > div:nth-child(1) {
-                      resize: vertical !important;
-                      max-height: 100% !important;
-                      max-width: 100% !important;
-                      overflow: auto !important;
-                      flex-grow: 1 !important; 
-                      & > div:nth-child(2) { /*Img container.*/
-                        flex-grow: 1 !important; 
-                        & img[data-nimg="fill"] { 
-                          object-fit: contain !important;
-                        }
-                      }
-                    }
-                    */
-
-div.bung {
-  > div {
-    > img[alt="Content Image" i][data-nimg="fill"] {
-      /* Styles for the image */
-      object-fit: contain !important;
-
-      & + * { 
-        /* Styles for the image's immediate siblings */
-      }
-    }
-
-    &:has(img[alt="Content Image" i][data-nimg="fill"]) { 
-      /* Styles for the parent div if it has the image as a descendant */
-      flex-grow: 1 !important; 
-    }
-  }
 
   &:has(div:has(img[alt="Content Image" i][data-nimg="fill"])) { 
     /* Styles for the grandparent div if it has the image as a descendant */
@@ -849,8 +886,8 @@ div.bung {
     overflow: auto !important;
     flex-grow: 1 !important; 
   }
-}
-div.is_Column:has(> div:nth-child(2) > img[alt="Content Image" i][data-nimg="fill"]) {
+
+  div.is_Column:has(> div:nth-child(2) > img[alt="Content Image" i][data-nimg="fill"]) {
     flex-grow: 1 !important;
     max-height: 100% !important;
     max-width: 100% !important;
@@ -865,8 +902,8 @@ div.is_Column:has(> div:nth-child(2) > img[alt="Content Image" i][data-nimg="fil
             object-fit: contain !important;
         }
     }
-}
-  div[id^="modalNodeTree_ViewContext_TS" i] {
+
+    div[id^="modalNodeTree_ViewContext_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
       flex-grow: 0;
       flex-shrink: 1;
@@ -1343,8 +1380,14 @@ div.is_Column:has(> div:nth-child(2) > img[alt="Content Image" i][data-nimg="fil
   */
 `);
 
-// Clean up the the prompt area to make more efficient.
-// This is the original code from QoL tool by AliH2K
+/**
+ * Handles changes detected by a MutationObserver.
+ * Clean up the the prompt area to make more efficient.
+ * This is the original code from QoL tool by AliH2K
+ *
+ * @param {MutationRecord[]} mutationsList - An array of MutationRecord objects, each representing a single mutation.
+ * @param {MutationObserver} observer - The MutationObserver instance that triggered this callback.
+ */
 function handleChanges(mutationsList, observer) {
   for (const mutation of mutationsList) {
     if (!window.location.href.includes('/play')) {
@@ -1396,16 +1439,15 @@ function handleChanges(mutationsList, observer) {
       }
     }
   }
-  // // Apply Custom CSS
-  // const customCSS = cfg.get('Custom_CSS');
-  // if (customCSS) {
-  //   GM_addStyle(customCSS);
-  // }
 }
 
-//setNativeValue(input, 'foo');
-//input.dispatchEvent(new Event('input', { bubbles: true }));
-
+/**
+ * Deal with inserting text into textarea and input elements in the react DOM.
+ * N.B. This does not handle the case of the undo buffer. Control-Z will not work!
+ *
+ * @param {HTMLElement} element - A refernce to the text element to insert text into.
+ * @param {string} value - The value to insert into the text element.
+ */
 function setNativeValue(element, value) {
   const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
   const prototype = Object.getPrototypeOf(element);
@@ -1418,13 +1460,14 @@ function setNativeValue(element, value) {
   }
 }
 
-
 const ActionToggleMsgOn = "A+";
 const ActionToggleMsgOff = "A-";
 
 let actionsExpanded = null;
 let toggleButtonText = null;
 
+// CSS for toggling visibility for actions.
+//
 GM_addStyle(`
     [aria-label="Story"] .is_Row {
         visibility: visible;
@@ -1445,8 +1488,12 @@ GM_addStyle(`
         padding: 0 !important;
     }
 `);
-/*
-*/
+
+/**
+ * Toggle action visibility by adding or removing the actions-hidden CSS class from the Scenario or Adventur divs.
+ *
+ * @param {boolean} visible - A boolean determining visibility.
+ */
 function setActionVisibility(visible) {
   /* Handle toggling in Play mode. */
   const container = $("[aria-label='Story']");
@@ -1465,12 +1512,16 @@ function setActionVisibility(visible) {
     } else {
       readContainer.addClass("actions-hidden");
     }
-
   }
-
   actionsExpanded = visible;
   sessionStorage.setItem("actionsExpanded", actionsExpanded); // Save state
 }
+
+/**
+ * Toggle action visibility.
+ *
+ * @param {HTMLElement} buttonTextElement - A refernce to the toggling callback function.
+ */
 
 function toggleOnClick(buttonTextElement) {
   actionsExpanded = !actionsExpanded;
@@ -1478,6 +1529,11 @@ function toggleOnClick(buttonTextElement) {
   buttonTextElement.innerText = actionsExpanded ? ActionToggleMsgOn : ActionToggleMsgOff;
 }
 
+/**
+ * Helper function to remove height classes from an element.
+ *
+ * @param {HTMLElement} element - A refernce to the element to remove height classes from.
+ */
 function removeHeightClasses(element) {
   const classList = element.classList; // Get the element's classList
 
@@ -1488,6 +1544,13 @@ function removeHeightClasses(element) {
   }
 }
 
+/**
+ * Inject a cloned element into the play/read page header.
+ *
+ * @param {HTMLElement} cloneReference - A refernce to a button to clone.
+ * @param {string} label - A string containing the button label.
+ * @param {function} action - The function to call on click.
+ */
 function buttonClone(cloneReference, label, action) {
   if (!cloneReference) {
     console.warn("Null cloneReference in buttonClone!");
@@ -1546,6 +1609,14 @@ function buttonClone(cloneReference, label, action) {
   return clonedElement;
 }
 
+/**
+ * Inject a cloned element into the play/read page header.
+ *
+ * @param {HTMLElement} container - A refernce to the container to enject into.
+ * @param {HTMLElement} cloneReference - A refernce to cloned object/button to inject.
+ * @param {string} label - A string containing the button label.
+ * @param {function} action - The function to call on click.
+ */
 function headerInject(container, cloneReference, label, action) {
   // Only create one button type per container.
   if (container.querySelector(`div[role=button][aria-label*="${label}"]`)) {
@@ -1558,6 +1629,12 @@ function headerInject(container, cloneReference, label, action) {
 /**********************************
 ** Code for Read Pages.
 */
+
+/**
+ * Event handler for handling play pages.
+ *
+ * @param {HTMLElement} targetNode - A refernce to the read page.
+ */
 function handleReadPage(targetNode) {
 
   // Use the second button if available, otherwise use the first
@@ -1826,8 +1903,7 @@ function fixStyles(modalNode) {
   //classListRemove.forEach(className => modalContent.classList.remove(className));
 }
 
-// Setting the width and height for the modal in CSS causes
-// the modal to be unresizable
+// This doesn't work, but is kept as example for getting computed styles.
 function setDefaultSizeStyling(modalNode) {
   // Get default width and height from CSS (if available)
   const computedStyle = window.getComputedStyle(modalNode);
@@ -1848,6 +1924,13 @@ function setDefaultSizeStyling(modalNode) {
   modalNode.style.removeProperty('height');
 }
 
+/**
+ * Centers a modal element within the viewport, optionally only if it overflows the viewport.
+ * 
+ * @param {HTMLElement} modalNodeTree - The root node of the modal tree within the document body.
+ * @param {HTMLElement} modalNode - The specific modal element to be centered.
+ * @param {boolean} [onlyIfVPOverflow=false] - If true, the modal will only be centered if it overflows the viewport.
+ */
 function centerModal(modalNodeTree, modalNode, onlyIfVPOverflow) {
   const modalRect = modalNode.getBoundingClientRect();
 
@@ -1879,11 +1962,13 @@ function centerModal(modalNodeTree, modalNode, onlyIfVPOverflow) {
   centeringParent.style.alignItems = 'unset';
 }
 
-/*
-const computedStyle = window.getComputedStyle(modalNode);
-const initialWidth = computedStyle.getPropertyValue('width');
-const initialHeight = computedStyle.getPropertyValue('height');
-*/
+/**
+ * Makes a specified modal window both draggable and resizable.
+ *
+ * @param {string} timestamp - A timestamp associated with the modal.
+ * @param {HTMLElement} modalNodeTree - The entire modal window's DOM node (the container).
+ * @param {HTMLElement} modalNode - The specific DOM node within the modal that will be draggable.
+ */
 function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
   //console.log("makeModalDraggableAndResizable");
   const modalDimensions = cfg.get('Modal_Dimensions');
@@ -1975,8 +2060,6 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
         const left = (viewportWidth - modalRect.width) / 2.0;
         const top = (viewportHeight - modalRect.height) / 2.0;
     */
-
-    //setDefaultSizeStyling(modalNode);
 
     centerModal(modalNodeTree, modalNode, false);
 
@@ -2165,9 +2248,12 @@ if (cfg.get('Fix_Actions') === true) {
   });
 }
 
-// Function to update the flame icon's color  scrollbar-color: red green; /* Thumb and track colors */
-
-function changeCreditUseIndicator(flameIconValue) {
+/**
+ * Function to update the credits being used indicators in the UI.
+ *
+ * @param {boolean} indicatorFlag - If true, turns on credits being used indicator.
+ */
+function changeCreditUseIndicator(indicatorFlag) {
   const flameIcon = document.querySelector(
     'div[id="game-blur-button"][aria-label="Game Menu"] p.font_icons'
   );
@@ -2187,7 +2273,7 @@ function changeCreditUseIndicator(flameIconValue) {
   const creditsOn = "red";
   const creditsOff = "";
   if (flameIcon) {
-    if (flameIconValue > 0) {
+    if (indicatorFlag > 0) {
       flameIcon.style.color = creditsOn; // Change to red if value is greater than 0
     } else {
       flameIcon.style.color = creditsOff; // Reset to default color if value is 0 or less
@@ -2197,7 +2283,7 @@ function changeCreditUseIndicator(flameIconValue) {
     // Target all descendant text elements within the command bar
     const textElements = commandBar.querySelectorAll('span, p'); 
 
-    if (flameIconValue > 0) {
+    if (indicatorFlag > 0) {
       textElements.forEach(element => {
         element.style.color = creditsOn; 
       });
@@ -2211,7 +2297,7 @@ function changeCreditUseIndicator(flameIconValue) {
     // Target all descendant text elements within the command bar
     const textElements = navigationBar.querySelectorAll('span, p'); 
 
-    if (flameIconValue > 0) {
+    if (indicatorFlag > 0) {
       textElements.forEach(element => {
         element.style.color = creditsOn; 
       });
@@ -2225,7 +2311,7 @@ function changeCreditUseIndicator(flameIconValue) {
     // Target all descendant text elements within the gearMenu header
     const textElements = gearMenu_Header.querySelectorAll('span, p'); 
 
-    if (flameIconValue > 0) {
+    if (indicatorFlag > 0) {
       textElements.forEach(element => {
         element.style.color = creditsOn; 
       });
@@ -2239,7 +2325,7 @@ function changeCreditUseIndicator(flameIconValue) {
     // Target all descendant text elements within the gearMenu header
     const textElements = theDialog.querySelectorAll('span, p'); 
 
-    if (flameIconValue > 0) {
+    if (indicatorFlag > 0) {
       textElements.forEach(element => {
         element.style.color = creditsOn; 
       });
@@ -2251,11 +2337,10 @@ function changeCreditUseIndicator(flameIconValue) {
   }
 
 }
-// /* Target the main div (tablist) */
-// div[role="tablist"].is_Row {
-//   /* Apply color to all descendant text elements */
-//   color: red; /* Or your desired color */
-// }
+/*
+** In the react DOM, this is a somewhat stable element to wait for. Once this is active,
+** we use a mutation observer to watch for credits above 0 being used and notify the UI.
+*/
 const AISettings_StoryGen_Model_Container_Selector =
   'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
@@ -2328,13 +2413,18 @@ waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (containerNodes
 }, false);
 
 
+/*
+** In the react DOM, these are somewhat stable elements to wait for. 
+** The only purpose is to create unique IDs for the gearMenu elements.
+** Other code uses the IDs, including CSS.
+*/
+//const gameScreenSelector =
+//'body > div.app-root > div#__next > div > span > div:nth-child(2)';
+//const gameScreenNode = document.querySelector(gameScreenSelector);
+
 const gearMenuSelector = 
 '#__next > div > span > div:nth-child(2) > div:nth-child(2), ' +
 '#__next > div > span > span > div:nth-child(2) > div:nth-child(2)';
-const gameScreenSelector =
-'body > div.app-root > div#__next > div > span > div:nth-child(2)';
-const gameScreenNode = document.querySelector(gameScreenSelector);
-
 waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
   console.log(gearMenuNodes);
   const gearMenuNode = gearMenuNodes[0];
@@ -2351,24 +2441,20 @@ waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
   const gearMenu_Header = gearMenu?.firstChild;
   gearMenu_Header.id = 'gearMenu_Header_' + timestamp;
 
-  // Identify the selected tab by it's border color class.
-  //const selectedTab = gearMenu_Header.querySelectorAll('div[role="tab"].is_Button._bbc-137133889 span')[0];
-  //const innerText = selectedTab.innerText;
-
-  //console.log("selectedTab: ", selectedTab);
-  //console.log("innerText: ", innerText);
-
   const gearMenu_Content= gearMenu?.lastChild;
   gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
 
-  // if (editorContainer) {
-  //   //editorContainer.style.height = "90%";
-  // } else {
-  //   console.warn("Editor container div not found in script editor modal");
-  // }
-  //modalNode.dataset.hasEditorMods = "true";
 }, false);
 
+/*
+** These are helper functions for finding the common sub node structures within
+** modal nodes. Sometimes sub nodes are placed within class wrappers that must be skipped over.
+** Most modal nodes follow a reasonably common structure. These functions help parse the structure
+** so ID's can be assigned. 
+*/
+
+// If a node is a span, skip one layer returning the first child.
+// Otherwise return the node.
 function skipSpan(node) {
   const tagName = node.tagName.toLowerCase();
   if (tagName === 'span') {
@@ -2378,38 +2464,45 @@ function skipSpan(node) {
   }
 }
 
+// Some modal nodes have an inner div wrapper. Skip it or return null.
 function getModalInner(modalNode) {
   /* The entire modal node contents may be wrapped in a div. */
   return (modalNode.children.length == 1) ? modalNode.firstChild : null;
 }
 
+// Return a modal node header.
 function getModalHeader(modalNode) {
-  /* The entire modal node contents may be wrapped in a div. */
+  // The entire modal node contents may be wrapped in a div.
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
-  /* And the header node may be wrapped in a div. */
+  // And the header node may be wrapped in a div.
   const modalHeaderInner = (modalNodeInner.children.length == 1) ? modalNodeInner.firstChild : modalNodeInner;
   return modalHeaderInner?.firstChild;
 }
 
+// Return a modal node header title.
 function getModalHeader_Title(modalNode) {
   return getModalHeader(modalNode)?.children[0];
 }
+
+// Return a modal node header menu (usually a pill menu).
 function getModalHeader_Menu(modalNode) {
   return getModalHeader(modalNode)?.children[1];
 }
 
+// Return a modal node content section (the block under the header).
 function getModalContent(modalNode) {
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
   return skipSpan(modalNodeInner?.children[1]);
 }
 
+// Return a modal node inner content section (many modals have inner content wrappers).
 function getModalContent_Inner(modalNode) {
   return skipSpan(getModalContent(modalNode).firstChild);
 }
 
+// Retirm a modal node footer (Most do not have footers.).
 function getModalFooter(modalNode) {
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
-
   if (modalNodeInner?.children.length < 3) {
     return null;
   }
@@ -2478,6 +2571,11 @@ function modalAddFullScreenButton(cloneRef, container, eventHandler, placement =
   }
 }
 
+/**
+ * Event handler for toggling full screen mode.
+ *
+ * @param {HTMLElement} buttonTextElement - A reference to the toggle button.
+ */
 function toggleFullScreen(buttonTextElement) {
   const modalNode = buttonTextElement.closest("div[aria-label*='Modal' i]");
   if (!modalNode) {
@@ -2511,32 +2609,38 @@ function toggleFullScreen(buttonTextElement) {
   }
 }
 
+/**
+ * A helper function for checking if a modal node is a token/text viewer.
+ *
+ * @param {HTMLElement} modalNode - A reference to the modalNode to test.
+ */
 function checkTokenViewer(modalNode) {
   const tabList = modalNode?.querySelector('div[role="tablist"][aria-label="Section Tabs"]');
-
   return tabList?.querySelector('div[role="tab"][aria-label*="tab text" i]') &&
     tabList?.querySelector('div[role="tab"][aria-label*="tab tokens" i]');
 }
 
-// Call the function when you detect a new modal or when you want to check the conditions
-
+/**
+ * A helper function for inserting a string before an ID timestamp.
+ *
+ * @param {string} idString - The string top insert into.
+ * @param {string} stringToAppend - The string insert before the Time Stamp (TS\d+).
+ */
 function appendBeforeTimestamp(idString, stringToAppend) {
   return idString.replace(/_TS(\d+)$/, `${stringToAppend}_TS$1`);
 }
-// Function to handle new modals.
-// modalNodeTree is the modal's branch div from document.body.
-//
+
+/**
+ * Event handler for handling new modals.
+ *
+ * @param {HTMLElement} modalNodeTree - The modal's branch div from document.body
+ */
 function handleNewModal(modalNodeTree) {
 
   const timestamp = "TS" + Date.now();
 
-  const zzz = modalNodeTree.querySelector('[aria-label*="Modal"]');
-  //zzz.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}px`;
-  //zzz.style.height = !modalHeightCfg ? '80vh' : `${modalHeightCfg}px`;
-  //zzz.style.width = 'min-content';
-  //zzz.style.height = 'max-content';
-
-  // Wait for the specific modal structure
+  // Wait for the specific modal structure.
+  // We wait for a button to show up somewhere in the tree.
   waitForSubtreeElements(
     "div[aria-label*='Modal' i]:has(div[role='button'])",
     (modalNodes) => {
@@ -2551,18 +2655,17 @@ function handleNewModal(modalNodeTree) {
         console.warn("Null Modal node found in handleNewModle.");
         return;
       }
-      // Assign IDs for CSS.
 
-      // Defaults all modals.
-      //modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}px`;
-      //modalNode.style.height = !modalHeightCfg ? '80vh' : `${modalHeightCfg}px`;
-
+      // Assign IDs that are common for all modalNodes.
+      // This allows for the CSS to have hooks into the react DOM.
 
       // This is the root node for the entire modal in document.body.
       modalNodeTree.id = "modalNodeTree_" + timestamp;
 
+      // This turns of the game play mask behind the modal so you can read the story in progress.
       modalNodeTree.firstChild.firstChild.firstChild.firstChild.style.opacity = "0";
-      /* Some modal nodes wrap their entire content in an only-child div. */
+
+      // Some modal nodes wrap their entire content in an only-child div.
       let modalNodeInner = getModalInner(modalNode);
       if (modalNodeInner) {
         modalNodeInner.id = "modalNodeInner_" + timestamp;
@@ -2617,7 +2720,8 @@ function handleNewModal(modalNodeTree) {
               'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="Story Cards" i],' +
               'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i],' +
               'div[role="button"][aria-label="Close modal" i] > div > p';
-
+            // Look for the Scenario/Adventure editor.
+            //
             if (modalNode.querySelectorAll(tablistSelector).length >= 4) {
               modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
               modalNode.style.height = !modalHeightCfg ? '90vh' : `${modalHeightCfg}`;
@@ -2659,8 +2763,6 @@ function handleNewModal(modalNodeTree) {
                       }
                     }, 100); // adjust as needed
                   }
-                  //modalNode.style.width = '512px';
-                  //modalNode.style.height = '90vh';
                   makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
 
                 },
@@ -2668,8 +2770,8 @@ function handleNewModal(modalNodeTree) {
                 true
               );
             }
-            // Story card updates.
-            //else if (modalNode.querySelectorAll("textarea[aria-labelledby='scEntryLabel']").length >= 1) {
+            // Look for the story card editor.
+            //
             else if (modalNode.getAttribute('aria-label')?.includes("Story Card Edit Modal")) {
               //console.log("Found story card modal");
               //console.log("scEntryLable", modalNode);
@@ -2696,40 +2798,32 @@ function handleNewModal(modalNodeTree) {
               makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
 
             }
+            // Look for the Context Viewer.
+            //
             else if ($(modalHeader_Title).find("p:contains('View Context')").length > 0) {
               modalNode.style.width = ' min-content';
               modalNode.style.height = 'max-content';
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ViewContext");
-                //modalNode.style.width = '512px';
-                //modalNode.style.height = '400px';
-                //modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
-                //console.log("width: ", modalNode.style.width);
-                //console.log("modalWidthCfg: ", modalWidthCfg);
-                //modalNode.style.width = ' min-content';
-                //modalNode.style.height = 'max-content';
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
 
             }
+            // Look for the "See" viewer Image Options modal.
+            //
             else if ($(modalHeader_Title).find("h1:contains('Image Options')").length > 0) {
               modalNode.style.width = ' min-content';
               modalNode.style.height = 'max-content';
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ImageOptions");
-                //modalNode.style.width = '512px';
-                //modalNode.style.height = '400px';
-                //modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
-                //console.log("width: ", modalNode.style.width);
-                //console.log("modalWidthCfg: ", modalWidthCfg);
-                //modalNode.style.width = ' min-content';
-                //modalNode.style.height = 'max-content';
                 const cloneButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
                 modalAddFullScreenButton(cloneButton, modalHeader, toggleFullScreen, 'before', cloneButton);
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
 
             }
+            // Look for the "Memories" viewer/editor modal.
+            //
             else if ($(modalHeader_Title).find("p:contains('Memories')").length > 0) {
               modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
               modalNode.style.height = !modalHeightCfg ? '90vh' : `${modalHeightCfg}`;
@@ -2740,6 +2834,8 @@ function handleNewModal(modalNodeTree) {
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
             }
+            // Check for a text/token viewer.
+            //
             else if (checkTokenViewer(modalNode)) {
               modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
               modalNode.style.height = !modalHeightCfg ? '90vh' : `${modalHeightCfg}`;
@@ -2750,20 +2846,13 @@ function handleNewModal(modalNodeTree) {
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
             }
-            // Fix the irritating small window size for the script editor.
+            // Fix the irritatingly small window size for the script editor.
             //
             else if ($(modalNode).find("p:contains('Shared Library')").length > 0) {
               setTimeout(() => {
                 waitForKeyElements(".monaco-editor .view-lines", (editorElements) => {
                   modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ScriptEditor");
-                  const editorContainer = modalNode?.children[1];
 
-                  if (editorContainer) {
-                    //editorContainer.style.height = "90%";
-                  } else {
-                    console.warn("Editor container div not found in script editor modal");
-                  }
-                  //modalNode.dataset.hasEditorMods = "true";
                 }, true);
                 const cloneButton = modalHeader_Title.querySelector("div[role='button'][aria-label='back' i]");
                 modalAddFullScreenButton(cloneButton, modalHeader_Title, toggleFullScreen);
@@ -2793,6 +2882,7 @@ function handleNewModal(modalNodeTree) {
 }
 
 // Mutation observer to detect new div elements in document.body
+// We only look for new div elements added to the top level body.
 const bodyObserver = new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
     if (mutation.type === 'childList') {
@@ -2812,7 +2902,6 @@ const bodyObserver = new MutationObserver((mutationsList, observer) => {
   }
 });
 
-
 // Start observing the document body for new children added.
 bodyObserver.observe(document.body, { childList: true });
 
@@ -2820,8 +2909,9 @@ bodyObserver.observe(document.body, { childList: true });
 ** Code for Play Pages.
 */
 
-// Fist the state.message display locking out the Navigation bar.
-//
+/**
+ * Event handler for fixing the state.message display locking out the Navigation bar..
+ */
 function fixNavigationBar() {
   const navBar = document.querySelector('div[aria-label="Navigation bar"]');
   const dialog = document.querySelector('.css-175oi2r[style*="z-index: 3"]');
@@ -2831,7 +2921,6 @@ function fixNavigationBar() {
     const navBarHeight = navBar.offsetHeight;
     document.documentElement.style.setProperty('--navbar-height', `${navBarHeight}px`);
   }
-
 
   //const circleInfoDiv = dialog?.querySelector('p.font_icons[aria-hidden="true"]:has(+ p:contains("w_circle_info"))')?.closest('div[role="button"]'); // Find the closest parent div with role="button"
   if (navBar && dialog) {
@@ -2892,6 +2981,11 @@ let fixNavigationBarObserver = new DOMObserver(
   { childList: true, subtree: true }
 );
 
+/**
+ * Event handler for handling play pages.
+ *
+ * @param {HTMLElement} targetNode - A refernce to the play page.
+ */
 function handlePlayPage(targetNode) {
   // handleChanges();
   let handleChangesObserver = new DOMObserver(handleChanges, targetNode, { childList: true, subtree: true });
@@ -2908,7 +3002,8 @@ function handlePlayPage(targetNode) {
 `;
   GM_addStyle(CSS);
 
-
+  // Inject the action text toggle button.
+  //
   const referenceSpan = [...$('[role=button]')].find((e) => e.innerText === 'w_undo').parentElement; // Select the span
   const container = referenceSpan.parentElement;
   headerInject(container, referenceSpan, toggleButtonText, toggleOnClick);
@@ -2916,9 +3011,12 @@ function handlePlayPage(targetNode) {
   fixNavigationBarObserver.observe();
 }
 
+// Add the keypress handler for dealing with hotkeys.
+//
 document.addEventListener('keydown', handleKeyPress);
 
-
+// Read and Play pages both have role=article nodes at the top.
+//
 waitForKeyElements('[role="article"]', (targetNodes) => {
 
   const targetNode = targetNodes[0];
