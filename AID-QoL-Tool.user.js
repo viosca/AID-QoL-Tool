@@ -2165,31 +2165,172 @@ if (cfg.get('Fix_Actions') === true) {
   });
 }
 
+// Function to update the flame icon's color  scrollbar-color: red green; /* Thumb and track colors */
 
-// div[role="button"]:has(p:contains("Credits")) > div > p:contains("CREDITS")
-//'div[aria-label="AI settings"] div[aria-label="Story Generator"] span > div[role="button"] > div.is_Row > div._dsp-flex > p'
-//'div[aria-label="AI settings" i ] div[aria-label="Story Generator" i ] > div > div > div > div:nth-child(2) > div > span > div[role="button"]'
-//> div > div > div:nth-child(2) > div > span > div[role="button"]'  > div > div:nth-child(2) div[aria-label="AI settings" i ]
-//  > div > div > div:nth-child(2) > div > span > div[role="button"]
-//'div[aria-label="AI settings" i] div:has(div[aria-label="Story Generator" i] > div:nth-child(2) > div:only-child > div:nth-child(1)'
-//'div[aria-label="AI settings" i] > div:has(+ div[aria-label="Story Generator" i] > div:nth-child(2) > div:only-child > div:nth-child(1)'
+function changeCreditUseIndicator(flameIconValue) {
+  const flameIcon = document.querySelector(
+    'div[id="game-blur-button"][aria-label="Game Menu"] p.font_icons'
+  );
+  const commandBar = document.querySelector(
+    'div[role="toolbar" i][aria-label="Command Bar" i]'
+  );
+  const navigationBar = document.querySelector(
+    'div[role="toolbar" i][aria-label="Navigation Bar" i]'
+  );
 
-// works: 'div[aria-label="Story Generator" i] + div > div:only-child > div:nth-child(1) > div:nth-child(2) > div:only-child > span > div[role=button] > div.is_Row > div._dsp-flex + p'
+  const gearMenu_Header = document.querySelector(
+    'div#__next div[id^="gearMenu_Header_TS" i]'
+  );
+  const theDialog = document.querySelector(
+    'div#__next div[id^="TheDialog" i]'
+  );
+  const creditsOn = "red";
+  const creditsOff = "";
+  if (flameIcon) {
+    if (flameIconValue > 0) {
+      flameIcon.style.color = creditsOn; // Change to red if value is greater than 0
+    } else {
+      flameIcon.style.color = creditsOff; // Reset to default color if value is 0 or less
+    }
+  }
+  if (commandBar) {
+    // Target all descendant text elements within the command bar
+    const textElements = commandBar.querySelectorAll('span, p'); 
 
+    if (flameIconValue > 0) {
+      textElements.forEach(element => {
+        element.style.color = creditsOn; 
+      });
+    } else {
+      textElements.forEach(element => {
+        element.style.color = creditsOff; 
+      });
+    }
+  }
+  if (navigationBar) {
+    // Target all descendant text elements within the command bar
+    const textElements = navigationBar.querySelectorAll('span, p'); 
 
-const AISettings_StoryGen_Credits_Selector =
-'div[aria-label="Story Generator" i] + div > div:only-child';
-//'div[aria-label="Story Generator" i] + div > div:only-child > div:nth-child(1) > div:nth-child(2) > div:only-child > span > div[role=button] > div.is_Row > div._dsp-flex + p';
-//'/* div[aria-label="Story Generator" i] + */ div p[textContent="Credits" i]';
-//'p:contains("Credits")';
-//const AISettings_StoryGen_Credits_Selector =
-//'div[aria-label="Story Generator" i] + div div[role=button]:has(p[textContent="Credits" i]) > div > div > p';
-waitForKeyElements(AISettings_StoryGen_Credits_Selector, (creditsNodes) => {
-  console.log(creditsNodes);
+    if (flameIconValue > 0) {
+      textElements.forEach(element => {
+        element.style.color = creditsOn; 
+      });
+    } else {
+      textElements.forEach(element => {
+        element.style.color = creditsOff; 
+      });
+    }
+  }
+  if (gearMenu_Header) {
+    // Target all descendant text elements within the gearMenu header
+    const textElements = gearMenu_Header.querySelectorAll('span, p'); 
+
+    if (flameIconValue > 0) {
+      textElements.forEach(element => {
+        element.style.color = creditsOn; 
+      });
+    } else {
+      textElements.forEach(element => {
+        element.style.color = creditsOff; 
+      });
+    }
+  }
+  if (theDialog) {
+    // Target all descendant text elements within the gearMenu header
+    const textElements = theDialog.querySelectorAll('span, p'); 
+
+    if (flameIconValue > 0) {
+      textElements.forEach(element => {
+        element.style.color = creditsOn; 
+      });
+    } else {
+      textElements.forEach(element => {
+        element.style.color = creditsOff; 
+      });
+    }
+  }
+
+}
+// /* Target the main div (tablist) */
+// div[role="tablist"].is_Row {
+//   /* Apply color to all descendant text elements */
+//   color: red; /* Or your desired color */
+// }
+const AISettings_StoryGen_Model_Container_Selector =
+  'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
+   + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
+   + ' > div.is_Column:only-child' // A wrapper.
+   + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
+  ;
+waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (containerNodes) => {
+  if (!containerNodes || !containerNodes?.length) {
+    console.log("containerNodes not defined.");
+    return;
+  }
+  console.log("containerNodes found: ", containerNodes);
+  const modelContainer = containerNodes[0]; // Get the first matching element
+  
+  function getCreditsElement() {
+    const creditsButton = $(modelContainer).find("div[role=button]:has(> p:contains('Credits'))")[0];
+    console.log("creditsButton", creditsButton);
+    if (creditsButton) {
+      return creditsButton.querySelector('& > div > p');
+    }
+    return null;
+  }
+
+  function getCredits(creditsElement){
+    const credits = creditsElement?.textContent;
+    return parseInt(credits) || 0;
+  }
+
+  let creditsElement = getCreditsElement();
+  //console.log("creditsElement found: ", creditsElement);
+
+  function updateFlameIcon() {
+    if (creditsElement) {
+      const credits = getCredits(creditsElement); // Use textContent
+      //console.log("Credits:", credits);
+      //console.log("creditsElement found: ", creditsElement);
+      changeCreditUseIndicator(credits);
+    } else {
+      // If creditsElement is not found (e.g., on a free Story Generator)
+      changeCreditUseIndicator(0); // Set flame icon to default color
+    }
+  }
+
+  // Call updateFlameIcon initially
+  updateFlameIcon();
+  const creditsObserver = new MutationObserver((mutationsList, observer) => {
+    //console.log("mutation mutation 0.");
+    for (const mutation of mutationsList) {
+      //console.log("mutation: ", mutation);
+      if (mutation.type === "childList") {
+        // Re-query creditsElement whenever there's a childList mutation
+        creditsElement = getCreditsElement();
+        //console.log('new credits element: ', creditsElement);
+        updateFlameIcon(); 
+      } 
+  
+      if (
+        (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
+        creditsElement && // Check if creditsElement is defined
+        mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
+      ) {
+        //console.log("mutation mutation 2."); 
+        updateFlameIcon(); 
+      }
+    }
+  });
+
+  // Start observing the modelContainer for changes in its child nodes
+  creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
 }, false);
 
-/*
-const gearMenuSelector = '#__next > div > span > div:nth-child(2) > div:nth-child(2)';
+
+const gearMenuSelector = 
+'#__next > div > span > div:nth-child(2) > div:nth-child(2), ' +
+'#__next > div > span > span > div:nth-child(2) > div:nth-child(2)';
 const gameScreenSelector =
 'body > div.app-root > div#__next > div > span > div:nth-child(2)';
 const gameScreenNode = document.querySelector(gameScreenSelector);
@@ -2227,7 +2368,6 @@ waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
   // }
   //modalNode.dataset.hasEditorMods = "true";
 }, false);
-*/
 
 function skipSpan(node) {
   const tagName = node.tagName.toLowerCase();
@@ -2293,8 +2433,8 @@ function modalAddFullScreenButton(cloneRef, container, eventHandler, placement =
 
   const fullScreenButton = buttonClone(
     cloneRef,
-    "[ ]", 
-    eventHandler 
+    "[ ]",
+    eventHandler
   );
 
   // Apply styles to the button
