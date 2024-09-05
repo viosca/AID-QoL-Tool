@@ -8,13 +8,15 @@ This script is based on AliH2K's script. It adds features and enhancements.
 - Modal window drag and resize.
 - Modal window fullsize screen toggle.
 - Sitewide Textarea resizing.
+- Hide Actions Toggle.
+- Credits Being Used Indicator.
+- Script Editor Fixes.
 - Additional hotkeys:
   - Flame menu.
   - beta/play toggle.
   - change player name.
   - goto user profile.
   - continue adventure.
-  - Game play action display toggle.
 - StoryCard Editor enhancements:
   - Container Delimiter entry.
   - Default notes entry.
