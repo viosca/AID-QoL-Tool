@@ -1,5 +1,6 @@
 # AID-QoL-Tool
 
+
 Enhanced Tampermonkey Script for AI Dungeon.
 
 
