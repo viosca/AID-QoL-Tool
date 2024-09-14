@@ -31,6 +31,78 @@
 
 const $ = jQuery.noConflict(true);
 
+let CSS_Elements = {};
+if (0) {
+  document.addEventListener('DOMContentLoaded', () => {
+
+    const popupHtml = `
+<div id="disclaimerPopup" style="visibility: visible;">
+  <div class="popup-content">
+    <h3>Disclaimer</h3>
+    <hr>
+    <p>I understand using this plugin modifies the AI Dungeon (AID) website code in the browser. It may introduce problems with the display of the website. If I find what looks like a bug in the site, I will disable this plugin and verify the bug is actually with the website before reporting it.</p>
+    <hr>
+    <p>Furthermore, the AI Dungeon website can change without notice breaking this tampermonkey script. AI Dungeon is under no obligation to users of this script to notify users of changes that may break it.</p>
+    <hr>
+    <button id="closePopup">Close</button>
+  </div>
+</div>
+`;
+
+    CSS_Elements['QOL_Disclaimer'] = GM_addStyle(`
+  #disclaimerPopup {
+    position: fixed;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visability: visable;
+    z-index: 1000000; /* Ensure it's on top of other elements */
+    top: 50%;
+    transform: translateY(-50%); 
+    top: 0;
+    left: 0;
+    /* width: 30%; /* */
+    /* height: 100%; /* */
+  }
+
+  .popup-content {
+    background-color: black;
+    color: white;
+    border: 1px solid gray;
+    padding: 20px;
+    width: 35%;
+    border-radius: 5px;
+    border-color: white;
+    worder-width: 1px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    position: relative; /* Needed for the calc() trick */
+    /* top: 50%; /* */
+    /* transform: translateY(-50%);  /* */
+  }
+
+  #closePopup {
+    /* Style the close button as needed */
+  }
+  `);
+    localStorage.removeItem('disclaimerShown');
+
+    // Check if the popup has been shown before
+    if (!localStorage.getItem('disclaimerShown')) {
+      document.body.innerHTML += popupHtml;
+      // Show the popup
+      document.getElementById('disclaimerPopup').style.display = 'flex';
+
+      // Handle close button click
+      document.getElementById('closePopup').addEventListener('click', () => {
+        //document.getElementById('disclaimerPopup').style.display = 'none';
+        document.getElementById('disclaimerPopup').style.visibility = 'hidden';
+        localStorage.setItem('disclaimerShown', 'true'); // Mark popup as shown
+      });
+    }
+  });
+}
+
 /**
  * Attempts to retrieve and parse JSON data from a script tag with the ID '__NEXT_DATA__'.
  * 
@@ -218,10 +290,11 @@ const cfg = new MonkeyConfig({
       default: ['512px', '80vh'] // Default values for width and height
     },
 
-    Save_Raw_Text: { type: 'checkbox', default: false },
-    Fix_Actions: { type: 'checkbox', default: false },
-    Action_Cleaner: { type: 'checkbox', default: false },
-    Do_Action_Verb: { type: 'text', default: null },
+    Reward_Claimer: { type: 'checkbox', default: true }, // Enable waiting for new rewards (scales and avatars) and claim them.
+    Save_Raw_Text: { type: 'checkbox', default: false }, // Save raw text rather than removing '>'
+    Fix_Actions: { type: 'checkbox', default: false }, // Fix editing past actions.
+    Action_Cleaner: { type: 'checkbox', default: false }, // Cleanup the current action.
+    Do_Action_Verb: { type: 'text', default: null }, // RFU
 
     Default_SC_Notes: { type: 'text', default: 'Unused.' },
 
@@ -520,7 +593,6 @@ GM_addStyle(`
 const modalDimensions = cfg.get('Modal_Dimensions');
 let [modalWidthCfg, modalHeightCfg] = modalDimensions;
 
-let CSS_Elements = {};
 CSS_Elements['App_root'] = GM_addStyle(`
   /* This is nested CSS, it mostly mirrors the AID site. */
   /* div#__next > div > span, /* beta and prod. */
@@ -1343,6 +1415,20 @@ CSS_Elements['Misc Styles'] = GM_addStyle(`
   ::-webkit-scrollbar {
     width: 8px !important;
   }
+  div[role=menu][aria-label="Menu" i]
+    div.css-175oi2r.r-150rngu.r-eqz5dr.r-16y2uox.r-1wbh5a2.r-11yh6sk.r-1rnoaur.r-agouwx {
+      user-select: text !important; 
+      & > div.css-175oi2r {
+        user-seletc: text !important; 
+        & > div.is_Column._dsp-flex {
+          user-seletc: text !important; 
+          & > h1 {
+            user-select: text !important;
+          }
+        }
+      }
+    }
+  }    
 `);
 CSS_Elements['textArea Styles'] = GM_addStyle(`
   /* TextArea Styling.
@@ -1384,6 +1470,32 @@ CSS_Elements['textArea Styles'] = GM_addStyle(`
     --vh: 11.76px !important;
   }
 `);
+CSS_Elements['gearMenu'] = GM_addStyle(`
+
+  div[id^=gearMenu-Content-Adventure-TS], /* */
+  div[id^=gearMenu-Content-Gameplay-TS] {
+    /* overflow-y: auto !important; /* */
+    /* scrollbar-gutter: stable !important; /* */
+    flex-grow: 1 !important;
+    flex-shrink: 1 !important;
+    padding-right: 0px !important; /* */
+    & ._pb-1481558276 {
+        padding-bottom: 8px !important; /* */
+    }
+    & ._h-606181883 {
+        height: 8px !important; /* */
+    }
+  }
+  div[id^=gearMenu-Content-Gameplay-Pill-Content-TS],
+  div[id^=gearMenu-Content-Adventure-Pill-Content-TS] {
+    overflow-y: auto !important; /* */
+    scrollbar-gutter: stable !important; /* */
+    flex-grow: 1 !important; /* */
+    flex-shrink: 1 !important; /* */
+  }
+}
+`);
+
 //console.log("CSS_Elements: ", CSS_Elements);
 /**
  * Handles changes detected by a MutationObserver.
@@ -2252,7 +2364,7 @@ if (cfg.get('Fix_Actions') === true) {
     }
   });
 }
-
+const flameIcon = document.getElementById('game-blur-button'); // Get the flame icon element
 /**
  * Function to update the credits being used indicators in the UI.
  *
@@ -2275,13 +2387,15 @@ function changeCreditUseIndicator(indicatorFlag) {
   const theDialog = document.querySelector(
     'div#__next div[id^="TheDialog" i]'
   );
-  const creditsOn = "red";
-  const creditsOff = "";
+  const creditsOnColor = "red";
+  const creditsOffColor = "";
   if (flameIcon) {
     if (indicatorFlag > 0) {
-      flameIcon.style.color = creditsOn; // Change to red if value is greater than 0
+      flameIcon.style.color = creditsOnColor; // Change to red if value is greater than 0
+      flameIcon.parentNode.parentNode.title = `Context Credits Used: ${indicatorFlag}/action`; // Reset to default color if value is 0 or less
     } else {
-      flameIcon.style.color = creditsOff; // Reset to default color if value is 0 or less
+      flameIcon.style.color = creditsOffColor; // Reset to default color if value is 0 or less
+      flameIcon.parentNode.parentNode.title = 'Context Credits Used: 0/action'; // Reset to default color if value is 0 or less
     }
   }
   if (commandBar) {
@@ -2290,11 +2404,11 @@ function changeCreditUseIndicator(indicatorFlag) {
 
     if (indicatorFlag > 0) {
       textElements.forEach(element => {
-        element.style.color = creditsOn;
+        element.style.color = creditsOnColor;
       });
     } else {
       textElements.forEach(element => {
-        element.style.color = creditsOff;
+        element.style.color = creditsOffColor;
       });
     }
   }
@@ -2304,11 +2418,11 @@ function changeCreditUseIndicator(indicatorFlag) {
 
     if (indicatorFlag > 0) {
       textElements.forEach(element => {
-        element.style.color = creditsOn;
+        element.style.color = creditsOnColor;
       });
     } else {
       textElements.forEach(element => {
-        element.style.color = creditsOff;
+        element.style.color = creditsOffColor;
       });
     }
   }
@@ -2318,11 +2432,11 @@ function changeCreditUseIndicator(indicatorFlag) {
 
     if (indicatorFlag > 0) {
       textElements.forEach(element => {
-        element.style.color = creditsOn;
+        element.style.color = creditsOnColor;
       });
     } else {
       textElements.forEach(element => {
-        element.style.color = creditsOff;
+        element.style.color = creditsOffColor;
       });
     }
   }
@@ -2332,91 +2446,197 @@ function changeCreditUseIndicator(indicatorFlag) {
 
     if (indicatorFlag > 0) {
       textElements.forEach(element => {
-        element.style.color = creditsOn;
+        element.style.color = creditsOnColor;
       });
     } else {
       textElements.forEach(element => {
-        element.style.color = creditsOff;
+        element.style.color = creditsOffColor;
       });
     }
   }
 
 }
+if (0) {
+  // Example for how to get the values of a slider.
+
+  const AISettings_StoryGen_Model_Slider_Selector = ' '
+    + 'div[aria-label="Story Generator" i] ' // The Story Gen Title element.
+    + ' + div' // The mext sibling is the Story Gen Content div.
+    //
+    + ' div[aria-label="Memory System" i]' // The Memory System Title Element.
+    + ' + div' // The Memory System Content element.
+    // There could be intervening elements here in the tree.
+    + ' div[role="slider" i]' // The specific model's container for button and info.
+    + ', '
+    + ' div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
+    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
+    + ' > div.is_Column:only-child' // A wrapper.
+    + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
+    + ' div:has(img[alt="credits" i]) + p' // The mext sibling is the Story Gen content window.
+    ;
+  waitForKeyElements(AISettings_StoryGen_Model_Slider_Selector, (sliderNodes) => {
+    const sliderNode = sliderNodes[0]; // Get the first matching element
+
+    console.log("sliderNodes: ", sliderNodes);
+
+    const sliderObserver = new MutationObserver((mutationsList, observer) => {
+      for (const mutation of mutationsList) {
+        const currentValue = sliderNode.getAttribute('aria-valuenow');
+        const maxValue = sliderNode.getAttribute('aria-valuemax');
+        const minValue = sliderNode.getAttribute('aria-valuemin');
+
+        console.log("mutation.target: ", mutation.target);
+      }
+    });
+
+    // Start observing the modelContainer for changes in its child nodes
+    //sliderObserver.observe(sliderNode, { childList: true, subtree: true, characterData: true });
+    const mo_opts = {
+      //childList: true
+      //, subtree: true
+      //, characterData: true 
+      attributes: true
+      , attributeFilter: ['aria-valuemax', 'aria-valuemin', 'aria-valuenow']
+    };
+    sliderObserver.observe(sliderNode, mo_opts);
+  }, false);
+}
+
+if (0) {
+  // How to get the credits indicator. But doesn't work as it can't detect a missing credits indicator.
+  const AISettings_StoryGen_Model_Container_Selector =
+    'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
+    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
+    + ' > div.is_Column:only-child' // A wrapper.
+    + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
+    + ' div:has(img[alt="credits" i]) + p' // The mext sibling is the Story Gen content window.
+    ;
+  waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (creditsElements) => {
+    if (!creditsElements || !creditsElements?.length) {
+      console.log("creditElements not defined.");
+      return;
+    }
+    //console.log("creditsElements found: ", creditsElements);
+    const creditsElement = creditsElements[0]; // Get the first matching element
+    console.log("creditsElements: ", creditsElements);
+
+    creditsElement.dataset.uniqueId = Date.now(); // Using a timestamp as a simple unique ID
+
+    function getCredits(creditsElement) {
+      const credits = creditsElement?.textContent;
+      return parseInt(credits) || 0;
+    }
+
+    function updateFlameIcon(creditsElement) {
+      if (creditsElement) {
+        const credits = getCredits(creditsElement); // Use textContent
+        //console.log("Credits:", credits);
+        //console.log("creditsElement found: ", creditsElement);
+        changeCreditUseIndicator(credits);
+      } else {
+        // If creditsElement is not found (e.g., on a free Story Generator)
+        changeCreditUseIndicator(0); // Set flame icon to default color
+      }
+    }
+
+    // Call updateFlameIcon initially
+    updateFlameIcon(creditsElement);
+
+
+    const creditsObserver = new MutationObserver((mutationsList, observer) => {
+      console.log("mutation mutation 0.");
+      for (const mutation of mutationsList) {
+        console.log("mutation: ", mutation);
+        if (mutation.type === 'characterData') {
+          console.log("mutation mutation 2.");
+          updateFlameIcon(mutation.target);
+        }
+      }
+    });
+
+    // Start observing the modelContainer for changes in its child nodes
+    //creditsObserver.observe(creditsElement, { subtree: true, characterData: true, attributes: true });
+    //childList: true
+    creditsObserver.observe(creditsElement, { childList: true, subtree: true, characterData: true });
+  }, false);
+}
 /*
 ** In the react DOM, this is a somewhat stable element to wait for. Once this is active,
 ** we use a mutation observer to watch for credits above 0 being used and notify the UI.
 */
-const AISettings_StoryGen_Model_Container_Selector =
-  'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
-  + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
-  + ' > div.is_Column:only-child' // A wrapper.
-  + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
-  ;
-waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (containerNodes) => {
-  if (!containerNodes || !containerNodes?.length) {
-    console.log("containerNodes not defined.");
-    return;
-  }
-  //console.log("containerNodes found: ", containerNodes);
-  const modelContainer = containerNodes[0]; // Get the first matching element
 
-  function getCreditsElement() {
-    const creditsButton = $(modelContainer).find("div[role=button]:has(> p:contains('Credits'))")[0];
-    //console.log("creditsButton", creditsButton);
-    if (creditsButton) {
-      return creditsButton.querySelector('& > div > p');
+if (1) {
+  const AISettings_StoryGen_Model_Container_Selector =
+    'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
+    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
+    + ' > div.is_Column:only-child' // A wrapper.
+    + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
+    ;
+  waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (containerNodes) => {
+    if (!containerNodes || !containerNodes?.length) {
+      console.log("containerNodes not defined.");
+      return;
     }
-    return null;
-  }
+    //console.log("containerNodes found: ", containerNodes);
+    const modelContainer = containerNodes[0]; // Get the first matching element
 
-  function getCredits(creditsElement) {
-    const credits = creditsElement?.textContent;
-    return parseInt(credits) || 0;
-  }
-
-  let creditsElement = getCreditsElement();
-  //console.log("creditsElement found: ", creditsElement);
-
-  function updateFlameIcon() {
-    if (creditsElement) {
-      const credits = getCredits(creditsElement); // Use textContent
-      //console.log("Credits:", credits);
-      //console.log("creditsElement found: ", creditsElement);
-      changeCreditUseIndicator(credits);
-    } else {
-      // If creditsElement is not found (e.g., on a free Story Generator)
-      changeCreditUseIndicator(0); // Set flame icon to default color
-    }
-  }
-
-  // Call updateFlameIcon initially
-  updateFlameIcon();
-  const creditsObserver = new MutationObserver((mutationsList, observer) => {
-    //console.log("mutation mutation 0.");
-    for (const mutation of mutationsList) {
-      //console.log("mutation: ", mutation);
-      if (mutation.type === "childList") {
-        // Re-query creditsElement whenever there's a childList mutation
-        creditsElement = getCreditsElement();
-        //console.log('new credits element: ', creditsElement);
-        updateFlameIcon();
+    function getCreditsElement() {
+      const creditsButton = $(modelContainer).find("div[role=button]:has(> p:contains('Credits'))")[0];
+      //console.log("creditsButton", creditsButton);
+      if (creditsButton) {
+        return creditsButton.querySelector('& > div > p');
       }
+      return null;
+    }
 
-      if (
-        (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
-        creditsElement && // Check if creditsElement is defined
-        mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
-      ) {
-        //console.log("mutation mutation 2."); 
-        updateFlameIcon();
+    function getCredits(creditsElement) {
+      const credits = creditsElement?.textContent;
+      return parseInt(credits) || 0;
+    }
+
+    let creditsElement = getCreditsElement();
+    //console.log("creditsElement found: ", creditsElement);
+
+    function updateFlameIcon() {
+      if (creditsElement) {
+        const credits = getCredits(creditsElement); // Use textContent
+        //console.log("Credits:", credits);
+        //console.log("creditsElement found: ", creditsElement);
+        changeCreditUseIndicator(credits);
+      } else {
+        // If creditsElement is not found (e.g., on a free Story Generator)
+        changeCreditUseIndicator(0); // Set flame icon to default color
       }
     }
-  });
 
-  // Start observing the modelContainer for changes in its child nodes
-  creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
-}, false);
+    // Call updateFlameIcon initially
+    updateFlameIcon();
+    const creditsObserver = new MutationObserver((mutationsList, observer) => {
+      //console.log("mutation mutation 0.");
+      for (const mutation of mutationsList) {
+        //console.log("mutation: ", mutation);
+        if (mutation.type === "childList") {
+          // Re-query creditsElement whenever there's a childList mutation
+          creditsElement = getCreditsElement();
+          //console.log('new credits element: ', creditsElement);
+          updateFlameIcon();
+        }
 
+        if (
+          (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
+          creditsElement && // Check if creditsElement is defined
+          mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
+        ) {
+          //console.log("mutation mutation 2."); 
+          updateFlameIcon();
+        }
+      }
+    });
+
+    // Start observing the modelContainer for changes in its child nodes
+    creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
+  }, false);
+}
 /**
  * A helper function for inserting a string before an ID timestamp.
  *
@@ -2426,130 +2646,264 @@ waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (containerNodes
 function appendBeforeTimestamp(idString, stringToAppend) {
   return idString.replace(/_TS(\d+)$/, `${stringToAppend}_TS$1`);
 }
-/*
-** In the react DOM, these are somewhat stable elements to wait for. 
-** The only purpose is to create unique IDs for the gearMenu elements.
-** Other code uses the IDs, including CSS.
-*/
-//const gameScreenSelector =
-//'body > div.app-root > div#__next > div > span > div:nth-child(2)';
-//const gameScreenNode = document.querySelector(gameScreenSelector);
+/**
+ * A helper function for inserting a string before an ID timestamp.
+ *
+ * @param {string} idString - The string top insert into.
+ * @param {string} stringToAppend - The string insert before the Time Stamp (TS\d+).
+ */
+function appendBeforeTimestampDashz(idString, stringToAppend) {
+  return idString.replace(/-TS(\d+)$/, `-${stringToAppend}-TS$1`);
+}
+/**
+ * Appends one or more strings before the timestamp dash in an ID string.
+ *
+ * @param {string} idString - The original ID string containing a timestamp dash (e.g., "someId-TS1234567890").
+ * @param {...string} stringsToAppend - One or more strings to append before the timestamp dash.
+ * @returns {string} - The modified ID string with the appended strings.
+ */
+function appendBeforeTimestampDash(idString, ...stringsToAppend) {
+  const appendedString = stringsToAppend.join('-'); // Join the strings with dashes
+  return idString.replace(/-TS(\d+)$/, `-${appendedString}-TS$1`);
+}
 
-const gearMenuSelector =
-  '#__next > div > span > div:nth-child(2) > div:nth-child(2), ' +  /* Prod */
-  '#__next > div > span > span > div:nth-child(2) > div:nth-child(2)'; /* Beta/Alpha */
+/**
+ * Removes the timestamp suffix (e.g., "-TS1234567890") from an ID string.
+ * 
+ * @param {string} idString - The ID string potentially containing a timestamp suffix.
+ * @returns {string} The ID string with the timestamp suffix removed, if present.
+ */
+function stripTimestampSuffix(idString) {
+  return idString.replace(/-TS\d+$/, '');
+}
 
-waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
-  console.log(gearMenuNodes);
-  const gearMenuNode = gearMenuNodes[0];
-  const timestamp = "TS" + Date.now();
+/**
+ * Appends one or more strings before the timestamp dash in an ID string.
+ *
+ * @param {string} idString - The original ID string containing a timestamp dash (e.g., "someId-TS1234567890").
+ * @param {...string} stringsToAppend - One or more strings to append before the timestamp dash.
+ * @returns {string} - The modified ID string with the appended strings.
+ */
+function appendBeforeTimestampDash(idString, ...stringsToAppend) {
+  const appendedString = stringsToAppend.join('-'); // Join the strings with dashes
+  return idString.replace(/-TS(\d+)$/, `-${appendedString}-TS$1`);
+}
+if (1) {
+  /*
+  ** In the react DOM, these are somewhat stable elements to wait for. 
+  ** The only purpose is to create unique IDs for the gearMenu elements.
+  ** Other code uses the IDs, including CSS.
+  */
+  //const gameScreenSelector =
+  //'body > div.app-root > div#__next > div > span > div:nth-child(2)';
+  //const gameScreenNode = document.querySelector(gameScreenSelector);
 
-  gearMenuNode.id = 'gearMenuNode_' + timestamp;
+  const gearMenuSelector =
+    //'#__next > div > span > div:nth-child(2) > div:nth-child(2), ' +  
+    '#__next > div > span > span > div:nth-child(2) > div:nth-child(2)'; /* Prod/Beta/Alpha */
 
-  const gearMenu_Wrapper = gearMenuNode?.firstChild;
-  gearMenu_Wrapper.id = 'gearMenu_Wrapper_' + timestamp;
-
-  const gearMenu = gearMenu_Wrapper?.firstChild;
-  gearMenu.id = 'gearMenu_' + timestamp;
-
-  const gearMenu_Header = gearMenu?.children[0];
-  gearMenu_Header.id = 'gearMenu_Header_' + timestamp;
-
-  let gearMenu_Content = null;
-  //let gearMenu_Content = gearMenu?.children[1];
-  //gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
-
-  /**
-   * Called by the mutation observer on gearMenu that hunts for a new gearMenu_Content.
-   * Waits for sub tree elements for the Pill Menu and the Pill Content.
-   * 
-   * @param {HTMLElement} gearMenu - The the div element containing the modified or replaced gearMenu_Content element.
-   */
-  function updateGearMenu_Content(gearMenu) {
-    // // The child list of gearMenu has changed, so re-run waitForKeyElements
-    // const tmp = gearMenu?.children[1];
-    // if (!tmp) {
-    //   console.warn("No content node for gear menu!");
-    //   return;
-    // }
-    // gearMenu_Content = tmp;
-    // gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
-    //'&:has(& > :nth-child(2)), div:has(&>div[aria-label*="AI settings"]), div:has(&>div[aria-label*="Display settings"])',
-    console.log("gearMenu: ", gearMenu);
-
-    gearMenu_Content = gearMenu?.children[1];
-
-    gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
-    console.log("gearMenu_Content: ", gearMenu_Content);
-
-    //const gearMenu_Content_Selector = `#${gearMenu_Content.id}:has(:nth-child(2))`;
-    const gearMenu_Content_Selector = `div[id^="gearMenu_Content_"]:has(:nth-child(2))`
-      + `, div[aria-label*="AI settings"]`
-      + `, div[aria-label*="Display settings"]`
-      ;
-    console.log("gearMenu_Content_Selector: ", gearMenu_Content_Selector);
-
-    //const foo = gearMenu.querySelectorAll(gearMenu_Content_Selector);
-    const foo = $(gearMenu).find(gearMenu_Content_Selector);
-    console.log("foo: ", foo);
-
-    waitForSubtreeElements(
-      gearMenu_Content_Selector,
-      (matchingElements) => {
-        console.log("matchingElements: ", matchingElements);
-
-        // const matchingElement = matchingElements.length > 0 ? matchingElements[0] : null;
-        matchingElements.forEach(matchingElement => {
-          if (matchingElement) {
-            if (matchingElement.children.length >= 2 && matchingElement === gearMenu_Content) {
-              const gearMenuContentName = "_Adventure";
-              gearMenu_Content.id = appendBeforeTimestamp(gearMenu.id, "_Content" + gearMenuContentName);
-
-              gearMenu_Content.children[0].id = appendBeforeTimestamp(gearMenu_Content.id, "_Pill_Header");
-              // Eventually "Content" would be Plot, StoryCard, or Details.
-              gearMenu_Content.children[1].id = appendBeforeTimestamp(gearMenu_Content.id, "_Pill_Context");
-            }
-            else if (matchingElement.ariaLabel && matchingElement.ariaLabel.match(/AI settings/i)) {
-              const pillNode = matchingElement.parentNode;
-              pillNode.id = appendBeforeTimestamp(gearMenu_Content.id, "_Pill");
-              gearMenu_Content.id = appendBeforeTimestamp(gearMenu.id, "_Content" + "_Gameplay");
-              pillNode.firstChild.id = appendBeforeTimestamp(pillNode.id, "_Header");
-              matchingElement.id = appendBeforeTimestamp(pillNode.id, "_AI_Settings");
-            }
-            else if (matchingElement.ariaLabel && matchingElement.ariaLabel.match(/Display settings/i)) {
-              const pillNode = matchingElement.parentNode;
-              pillNode.id = appendBeforeTimestamp(gearMenu_Content.id, "_Pill");
-              gearMenu_Content.id = appendBeforeTimestamp(gearMenu.id, "_Content" + "_Gameplay");
-              pillNode.firstChild.id = appendBeforeTimestamp(pillNode.id, "_Header");
-              matchingElement.id = appendBeforeTimestamp(pillNode.id, "__Display");
-            } else {
-              console.log("No matching selector: ", matchingElement)
-            }
-          }
-        });
-      },
-      gearMenu,
-      true, true
-    );
-
-  }
-
-  updateGearMenu_Content(gearMenu);
-
-  // Create the mutation observer
-  const gearMenuObserver = new MutationObserver((mutationsList, observer) => {
-    for (const mutation of mutationsList) {
-      //if (mutation.type === 'childList' && mutation.target === gearMenu) {
-      if (mutation.target === gearMenu) {
-        updateGearMenu_Content(gearMenu);
-      }
+  waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
+    //console.log(gearMenuNodes);
+    if (gearMenuNodes.length < 1) {
+      console.warn("Missing GearMenuNode, Bailing.");
+      return;
     }
-  });
 
-  // Start observing gearMenu for childList changes
-  gearMenuObserver.observe(gearMenu, { childList: true, subtree: true });
+    const gearMenuNode = gearMenuNodes[0];
+    const timestamp = "-TS" + Date.now();
 
-}, false);
+    const gearBase = 'gearMenu';
+
+    gearMenuNode.id = `${gearBase}Node` + timestamp;
+
+    const gearMenu_Wrapper = gearMenuNode?.firstChild;
+    gearMenu_Wrapper.id = `${gearBase}-Wrapper` + timestamp;
+
+    const gearMenu = gearMenu_Wrapper?.firstChild;
+    if (!gearMenu) {
+      console.warn("Missing GearMenu Wrapper, Bailing.");
+      return;
+    }
+    gearMenu.id = `${gearBase}` + timestamp;
+
+    const gearMenu_Header = gearMenu?.children[0];
+    gearMenu_Header.id = appendBeforeTimestampDash(gearMenu.id, "Header");
+
+    let gearMenu_Content = null;
+    //let gearMenu_Content = gearMenu?.children[1];
+    //gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
+
+    /**
+     * Called by the mutation observer on gearMenu that hunts for a new gearMenu_Content.
+     * Waits for sub tree elements for the Pill Menu and the Pill Content.
+     * 
+     * @param {HTMLElement} gearMenu - The the div element containing the modified or replaced gearMenu_Content element.
+     */
+    function updateGearMenu_Content(gearMenu) {
+      // // The child list of gearMenu has changed, so re-run waitForKeyElements
+      // const tmp = gearMenu?.children[1];
+      // if (!tmp) {
+      //   console.warn("No content node for gear menu!");
+      //   return;
+      // }
+      // gearMenu_Content = tmp;
+      // gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
+      //'&:has(& > :nth-child(2)), div:has(&>div[aria-label*="AI settings"]), div:has(&>div[aria-label*="Display settings"])',
+      console.log("gearMenu: ", gearMenu);
+
+      gearMenu_Content = gearMenu?.children[1];
+
+      if (!gearMenu_Content) {
+        console.warn("Cannot get gearMenu content div from gearMenu: ", gearMenu);
+      }
+
+      gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content");
+      console.log("gearMenu-Content: ", gearMenu_Content);
+
+      //stripTimestampSuffix(idString)
+
+      //const gearMenu_Content_Selector = `#${gearMenu_Content.id}:has(:nth-child(2))`;
+      const gearMenu_Content_Selector = ''
+        + `div[id^="${gearBase}-Content-"]:has(:nth-child(2):last-child)`
+        //+ `, div[aria-label*="AI settings"]`
+        //+ `, div[aria-label*="Display settings"]`
+        ;
+      const gearMenu_Content_Selectorz = ''
+        + `  div[id^="${gearBase}-TS"]:has(:nth-child(2) div[aria-label*="selected tab plot" i])`
+        + `, div[id^="${gearBase}-TS"]:has(:nth-child(2) div[aria-label*="selected tab plot" i])`
+        + `, div[aria-label*="AI settings"]`
+        + `, div[aria-label*="Display settings"]`
+        ;
+
+
+
+      console.log("gearMenu_Content_Selector: ", gearMenu_Content_Selector);
+
+      //const foo = gearMenu.querySelectorAll(gearMenu_Content_Selector);
+      const foo = $(gearMenu).find(gearMenu_Content_Selector);
+      console.log("foo: ", foo);
+
+      waitForSubtreeElements(
+        gearMenu_Content_Selector,
+        (matchingElements) => {
+          console.log("matchingElements: ", matchingElements);
+
+          // const matchingElement = matchingElements.length > 0 ? matchingElements[0] : null;
+          matchingElements.forEach(matchingElement => {
+            if (matchingElement) {
+              console.log("matchingElement: ", matchingElement);
+              //const foo = matchingElement.querySelector('div[aria-label="AI settings"i]');
+              //console.log("AI settings match: ", foo);
+              let match = null;
+              if (match = matchingElement.querySelector('div[aria-label="AI settings" i]')) {
+                const pillNode = match.parentNode;
+                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Gameplay");
+                pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
+                pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
+                match.id = appendBeforeTimestampDash(pillNode.id, "AI_Settings");
+                match.dataset.uniqueId = "TS"+Date.now();
+              }
+              else if (match = matchingElement.querySelector('div[aria-label="Display settings" i]')) {
+                const pillNode = match.parentNode;
+                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Gameplay");
+                pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
+                pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
+                match.id = appendBeforeTimestampDash(pillNode.id, "Display_Settings");
+                match.dataset.uniqueId = "TS"+Date.now();
+              }
+ /*             
+              else if (matchingElement.ariaLabel && matchingElement.ariaLabel.match(/Display settings/i)) {
+                const pillNode = matchingElement.parentNode;
+                pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
+                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Gameplay");
+                pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
+                matchingElement.id = appendBeforeTimestampDash(pillNode.id, "Content", "Display");
+              }
+                */
+              else if (matchingElement.children.length === 4) { // This is for production only
+                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
+
+                gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
+                // Eventually "Content" would be Plot, StoryCard, or Details.
+                const pill_Content = $(gearMenu_Content).find('div[aria-hidden][aria-hidden!="true"]');
+                if (pill_Content) {
+                  pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
+                  console.log("pill_Content: ", pill_Content);
+                } else {
+                  console.log("Cant find pill content.");
+                }
+                //gearMenu_Content.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
+              } else if (matchingElement.children.length === 2) { // This is for alpha only.
+                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
+                gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
+                const gearMenu_Content_Pill_Content = gearMenu_Content.children[1];
+                gearMenu_Content_Pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
+                if (gearMenu_Content_Pill_Content.querySelector('img[alt="Content Image" i]')) {
+                  gearMenu_Content_Pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content", "Details");
+                }
+                // Eventually "Content" would be Plot, StoryCard, or Details.
+              } else if (matchingElement.children.length === 1) { 
+                //gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
+                //gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
+                //gearMenu_Content.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
+                // Eventually "Content" would be Plot, StoryCard, or Details.
+              } else {
+
+                console.log("No matching selector: ", matchingElement)
+              }
+            }
+          });
+        },
+        gearMenu,
+        true, true
+      );
+
+    }
+    let count = 0;
+    let gearMenuObserver = null;
+    updateGearMenu_Content(gearMenu);
+    const gearMenuObserverOptions =  { childList: true, subtree: true, attributes: true };
+    // Create the mutation observer
+    gearMenuObserver = new MutationObserver((mutationsList, observer) => {
+      for (const mutation of mutationsList) {
+        //if (mutation.type === 'childList' && mutation.target === gearMenu) {
+        //if (mutation.target === gearMenu) {
+          console.log("mutation: ", mutation);
+          //console.log("observer: ", observer);
+          observer.disconnect();
+          updateGearMenu_Content(gearMenu); 
+          gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
+        //} else {
+          if (!(count++ % 100)){
+            console.log("Cnt:", count , " Other mutation MutationEvent: ", mutation);
+        //  }
+        }
+      }
+    });
+    // Start observing gearMenu for childList changes
+    gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
+  }, false);
+}
+if (cfg.get('Reward_Claimer') === true) {
+  waitForKeyElements('#__next div[aria-label="Daily Rewards" i]:has(+ div)', (dailyRewards) => {
+    const dailyReward = dailyRewards[0];
+    //console.log("Found the flagged rewards.")
+    delayedClicks([
+      //() => console.log("Sending Daily Reward Click."),
+      () => dailyReward.click(),
+      //() => console.log("Sending reward item click."),
+      () => {
+        waitForKeyElements('div[aria-label="menu" i] div[aria-label*="Claim Reward" i]',
+          (reward) => {
+            console.log("reward: ", reward);
+            reward.click();
+          },
+          true);
+      }
+      //, () => console.log("Sent the clicks.")
+    ]);
+  }, false);
+}
 
 /*
 ** These are helper functions for finding the common sub node structures within
@@ -2558,8 +2912,13 @@ waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
 ** so ID's can be assigned. 
 */
 
-// If a node is a span, skip one layer returning the first child.
-// Otherwise return the node.
+/**
+  * If a node is a span, skip one layer returning the first child.
+  * Otherwise return the node.
+  * 
+  * @param {HTMLElement} node - The the div element containing the span wrapper to skip.
+  * @returns {HTMLElement|null} - Return the first element of a span.
+  */
 function skipSpan(node) {
   const tagName = node.tagName.toLowerCase();
   if (tagName === 'span') {
@@ -2569,13 +2928,23 @@ function skipSpan(node) {
   }
 }
 
-// Some modal nodes have an inner div wrapper. Skip it or return null.
+/**
+  * Some modal nodes have an inner div wrapper. Skip it or return null.
+  * 
+  * @param {HTMLElement} modalNode - The modal node to extract inner content from.
+  * @returns {HTMLElement|null} - The inner content node if found, or null if the modal structure is unexpected.
+  */
 function getModalInner(modalNode) {
   /* The entire modal node contents may be wrapped in a div. */
   return (modalNode.children.length == 1) ? modalNode.firstChild : null;
 }
 
-// Return a modal node header.
+/**
+  * Given a modalNode, return the modal node header.
+  * 
+  * @param {HTMLElement} modalNode - The modal node to extract the header from.
+  * @returns {HTMLElement} - Return the modal node header or the modal node itself.
+  */
 function getModalHeader(modalNode) {
   // The entire modal node contents may be wrapped in a div.
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
@@ -2584,28 +2953,53 @@ function getModalHeader(modalNode) {
   return modalHeaderInner?.firstChild;
 }
 
-// Return a modal node header title.
+/**
+  * Given a modalNode, return the modal node title.
+  * 
+  * @param {HTMLElement} modalNode - The modal node to extract the title from.
+  * @returns {HTMLElement|null} - Return the modal node header or null.
+  */
 function getModalHeader_Title(modalNode) {
   return getModalHeader(modalNode)?.children[0];
 }
 
-// Return a modal node header menu (usually a pill menu).
+/**
+  * Given a modalNode, return the modal node header menu (usually a pill menu).
+  * 
+  * @param {HTMLElement} modalNode - The the div element that is the potential wrapper.
+  * @returns {HTMLElement|null} - Return the modal menu or null.
+  */
 function getModalHeader_Menu(modalNode) {
   return getModalHeader(modalNode)?.children[1];
 }
 
-// Return a modal node content section (the block under the header).
+/**
+  * Given a modalNode, return the modal node content div (the block under the header).
+  * 
+  * @param {HTMLElement} modalNode - The the div element that is holds the modal node content block.
+  * @returns {HTMLElement|null} - Return the modal content div or null.
+  */
 function getModalContent(modalNode) {
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
   return skipSpan(modalNodeInner?.children[1]);
 }
 
-// Return a modal node inner content section (many modals have inner content wrappers).
+/**
+  * Given a modalNode, return the modal node inner content div (many modals have inner content wrappers).
+  * 
+  * @param {HTMLElement} modalNode - The the div element that is the modal node.
+  * @returns {HTMLElement|null} - Return the modal content inner div or null.
+  */
 function getModalContent_Inner(modalNode) {
   return skipSpan(getModalContent(modalNode).firstChild);
 }
 
-// Retirm a modal node footer (Most do not have footers.).
+/**
+  * Given a modalNode, return the modal node footer div (Most do not have footers).
+  * 
+  * @param {HTMLElement} modalNode - The the div element that is the potential wrapper.
+  * @returns {HTMLElement|null} - Return the modal footer div or null.
+  */
 function getModalFooter(modalNode) {
   const modalNodeInner = getModalInner(modalNode) ?? modalNode;
   if (modalNodeInner?.children.length < 3) {
