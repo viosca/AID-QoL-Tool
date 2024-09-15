@@ -292,7 +292,7 @@ const cfg = new MonkeyConfig({
 
     Reward_Claimer: { type: 'checkbox', default: true }, // Enable waiting for new rewards (scales and avatars) and claim them.
     Save_Raw_Text: { type: 'checkbox', default: false }, // Save raw text rather than removing '>'
-    Fix_Actions: { type: 'checkbox', default: false }, // Fix editing past actions.
+    Fix_Actions: { type: 'checkbox', default: true }, // Fix editing past actions.
     Action_Cleaner: { type: 'checkbox', default: false }, // Cleanup the current action.
     Do_Action_Verb: { type: 'text', default: null }, // RFU
 
