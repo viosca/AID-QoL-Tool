@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         AID-QoL-Tool
-// @version      2.0.0
-// @description  A QoL Extreme script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows.
+// @name         AID-QoL-Toolc
+// @version      2.0.0d
+// @description  An Enhanced QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows, etc.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -13,6 +13,8 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @grant        GM_webRequest
 // @license      MIT
 // @namespace    https://github.com/viosca/AID-QoL-Tool/tree/WIP
 // @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/WIP/AID-QoL-Tool.user.js
@@ -23,89 +25,15 @@
 
 // Feature
 
-
-
 /// @downloadURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.user.js
 /// @updateURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.meta.js
 /// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
 
-const $ = jQuery.noConflict(true);
-
-let CSS_Elements = {};
-if (0) {
-  document.addEventListener('DOMContentLoaded', () => {
-
-    const popupHtml = `
-<div id="disclaimerPopup" style="visibility: visible;">
-  <div class="popup-content">
-    <h3>Disclaimer</h3>
-    <hr>
-    <p>I understand using this plugin modifies the AI Dungeon (AID) website code in the browser. It may introduce problems with the display of the website. If I find what looks like a bug in the site, I will disable this plugin and verify the bug is actually with the website before reporting it.</p>
-    <hr>
-    <p>Furthermore, the AI Dungeon website can change without notice breaking this tampermonkey script. AI Dungeon is under no obligation to users of this script to notify users of changes that may break it.</p>
-    <hr>
-    <button id="closePopup">Close</button>
-  </div>
-</div>
-`;
-
-    CSS_Elements['QOL_Disclaimer'] = GM_addStyle(`
-  #disclaimerPopup {
-    position: fixed;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    visability: visable;
-    z-index: 1000000; /* Ensure it's on top of other elements */
-    top: 50%;
-    transform: translateY(-50%); 
-    top: 0;
-    left: 0;
-    /* width: 30%; /* */
-    /* height: 100%; /* */
-  }
-
-  .popup-content {
-    background-color: black;
-    color: white;
-    border: 1px solid gray;
-    padding: 20px;
-    width: 35%;
-    border-radius: 5px;
-    border-color: white;
-    worder-width: 1px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    position: relative; /* Needed for the calc() trick */
-    /* top: 50%; /* */
-    /* transform: translateY(-50%);  /* */
-  }
-
-  #closePopup {
-    /* Style the close button as needed */
-  }
-  `);
-    localStorage.removeItem('disclaimerShown');
-
-    // Check if the popup has been shown before
-    if (!localStorage.getItem('disclaimerShown')) {
-      document.body.innerHTML += popupHtml;
-      // Show the popup
-      document.getElementById('disclaimerPopup').style.display = 'flex';
-
-      // Handle close button click
-      document.getElementById('closePopup').addEventListener('click', () => {
-        //document.getElementById('disclaimerPopup').style.display = 'none';
-        document.getElementById('disclaimerPopup').style.visibility = 'hidden';
-        localStorage.setItem('disclaimerShown', 'true'); // Mark popup as shown
-      });
-    }
-  });
-}
+$ = jQuery.noConflict(true);
 
 /**
  * Attempts to retrieve and parse JSON data from a script tag with the ID '__NEXT_DATA__'.
- * 
+ *
  * @returns {Object|undefined} The parsed JSON data if found and successfully parsed, otherwise undefined.
  */
 function getNextData() {
@@ -124,465 +52,44 @@ function getNextData() {
 // Relevant scenario or adventure site info is in __NEXT_DATA__.
 // I.e. The scenario/adventure id, name, etc...
 const nextData = getNextData();
-
-
-function addEventListeners(element, events, handler) {
-  events.forEach((event) => {
-    if (event.startsWith('touch')) {
-      element.addEventListener(event, handler, { passive: true }); // Mark touch events as passive
-    } else {
-      element.addEventListener(event, handler); // Other events can be added normally
-    }
-  });
-}
-if (0) {
-  function disableCustomContextMenu(button) {
-    console.log("called disableCustomContextMenu");
-    // Remove existing listeners (optional, but good practice)
-    button.removeEventListener('contextmenu', event => { });
-
-    // Add listener using capture phase for higher priority
-    button.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-      event.stopPropagation(); // Stop propagation to prevent AIDungeon's listener from triggering
-    }, true); // true for capture phase
-  }
-
-  // Mutation observer for dynamically added buttons
-  const buttonObserver = new MutationObserver((mutationsList, observer) => {
-    for (const mutation of mutationsList) {
-      if (mutation.type === 'childList') {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeName === 'DIV' && node.matches('[role="button"]')) {
-            disableCustomContextMenu(node);
-          }
-        }
-      }
-    }
-  });
-
-  buttonObserver.observe(document.body, { childList: true, subtree: true });
-
-}
-
-/**
- * Waits for elements matching a given selector to appear within a target node's subtree, then executes a callback.
- * 
- * @param {string} selector - A CSS selector to identify the desired elements.
- * @param {function} callback - A function to be executed when the elements are found. It receives an array of the found elements as its argument.
- * @param {Node} targetNode - The DOM node within whose subtree to search for the elements.
- * @param {boolean} [runImmediately=false] - If true, the callback is executed immediately if elements are already present; otherwise, it waits for new elements to appear.
- */
-function waitForSubtreeElements(selector, callback, targetNode, runImmediately = false, keepObserverRunning = false) {
-  function mutationObserverCallback(mutationsList, observer) {
-    const elements = targetNode.querySelectorAll(selector);
-    if (elements.length > 0) {
-      callback(elements);
-      if (!keepObserverRunning) {
-        observer.disconnect();
-      }
-    }
-  }
-  let observer = new MutationObserver(mutationObserverCallback);
-  observer.observe(targetNode, { childList: true, subtree: true });
-  if (runImmediately) {
-    mutationObserverCallback([], observer);
-  }
-
-  // Return a function to disconnect the observer
-  return () => {
-    observer.disconnect();
-    observer = null; // Optional: Help with garbage collection
-  };
-}
-/********************************
-* Code for handling the configuration menu and for handling shortcuts.
-*/
-
-/**
- * Retrieves or sets the value of an input element within a parent container. 
- * Handles both text inputs and checkboxes.
- *
- * @param {string|boolean[]} value - The value to set for the input element(s). 
- *                                 If `parent` is provided, this can be an array of booleans for checkboxes or a string for text inputs.
- *                                 If `parent` is not provided, this is the selector for the input element.
- * @param {string|HTMLElement|jQuery} [parent] - (Optional) The parent container or selector to find the input element(s) within.
- *
- * @returns {string|boolean[]|undefined} - If `parent` is not provided, returns the uppercase value of the input element or an array of boolean values for checkboxes.
- *                                        If `parent` is provided, returns `undefined` (the function modifies the input elements in-place).
- */
-const getSetTextFunc = (value, parent) => {
-  const inputElem = $(parent || value).find('input');
-  if (!parent) {
-    const booleans = inputElem
-      .filter(':checkbox')
-      .map((_, el) => el.checked)
-      .get();
-    if (!booleans[0]) return inputElem.val().toUpperCase();
-    return booleans;
-  } else {
-    inputElem.each((i, el) => {
-      if (el.type === 'checkbox') el.checked = value[i];
-      else el.value = value.toUpperCase();
-    });
-  }
-};
-
-const dummy = (value, parent) => {
-};
-
-/**
- * Configuration object for the MonkeyConfig extension, used to customize user interactions and behavior.
- */
-const cfg = new MonkeyConfig({
-  title: 'Configure',
-  menuCommand: true,
-  params: {
-    Modifier_Keys: {
-      type: 'custom',
-      html: '<input id="ALT" type="checkbox" name="ALT" /> <label for="ALT">ALT</label> <input id="CTRL" type="checkbox" name="CTRL" /> <label for="CTRL">CTRL</label> <input id="SHIFT" type="checkbox" name="SHIFT" /> <label for="SHIFT">SHIFT</label>',
-      set: getSetTextFunc,
-      get: getSetTextFunc,
-      default: [true, true, false]
-    },
-    Take_Turn: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'C' },
-    Continue: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'A' },
-    Retry: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'S' },
-    Retry_History: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'X' },
-    Erase: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'D' },
-    Do: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'Q' },
-    Say: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'W' },
-    Story: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'E' },
-    See: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'R' },
-    Response_Underline: { type: 'checkbox', default: true },
-    Response_Bg_Color: { type: 'checkbox', default: false },
-
-    '_label': {
-      type: 'custom',
-      label: '<HR>',
-      set: dummy, get: dummy,
-      html: '<HR>'
-    },
-
-    Toggle_Site: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'T' },
-    User_Name: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'Z' },
-    User_Profile: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'G' },
-    Continue_Adventure: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'V' },
-    Flame: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'F' },
-    Scroll_Top: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'H' },
-
-    Modal_Dimensions: {
-      label: 'Modal Dim CSS',
-      type: 'custom',
-      html: `
-        <label for="Modal_Width">W:</label>
-        <input id="Modal_Width" type="text" style="width: 100px" />
-        <label for="Modal_Height">H:</label>
-        <input id="Modal_Height" type="text" style="width: 100px" />`,
-      set: (values, parent) => {
-        const [width, height] = values;
-        parent.querySelector('#Modal_Width').value = width;
-        parent.querySelector('#Modal_Height').value = height;
-      },
-      get: (parent) => {
-        return [parent.querySelector('#Modal_Width').value, parent.querySelector('#Modal_Height').value];
-      },
-      default: ['512px', '80vh'] // Default values for width and height
-    },
-
-    Reward_Claimer: { type: 'checkbox', default: true }, // Enable waiting for new rewards (scales and avatars) and claim them.
-    Save_Raw_Text: { type: 'checkbox', default: false }, // Save raw text rather than removing '>'
-    Fix_Actions: { type: 'checkbox', default: true }, // Fix editing past actions.
-    Action_Cleaner: { type: 'checkbox', default: false }, // Cleanup the current action.
-    Do_Action_Verb: { type: 'text', default: null }, // RFU
-
-    Default_SC_Notes: { type: 'text', default: 'Unused.' },
-
-    'Delimiter Settings': {
-      type: 'custom',
-      html: 'Customize delimiters for Story Card insertion.',
-      set: dummy, get: dummy,
-      default: 'Customize delimiters for Story Card insertion.'
-    },
-    Delimiter_Start: { type: 'text', default: '{ Story Card: ' },
-    Delimiter_End: { type: 'text', default: ' }' }
-  }
-});
-
-/**
- * An array defining available actions within the application, potentially tied to UI elements.
- * 
- * Each action object has the following properties:
- * - `name`: A unique identifier for the action (e.g., 'Take_Turn', 'Retry').
- * - `type`: Categorizes the action (e.g., 'Command', 'Mode', 'History').
- * - `aria-Label`: Provides an accessible label for screen readers.
- * - `active`: An array of routes/URLs where this action should be enabled/visible.
- */
-const actionArray = [
-  { name: 'Take_Turn', type: 'Command', 'aria-Label': 'Command: take a turn', active: ["/play"] },
-  { name: 'Continue', type: 'Command', 'aria-Label': 'Command: continue', active: ["/play"] },
-  { name: 'Retry', type: 'Command', 'aria-Label': 'Command: retry', active: ["/play"] },
-  { name: 'Retry_History', type: 'History', 'aria-Label': 'Retry history', active: ["/play"] },
-  { name: 'Erase', type: 'Command', 'aria-Label': 'Command: erase', active: ["/play"] },
-  { name: 'Do', type: 'Mode', 'aria-Label': "Set to 'Do' mode", active: ["/play"] },
-  { name: 'Say', type: 'Mode', 'aria-Label': "Set to 'Say' mode", active: ["/play"] },
-  { name: 'Story', type: 'Mode', 'aria-Label': "Set to 'Story' mode", active: ["/play"] },
-  { name: 'See', type: 'Mode', 'aria-Label': "Set to 'See' mode", active: ["/play"] },
-  { name: 'Flame', type: 'Command', 'aria-Label': 'Game Menu', active: ["/play"] },
-  { name: 'User_Name', type: 'User_Name', 'aria-Label': 'Game Menu', active: ["/play"] },
-  { name: 'Scroll_Top', type: 'Scroll_Top', 'aria-Label': 'Scroll to top', active: ["/play"] },
-  { name: 'User_Profile', type: 'User_Profile', 'aria-Label': 'Game Menu', active: ["/play", "/profile/", "/scenario/", "/adventure/"] },
-  { name: 'Continue_Adventure', type: 'Continue_Adventure', 'aria-Label': 'Play', active: ["/profile/", "/scenario/", "/adventure/"] },
-  { name: 'Toggle_Site', type: 'Toggle_Site', 'aria-Label': 'Toggle Site', active: ["play.aidungeon.com", "beta.aidungeon.com"] }
-];
-
-const actionKeys = actionArray.map((action) => cfg.get(action.name));
-// Modified handleKeyPress function
-
-const isMac = window.navigator.userAgentData?.platform?.toLowerCase().includes('mac');
-
-/**
- * Handles key press events, ensuring non-repeating keys and normalizing key values.
- *
- * @param {KeyboardEvent} e - The keyboard event object.
- */
-const handleKeyPress = (e) => {
-  if (e.repeat) return;
-  const key = e.key.toUpperCase();
-
-  //const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => e[`${mod.toLowerCase()}Key`]);
-
-  const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => {
-    // For Mac, use Cmd instead of Ctrl
-    return (mod === 'CTRL' && isMac) ? e.metaKey : e[`${mod.toLowerCase()}Key`];
-  });
-
-  const modifsActive = modifiers.every((value, index) => value === cfg.get('Modifier_Keys')[index]);
-  const index = actionKeys.indexOf(key);
-  if (modifsActive && index !== -1) {
-    const action = actionArray[index];
-    let isPageActive = false;
-    const fullURL = window.location.href;
-
-    // Determine if the current page is active based on the action's "active" property
-    if (Array.isArray(action.active)) {
-      // Array of strings: check if pathname includes any of the strings
-      isPageActive = action.active.some(path => fullURL.includes(path));
-    } else if (action.active instanceof RegExp) {
-      // Regular expression: check if pathname matches the regex
-      isPageActive = action.active.test(fullURL);
-    } else if (typeof action.active === 'function') {
-      // Function: call the function to determine if the page is active
-      isPageActive = action.active(fullURL);
-    } else {
-      console.warn("Invalid 'active' property type for action:", action.name);
-    }
-    if (isPageActive) {
-      e.preventDefault();
-      e.stopPropagation();
-      const targetElem = `[aria-label="${action['aria-Label']}"]`;
-
-      if ($("[aria-label='Close text input']").length) $("[aria-label='Close text input']").click();
-      if (action.type === 'Command') setTimeout(() => $(targetElem).click(), 50);
-      else if (action.type === 'Mode') delayedClicks([() => $('[aria-label="Command: take a turn"]').click(), () => $('[aria-label="Change input mode"]').click(), () => $(targetElem).click()]);
-      else if (action.type === 'History' && $('[aria-label="Retry history"]').length) setTimeout(() => $(targetElem).click(), 50);
-      else if (action.type === 'User_Profile') {
-        if (window.location.pathname.includes('/play')) {
-          delayedClicks([
-            () => $('[role="button"][aria-label="Game Menu"]').click(),
-            () => $('[role="button"][aria-label^="View"][aria-label$="profile"]').click()
-          ]);
-        } else {
-          delayedClicks([
-            () => $('[role="button"][aria-label="User Menu"]').click(),
-            () => $('[role="button"][aria-label="My Stuff/Profile"]').click()
-          ]);
-        }
-      }
-      else if (action.type === 'Continue_Adventure') {
-        console.log("Got continue Adventure");
-        delayedClicks([
-          () => $('[role="button"][aria-label="Play"]').click(),
-          () => $('[role="button"][aria-label="Continue Adventure"]').click()
-        ]);
-      }
-      else if (action.type === 'User_Name') {
-        document.addEventListener('forceFocus', (event) => {
-          //.log("Got custome forced event.");
-          event.target.focus(); // Focus on the target of the event (the input field)
-        });
-        delayedClicks([
-          () => $('[role="button"][aria-label="Game Menu"]').click(),
-          () => $('[role="button"][aria-label="Open player menu"]').click(),
-          () => $('[role="button"][aria-label="Edit Character Name"]').click(),
-          //() => $('input#flameplayername').click(), // Doesn't work.
-          //() => $('input#flameplayername').trigger('click'), // Doesn't work.
-          () => $('input#flameplayername').focus()
-        ]
-        );
-      }
-      else if (action.type === 'Toggle_Site') {
-        const currentURL = window.location.href;
-        console.log("Got Site Toggle: ", currentURL);
-        const betaSite = 'beta.aidungeon.com';
-        const playSite = 'play.aidungeon.com';
-        const newURL = currentURL.includes(betaSite) ? currentURL.replace(betaSite, playSite) : currentURL.replace(playSite, betaSite);
-        console.log("Got Site Toggle: ", newURL);
-        window.location.href = newURL;
-      } // End action.type
-      else if (action.type === 'Scroll_Top') {
-        console.log("Got scroll cmd.");
-        const scrollContainer = document.querySelector('div#__next div.is_ScrollView'); // Find the scrollable container
-        if (scrollContainer) {
-          let previousScrollHeight = scrollContainer.scrollHeight;
-          let attempts = 0;
-          const maxAttempts = 200; // Adjust as needed
-          const timeout = 5000; // 5 seconds timeout (adjust as needed)
-          let startTime = Date.now();
-
-          function simulateScroll() {
-            // Simulate pressing Home
-            const homeEvent = new KeyboardEvent('keydown', { key: 'Home' });
-            scrollContainer.dispatchEvent(homeEvent);
-
-            setTimeout(() => {
-              if (scrollContainer.scrollTop === 0 || Date.now() - startTime > timeout) {
-                console.log("Reached the top or timeout.");
-                return; // Stop the loop
-              }
-
-              if (scrollContainer.scrollHeight > previousScrollHeight) {
-                previousScrollHeight = scrollContainer.scrollHeight;
-                attempts = 0; // Reset attempts if new content is loaded
-
-                // Simulate pressing Page Down
-                const pageDownEvent = new KeyboardEvent('keydown', { key: 'PageDown' });
-                scrollContainer.dispatchEvent(pageDownEvent);
-              }
-
-              if (attempts < maxAttempts) {
-                attempts++;
-                simulateScroll(); // Continue the loop
-              } else {
-                console.log("Max attempts reached. Stopping.");
-              }
-            }, 200); // Adjust delay as needed
-          }
-
-          simulateScroll();
-        } else {
-          console.warn("Scroll container not found.");
-        }
-      }
-
-    } // End isPageActive
-
-  }
-  const selectKeys = ['ARROWLEFT', 'ENTER', 'ARROWRIGHT'];
-  if (selectKeys.includes(key) && $('[role="dialog"]').length) {
-    setTimeout(() => $("[role='dialog']").find("[role='button']")[selectKeys.indexOf(key)].click(), 50);
-  }
-};
+//console.log("nextData: ", nextData);
+const GRAPHQL_HOST = nextData.runtimeConfig.GRAPHQL_HOST;
+const GRAPHQL_ENDPOINT = `https://${GRAPHQL_HOST}/graphql`;
 
 /*
-const delayedClicks = (clicks, i = 0) => {
-  if (i < clicks.length) {
-    setTimeout(() => {
-      clicks[i]();
-      delayedClicks(clicks, i + 1);
-    }, 50);
-  }
-};
-*/
 
-/**
- * Executes a series of click events with a delay between each, using requestAnimationFrame for optimal timing.
- *
- * @param {Function[]} clicks - An array of functions representing click events to be executed.
- * @param {number} [i=0] - An optional index indicating the current click event being processed (used for recursion).
- */
-const delayedClicks = (clicks, i = 0) => {
-  if (i < clicks.length) {
-    requestAnimationFrame(() => {
-      clicks[i]();
-      delayedClicks(clicks, i + 1);
-    });
-  }
-};
-
-/**
- * A class that encapsulates a MutationObserver, providing convenient methods to manage and interact with it.
- */
-class DOMObserver {
-  /**
-   * Creates a new DOMObserver instance.
-   * 
-   * @param {MutationCallback} callback - The callback function to execute when mutations are observed.
-   * @param {Node} targetNode - The DOM node to observe for mutations.
-   * @param {MutationObserverInit} options - The configuration options for the MutationObserver.
-   * @param {boolean} [startImmediately=false] - Whether to start observing immediately upon creation.
-   */
-  constructor(callback, targetNode, options, startImmediately = false) {
-    this.observer = new MutationObserver(callback);
-    this.targetNode = targetNode;
-    this.options = options;
-
-    if (startImmediately) {
-      this.observe();
-    }
-  }
-
-  /**
-   * Destroys the DOMObserver instance, disconnecting the observer and clearing references.
-   */
-  destroy() {
-    this.disconnect();
-    this.observer = null;
-    this.targetNode = null;
-    this.options = null;
-  }
-
-  /**
-   * Starts observing the target node for mutations.
-   * 
-   * @param {Node} [targetNode=this.targetNode] - The DOM node to observe (defaults to the one provided in the constructor).
-   * @param {MutationObserverInit} [options=this.options] - The configuration options (defaults to the ones provided in the constructor).
-   */
-  observe(targetNode = this.targetNode, options = this.options) {
-    if (this.observer && targetNode && targetNode.nodeType === Node.ELEMENT_NODE) { // Ensure targetNode is an Element
-      this.observer.observe(targetNode, options);
+GM_xmlhttpRequest({
+  method: "POST",
+  url: GRAPHQL_ENDPOINT,
+  onload: function(response) {
+    // Parse the response JSON
+    if (response.readyState === 4 && response.status === 200) { // Check for success
+      try {
+        let graphQLData = JSON.parse(response.responseText);
+        console.log(graphQLData); // Log the parsed GraphQL data
+        // Modify the graphQLData object as needed
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+      }
     } else {
-      console.warn("Target node is not a valid element:", targetNode); // For debugging
+      console.error("GraphQL request failed with status:", response.status);
+    }
+  },
+  onreadystatechange: function(response) {
+    if (response.readyState === 4 && response.status === 200) {
+      // Request completed successfully
+      let requestData = JSON.parse(response.response);
+      // Access and modify the request data here
     }
   }
+});
+*/
+let CSS_Elements = {};
 
-  /**
-   * Disconnects the MutationObserver, stopping observation.
-   */
-  disconnect() {
-    if (this.observer !== null) {
-      this.observer.disconnect();
-    }
-  }
-
-  /**
-   * Retrieves any pending mutation records from the observer and empties its record queue.
-   * 
-   * @returns {MutationRecord[]} An array of MutationRecord objects representing the observed mutations.
-   */
-  takeRecords() {
-    return this.observer ? this.observer.takeRecords() : []; // Return empty array if observer is null
-  }
-
-  /**
-   * Checks if the observer is connected and actively observing.
-   * 
-   * @returns {boolean} True if the observer is connected, false otherwise.
-   */
-  get isConnected() {
-    return this.observer && this.observer.isConnected(); // Check if observer exists and is connected
-  }
-}
+const scriptName = GM_info.script.name;
+const currentVersion = GM_info.script.version;
+let storedVersion = GM_getValue('scriptVersion');
+//console.log("GM_info: ", GM_info);
 
 GM_addStyle(`
   .css-11aywtz,._dsp_contents {
@@ -590,16 +97,14 @@ GM_addStyle(`
   }
 `);
 
-const modalDimensions = cfg.get('Modal_Dimensions');
-let [modalWidthCfg, modalHeightCfg] = modalDimensions;
-
-CSS_Elements['App_root'] = GM_addStyle(`
+GM_addStyle(`
   /* This is nested CSS, it mostly mirrors the AID site. */
   /* div#__next > div > span, /* beta and prod. */
   div#__next > div > span > span { /* alpha */
     & > div._dsp-flex:nth-child(1) { /* Home screen. */ }
     & > div._dsp-flex:nth-child(2) { /* Play. */
       & > div.css-175oi2r:nth-child(1) { /* Game Window. */
+        /* Make the Nav bar completely opaque. */
         & > div[role="toolbar"][aria-label="Navigation bar" i] {
           opacity: 1 !important;
         }
@@ -615,300 +120,12 @@ CSS_Elements['App_root'] = GM_addStyle(`
         & > div.css-175oi2r { /* Action Entry Area. */
         }
       }
-      & > div._dsp-flex:nth-child(2) { /* Gear 1 Menu. Box + Padding. */
-        & .r-2eszeu { scrollbar-width: 8px !important; }
-        & > div.css-175oi2r:only-child { /* Gear 2 Menu. Flex + overflow + border. */
-          & > div.is_Column:only-child { /* Gear 3 Menu. Column setup. */
-            & ._gap-1481558307 { gap: 8px !important; }
-            & ._gap-1481558369 { gap: 8px !important; }
-            & ._gap-1481558338 { gap: 8px !important; }
-
-            & ._pl-1316335167 { padding-left: 8px !important; }
-            & ._pr-1316335167 { padding-right: 8px !important; }
-            & ._pt-1316335167 { padding-top: 8px !important; }
-            & ._pb-1316335167 { padding-bottom: 8px !important; }
-
-            & ._pl-1481558338 { padding-left: 8px !important; }
-            & ._pr-1481558338 { padding-right: 8px !important; }
-            & ._pt-1481558338 { padding-top: 8px !important; }
-            & ._pb-1481558338 { padding-bottom: 8px !important; }
-
-            & ._pl-1481558307 { padding-left: 8px !important; }
-            & ._pr-1481558307 { padding-right: 8px !important; }
-            & ._pt-1481558307 { padding-top: 8px !important; }
-            & ._pb-1481558307 { padding-bottom: 8px !important; }
-
-            & ._ml-1481558338 { margin-left: 0px !important; }
-            & ._ml-1481558369 { margin-left: 0px !important; }
-
-            & > div.is_Column:nth-child(1) { /***************** Gear Header. *****************/
-              & > div.is_Row:only-child {
-
-                & > div[role="tablist"].is_Row:nth-child(1) {
-                  & > span:nth-child(1) > div[role="tab"].is_Button:only-child {  /* Adventure Tab */
-                    & > div._dsp-flex:nth-child(1) {
-                      & > p:only-child { /* w_scroll */ }
-                    }
-                    & > span.is_ButtonText:nth-child(2) { /* Adventure Tab Button Text*/ }
-                  }
-                  & > span:nth-child(2) > div[role="tab"].is_Button:only-child {  /* Gameplay Tab */
-                    & > div._dsp-flex:nth-child(1) {
-                      p:only-child { /* w_controller */ }
-                    }
-                    & > span.is_ButtonText:nth-child(2) { /* Gameplay Tab Button Text*/ }
-                  }
-                }
-                & > span:nth-child(2) {
-                  & > div[role="button"][aria-label="Close settings i"]:only-child { /* Gear Close */
-                  }
-                }
-              }
-            }
-            & > div.css-175oi2r:nth-child(2) { /***************** Gear Content Mount - Gameplay. *****************/
-              & > div.css-175oi2r:only-child { /* Gear Content 2 - Gameplay. */
-                & > div.is_Column:only-child { /* Gear Content 3 - Gameplay. */
-                  & > div.is_Column:nth-child(1) { /* Gear Content 4 - Gameplay. */
-                    & > div.css-175oi2r:nth-child(1) { /* Pill Menu and Pill Content */
-
-                      & ._h-606181883 { height: var(--size-4); }
-
-                      & > div._dsp-flex:nth-child(1) {  /* PILL Button Menu Outer container */
-
-                        /* Styles for the outer container */
-
-                        & > div:nth-child(1) { /* Pill Menu Width for scrollers. */
-                          margin-left: 0px !important;
-                          width: 100% !important;
-
-                          & > div[role="tablist"]:only-child { /* The Pills. */
-                            & > div.css-175oi2r:only-child {
-                              & > div.css-175oi2r:nth-child(1) {
-                                display: none; /* Space for the scroll button */
-                              }
-                              & > div.is_Row._dsp-flex:nth-child(2) {
-                                &  > span {
-                                /* Styles for each tab */
-                                  & > div[role="tab"]:only-child {
-                                  /* Styles for the div within each tab */
-                                  }
-                                }
-                              }
-                              & > div.css-175oi2r:nth-child(3) {
-                                display: none; /* Space for the scroll button */
-                              }
-                            }
-                          }
-
-                        }
-                        & > div.r-633pao {
-                            /* Off the Scroll button and containers. */
-                            display: none;
-                          & > .r-633pao > span > [role="button"] {
-                            display: none;
-                          }
-                        }
-                      }
-                      & > div._dsp-flex:nth-child(2) {
-                        /* This is a little Padding after the pill menu. */
-                        max-height: 8px !important;
-                      }
-                      & > div.is_Column._dsp-flex:nth-child(3) {
-                        /* The actual content for each PILL lives here:
-                           AI MODELS and APPEARANCE.
-                        */
-                      }
-                    }
-                    & > div._dsp-flex:nth-child(2) {
-                      height: 8px !important; /*Looks like pad.*/
-                    }
-                  }
-                  & > div._dsp-flex:nth-child(2) { /* Looks like pad. */ }
-                }
-              }
-            }
-            & > div.is_Column:nth-child(2) { /***************** Gear Content Mount - Adventure. *****************/
-              /* PILL MENU
-              & > div.is_Row:nth-child(1) {
-                padding-left: 0px !important;
-                padding-right: 0px !important;
-              }*/
-              max-height: 100% !important;
-              padding-left: 8px !important;
-              padding-right: 8px !important;
-
-              & .r-150rngu { -webkit-overflow-scrolling: touch; }
-
-              /* Pill Container */
-              & > div.is_Row._dsp-flex:nth-child(1) {
-                & > div._dsp-flex:nth-child(1) {
-                  & > div:has(div[role="tablist"][aria-label="Section Tabs" i]) {
-                    margin: 0px !important;
-                    padding: 0px !important;
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    & ._pl-1316335167 { padding-left: 8px !important; }
-                    & ._pr-1316335167 { padding-right: 8px !important; }
-                    & > div[role="tablist"][aria-label="Section Tabs" i].css-175oi2r:nth-child(1) {
-                      & > div.css-175oi2r.r-18u37iz:only-child {
-                        & ._gap-1481558369 { gap: 8px !important; }
-                        & > div.css-175oi2r:nth-child(1) {
-                          display: none !important;
-                        }
-                        & > div.is_Row._dsp-flex:nth-child(2) {
-                          & > span {
-                            & > div[role="tab"].is_Button {
-                              & > div._dsp-flex:nth-child(1) {
-                                & > p:only-child {
-                                }
-                              }
-                              & > span:nth-child(2) {
-                                & > p:only-child {
-                                }
-                              }
-                            }
-                          }
-                        }
-                        & > div.css-175oi2r:nth-child(3) {
-                          display: none !important;
-                        }
-                      }
-                    }
-                    & > div[aria-hidden="false"].css-175oi2r.r-633pao:nth-child(2) {
-                      display: none !important;
-                      & > div.css-175oi2r.r-633pao:only-child {
-                        & > span:only-child > div[role="button"][aria-label="scroll right" i]:only-child {
-                          & > div._dsp-flex:only-child {
-                            & > p[area-hidden="false"] {
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-
-              & > div:nth-child(2):empty { /* A Gap (not in alpha.)*/
-              }
-              /*********** PLOT ***********/
-              & > div[aria-hidden="false"]._dsp-flex:nth-child(3), /* Beta/prod */
-              & > div.is_Column:nth-child(2) > div.is_Column:only-child > div[aria-hidden="false"] { /* alpha */
-                max-height: 100% !important;
-                margin-left: 0px !important;
-                margin-right: 0px !important;
-                overflow-y: auto !important;
-                & > div.css-175oi2r:only-child {
-                  max-height: 100% !important;
-                  padding-bottom: 15px !important;
-                  & > div.css-175oi2r:only-child {
-                    /* The individual styles for the plot menus would go here. */
-                  }
-                }
-              }
-              /*********** STORY CARDS LIST ***********/
-              & > div._dsp-flex:nth-child(4):has(+ :nth-child(5)), /* Beta/prod */
-              & > div.is_Column:nth-child(2) > div.is_Column:only-child > div._dsp-flex:nth-child(2):has(+ :nth-child(3)) { /* alpha */
-                  max-width: 100% !important;
-                & > div.css-175oi2r {
-                  & > div.css-175oi2r {
-                    & > div.css-175oi2r {
-                      padding-left: 0px !important;
-                      padding-right: 0px !important;
-                      & > div.css-175oi2r:nth-child(1) {
-                        & > div.css-175oi2r:nth-child(1) { } /* Spacer. */
-                        & > div.css-175oi2r:nth-child(2) { } /* Search and Filter */
-                        & > div.css-175oi2r:nth-child(3) { /* Story Card List. */
-                          width: 100% !important;
-                          & > * {
-                            max-width: 100% !important;
-                            width: 100% !important;
-                          }
-                          & > * [role="button" i] {
-                            margin-right: 0px !important;
-                            align-items: center !important;
-                            height: unset !important;
-                            max-height: unset !important;
-                          }
-                        }
-                        & > div.css-175oi2r:nth-child(4) { } /* Spacer. */
-                        & > div.css-175oi2r:nth-child(5) { /* Bottom Padding */
-                          padding-bottom: 100px !important;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              /*********** DETAILS ***********/
-              & > div[aria-hidden="false"]._dsp-flex:last-child, /* Beta/prod */
-              & > div.is_Column:nth-child(2) > div.is_Column:only-child > div[aria-hidden="false"]._dsp-flex:last-child { /* alpha */
-                  max-height: 100% !important;
-                ._pl-1481558338 { padding-left: 8px !important; }
-                ._pr-1481558338 { padding-right: 8px !important; }
-                ._pl-1481558307 { padding-left: 8px !important; }
-                ._pr-1481558307 { padding-right: 8px !important; }
-                ._ml-1481558338 { margin-left: 0px !important; }
-                ._gap-1481558369 {
-                  row-gap: 8px !important;
-                  column-gap: 8px !important;
-                }
-                ._gap-1481558338 {
-                  row-gap: 8px !important;
-                  column-gap: 8px !important;
-                }
-                & > div.css-175oi2r {
-                  padding-bottom: 0px !important;
-                  & > div.css-175oi2r {
-                    & > div.is_Column:nth-child(1) {
-                      & > div.is_Column {
-                        & > div.is_Column {
-                          & > div.is_Column:nth-child(1) { /* Title, Desc, and Tags. */
-                            & > div.is_Column:nth-child(1) { /* The Adventure Image. */
-                            }
-                            & > div.is_Column:nth-child(2) { /* Title */
-                              padding-left: 8px !important;
-                              padding-right: 8px !important;
-                            }
-                            & > div.is_Column:nth-child(3) { /* Desc */
-                              padding-left: 8px !important;
-                              padding-right: 8px !important;
-                            }
-                            & > div.is_Column:nth-child(4) { /* Tags */
-                              padding-left: 0px !important;
-                              padding-right: 0px !important;
-                              margin-left: 0px !important;
-                              margin-right: 0px !important;
-                            }
-                          }
-                          & > div.is_Column:nth-child(2) { /* Visibility and Content Rating. */
-                            & > div.is_Column:nth-child(1) {
-                              margin-left: 8px !important;
-                              margin-right: 8px !important;
-                            }
-                            & > div.is_Column:nth-child(2) {
-                              margin-left: 8px !important;
-                              margin-right: 8px !important;
-                            }
-                          }
-                          & > div.is_Column:nth-child(3) {  /* Story Card Management. */
-                            padding-bottom: 8px !important;
-                          }
-                        }
-                      }
-                      & > div._dsp-flex {
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      /* The gear menu would pop here. But that done separately. */
     }
   }
 `);
-CSS_Elements['modalNodeTree_ScenarioAdventureEditor_TS'] = GM_addStyle(`
+
+GM_addStyle(`
   div[id^="modalNodeTree_ScenarioAdventureEditor_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
       flex-grow: 0 !important;
@@ -942,14 +159,15 @@ CSS_Elements['modalNodeTree_ScenarioAdventureEditor_TS'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['Content Image'] = GM_addStyle(`
-  &:has(div:has(img[alt="Content Image" i][data-nimg="fill"])) { 
+
+GM_addStyle(`
+  &:has(div:has(img[alt="Content Image" i][data-nimg="fill"])) {
     /* Styles for the grandparent div if it has the image as a descendant */
     resize: vertical !important;
     max-height: 100% !important;
     max-width: 100% !important;
     overflow: auto !important;
-    flex-grow: 1 !important; 
+    flex-grow: 1 !important;
   }
 
   div.is_Column:has(> div:nth-child(2) > img[alt="Content Image" i][data-nimg="fill"]) {
@@ -968,7 +186,7 @@ CSS_Elements['Content Image'] = GM_addStyle(`
         }
     }
 `);
-CSS_Elements['modalNodeTree_ViewContext_TS'] = GM_addStyle(`
+GM_addStyle(`
     div[id^="modalNodeTree_ViewContext_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
       flex-grow: 0;
@@ -1006,7 +224,7 @@ CSS_Elements['modalNodeTree_ViewContext_TS'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['modalNodeTree_ImageOptions_TS'] = GM_addStyle(`
+GM_addStyle(`
   div[id^="modalNodeTree_ImageOptions_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
       flex-grow: 0;
@@ -1068,7 +286,7 @@ CSS_Elements['modalNodeTree_ImageOptions_TS'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['modalNodeTree_TokenViewer_TS'] = GM_addStyle(`
+GM_addStyle(`
   div[id^="modalNodeTree_MemoryViewer_TS" i],
   div[id^="modalNodeTree_TokenViewer_TS" i] {
     & ._maw-480px { max-width: unset !important; }
@@ -1130,13 +348,13 @@ CSS_Elements['modalNodeTree_TokenViewer_TS'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['Game Text Mask Off'] = GM_addStyle(`
+GM_addStyle(`
   /* This turns off the background mask for all modals so that game play text is visible during modal editing. */
   body > div[id^="modalNodeTree_"] > span > span > div > button {
     opacity: 0 !important;
   }
 `);
-CSS_Elements['ScriptEditor_TS'] = GM_addStyle(`
+GM_addStyle(`
   /* This is the fix for the script editor */
   div[id*="ScriptEditor_TS" i] div[role="alertdialog"][aria-label*="Modal"] {
     flex-grow: 1;
@@ -1153,7 +371,7 @@ CSS_Elements['ScriptEditor_TS'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['Generic Modal'] = GM_addStyle(`
+GM_addStyle(`
   /* Modal: Generic Modal Styling.
   */
 
@@ -1356,7 +574,7 @@ CSS_Elements['Generic Modal'] = GM_addStyle(`
     }
   }
 `);
-CSS_Elements['Story Cards Tab'] = GM_addStyle(`
+GM_addStyle(`
   /* Modal: Story Card Styling.
   */
   /*
@@ -1395,12 +613,12 @@ CSS_Elements['Story Cards Tab'] = GM_addStyle(`
     padding-bottom: 0px !important;
   }
 `);
-CSS_Elements['modalContent_Inner_StoryCardEditor_TS'] = GM_addStyle(`
+GM_addStyle(`
 div[id^="modalContent_Inner_StoryCardEditor_TS" i] {
   padding-bottom: 8px !important;
 }
 `);
-CSS_Elements['Misc Styles'] = GM_addStyle(`
+GM_addStyle(`
   /* Miscelaneous Styles.
   */
   /* These classes must be overridden to get the square corner. */
@@ -1417,20 +635,20 @@ CSS_Elements['Misc Styles'] = GM_addStyle(`
   }
   div[role=menu][aria-label="Menu" i]
     div.css-175oi2r.r-150rngu.r-eqz5dr.r-16y2uox.r-1wbh5a2.r-11yh6sk.r-1rnoaur.r-agouwx {
-      user-select: text !important; 
+      user-select: text !important;
       & > div.css-175oi2r {
-        user-seletc: text !important; 
+        user-seletc: text !important;
         & > div.is_Column._dsp-flex {
-          user-seletc: text !important; 
+          user-seletc: text !important;
           & > h1 {
             user-select: text !important;
           }
         }
       }
     }
-  }    
+  }
 `);
-CSS_Elements['textArea Styles'] = GM_addStyle(`
+GM_addStyle(`
   /* TextArea Styling.
   */
   /* Put vertical resizers on all textareas. */
@@ -1439,7 +657,7 @@ CSS_Elements['textArea Styles'] = GM_addStyle(`
     [aria-label="Edit memory input" i], /* Not in memory editor. */
     #game-text-input,  /* Not in game text input. */
     #shadow-box /* Not for past action editor. */
-    ) 
+    )
     {
     min-height: 50px !important;  /* Or min-height: 0; */
     max-height: unset !important;
@@ -1470,33 +688,1345 @@ CSS_Elements['textArea Styles'] = GM_addStyle(`
     --vh: 11.76px !important;
   }
 `);
-CSS_Elements['gearMenu'] = GM_addStyle(`
 
-  div[id^=gearMenu-Content-Adventure-TS], /* */
-  div[id^=gearMenu-Content-Gameplay-TS] {
-    /* overflow-y: auto !important; /* */
-    /* scrollbar-gutter: stable !important; /* */
-    flex-grow: 1 !important;
-    flex-shrink: 1 !important;
-    padding-right: 0px !important; /* */
-    & ._pb-1481558276 {
-        padding-bottom: 8px !important; /* */
-    }
-    & ._h-606181883 {
-        height: 8px !important; /* */
+const styleGearMenuWrapper = `
+  div[id^=gearMenu-Wrapper-TS] {
+    /* put a square border radius so it doesn't clip the scrollbar. */
+    border-bottom-right-radius: 0px !important;
+    div[id^=gearMenu-TS]:only-child {
+      div[id^=gearMenu-Header-TS]:first-child {
+        /* gearMenuAdventure and gearMenuGameplay mount in here.*/
+      }
     }
   }
-  div[id^=gearMenu-Content-Gameplay-Pill-Content-TS],
-  div[id^=gearMenu-Content-Adventure-Pill-Content-TS] {
+`; // styleGearMenuWrapper
+GM_addStyle(styleGearMenuWrapper);
+
+const styleGearMenuAdventure = `
+  div[id^=gearMenu-Adventure-TS] {
+    flex-grow: 1 !important;
+    flex-shrink: 1 !important;
+    padding-left: 8px !important;
+    padding-right: 0px !important; /* */
+    padding-top: 8px !important;
+    padding-bottom: 8px !important; /* */
+    max-height: 100% !important;
+    overflow-y: hidden !important;
+
+    & .r-2eszeu { scrollbar-width: 8px !important; }
+    & .r-150rngu { -webkit-overflow-scrolling: touch; }
+    & .r-1rnoaur { overflow-y: unset; }
+    & ._gap-1481558307 { gap: 8px !important; }
+    & ._gap-1481558369 { gap: 8px !important; }
+    & ._gap-1481558338 { gap: 8px !important; }
+
+    & ._pl-1316335167 { padding-left: 8px !important; }
+    & ._pr-1316335167 { padding-right: 8px !important; }
+    & ._pt-1316335167 { padding-top: 8px !important; }
+    & ._pb-1316335167 { padding-bottom: 8px !important; }
+
+    & ._pl-1481558276 { padding-left: 8px !important; } /* */
+    & ._pr-1481558276 { padding-right: 8px !important; } /* */
+    & ._pt-1481558276 { padding-top: 8px !important; } /* */
+    & ._pb-1481558276 { padding-bottom: 8px !important; } /* */
+
+    & ._pl-1481558338 { padding-left: 8px !important; }
+    & ._pr-1481558338 { padding-right: 8px !important; }
+    & ._pt-1481558338 { padding-top: 8px !important; }
+    & ._pb-1481558338 { padding-bottom: 8px !important; }
+
+    & ._pl-1481558307 { padding-left: 8px !important; }
+    & ._pr-1481558307 { padding-right: 8px !important; }
+    & ._pt-1481558307 { padding-top: 8px !important; }
+    & ._pb-1481558307 { padding-bottom: 8px !important; }
+
+    & ._ml-1481558338 { margin-left: 0px !important; }
+    & ._ml-1481558369 { margin-left: 0px !important; }
+  }
+  div[id^="gearMenu-Adventure-Pill-Header-TS"]:first-child {
+    /* since the space is less of an issue, turn off the horiz scrolling arrows. */
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    & > div:only-child {
+      & > div:nth-child(2) {
+        display: none !important;
+      }
+    }
+    div:has(> div[aria-label="Section Tabs"][role="tablist"]) {
+      margin-left: unset !important;
+      width: unset !important;
+    }
+
+    div[aria-label="Section Tabs"][role="tablist"] {
+      & > div:only-child {
+        & > div:nth-child(1) { display: none !important; }
+        & > div:nth-child(3) { display: none !important; }
+      }
+    }
+
+    div[role=button][aria-label="scroll right" i] {
+      display: none;
+    }
+    div[role=button][aria-label="scroll left" i] {
+      display: none;
+    }
+    & ._pl-1316335167 { padding-left: 0px !important; }
+    & ._pr-1316335167 { padding-right: 0px !important; }
+    & ._pb-1316335167 { padding-bottom: 8px !important; }
+    & ._pt-1316335167 { padding-top: 0px !important; }
+  }
+
+  div[id^="gearMenu-Adventure-Pill-Content-TS"] {
+    max-height: 100% !important;
+    padding-bottom: 0px !important;
     overflow-y: auto !important; /* */
     scrollbar-gutter: stable !important; /* */
     flex-grow: 1 !important; /* */
     flex-shrink: 1 !important; /* */
+    & ._h-606181883 { height: unset !important; }
+    & > div[id^=gearMenu-Adventure-Pill-Content_Inner-TS]:only-child {
+      flex-grow: 1 !important;
+      flex-shrink: 0 !important; /* must be off for scroll bar to work on parent container. */
+      /* max-height: 100% !important; /* must be off for scroll bar to work on parent container. */
+      height: unset !important;
+
+      & > div[id^=gearMenu-Adventure-Pill-Plot-TS][aria-hidden="false"] {
+        flex-grow: 1 !important;
+        flex-shrink: 1 !important;
+        max-height: 100% !important;
+        height: unset !important;
+        & > div:only-child {
+          max-height: 100% !important;
+          padding-bottom: unset !important;
+        }
+      }
+
+      & > div[id^="gearMenu-Adventure-Pill-Story_Cards-TS"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        & .r-11yh6sk { overflow: unset !important; }
+        & > div:only-child {
+          overflow: unset !important;
+          height: 100% !important;
+          width: 100% !important;
+          & > div:only-child {
+            height: 100% !important;
+            width: 100% !important;
+            & > div:only-child {
+              height: 100% !important;
+              width: 100% !important;
+              padding: 0px !important;
+              & > div:only-child {
+                height: 100% !important;
+                width: 100% !important;
+                & > div:nth-child(1) {
+                  /* Padding? */
+                  padding-left: 0px !important;
+                  padding-right: 0px !important;
+                }
+                & > div:nth-child(2) {
+                  /* Search and Filters container. */
+                  padding-bottom: 8px !important;
+                }
+                & > div:nth-child(3) {
+                  /* The list of story card buttons and add story card begins here. */
+                  height: 100% !important;
+                  width: 100% !important;
+                  padding-bottom: 8px !important;
+                  padding-top: 8px !important;
+                  & > div {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    & > div:nth-child(1) {
+                      max-width: 100% !important;
+                      width: 100% !important;
+                      gap: 4px !important;
+                      & > div[role="button" i]:only-child {
+                        width: 100% !important;
+                        margin-right: 0px !important;
+                        align-items: center !important;
+                        /*height: unset !important;
+                        max-height: unset !important; */
+                        padding: 6px !important;
+                        & ._h-1611761759 { height: unset !important; }
+                        & > div#top-down-mask {
+                          -webkit-mask-image: none !important;
+                          mask-image: none !important;
+                        }
+                        & > div:nth-child(3) {
+                          background-color: rgb(30 30 30)!important;
+                          opacity: 1 !important;
+                        }
+                      }
+                    }
+                    & > div:nth-child(2) {
+                      width: 100% !important;
+                      height: 4px !important;
+                    }
+                  }
+                }
+
+                & > div:nth-child(4) {
+                }
+                & > div:nth-child(5) {
+                  padding: 0px !important;
+                }
+              }
+            }
+          }
+        }
+      }
+      & > div[id^="gearMenu-Adventure-Pill-Details-TS"][aria-hidden="false"] {
+        flex-grow: 1 !important;
+        flex-shrink: 1 !important;
+        /* max-height: 100% !important; /* */
+        /* height: unset !important; /* */
+        & > div:only-child {
+          max-height: 100% !important; /* */
+          padding-bottom: unset !important;
+        }
+      }
+    }
+  }
+`; // styleGearMenuAdventure
+GM_addStyle(styleGearMenuAdventure);
+
+const styleGearMenuGameplay = `
+  div[id^=gearMenu-Gameplay-TS] {
+    flex-grow: 1 !important;
+    /* flex-shrink: 1 !important; /* */
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important; /* */
+    overflow-y: auto !important; /* */
+    scrollbar-gutter: stable !important; /* */
+    /* max-height: 100% !important; /* */
+    /* overflow: hidden !important; /* */
+
+    & .r-2eszeu { scrollbar-width: 8px !important; } /* */
+    /* & .r-150rngu { -webkit-overflow-scrolling: touch; } /* */
+    /* & .r-1rnoaur { overflow-y: unset; } /* */
+
+    & ._h-606181883 { height: unset; !important; }
+
+    & ._gap-1481558307 { gap: 8px !important; }
+    & ._gap-1481558369 { gap: 8px !important; }
+    & ._gap-1481558338 { gap: 8px !important; }
+
+    & ._pl-1316335167 { padding-left: 8px !important; }
+    & ._pr-1316335167 { padding-right: 8px !important; }
+    & ._pt-1316335167 { padding-top: 8px !important; }
+    & ._pb-1316335167 { padding-bottom: 8px !important; }
+
+    & ._pl-1481558276 { padding-left: 8px !important; } /* */
+    & ._pr-1481558276 { padding-right: 8px !important; } /* */
+    & ._pt-1481558276 { padding-top: 8px !important; } /* */
+    & ._pb-1481558276 { padding-bottom: 8px !important; } /* */
+
+    & ._pl-1481558338 { padding-left: 8px !important; }
+    & ._pr-1481558338 { padding-right: 8px !important; }
+    & ._pt-1481558338 { padding-top: 8px !important; }
+    & ._pb-1481558338 { padding-bottom: 8px !important; }
+
+    & ._pl-1481558307 { padding-left: 8px !important; }
+    & ._pr-1481558307 { padding-right: 8px !important; }
+    & ._pt-1481558307 { padding-top: 8px !important; }
+    & ._pb-1481558307 { padding-bottom: 8px !important; }
+
+    & ._pb-1316335136 { padding-bottom: 8px !important; }
+    & ._pt-1316335136 { padding-top: 8px !important; }
+    & ._pl-1316335136 { padding-left: 8px !important; }
+    & ._pr-1316335136 { padding-right: 8px !important; }
+
+    & ._ml-1481558338 { margin-left: 0px !important; }
+    & ._ml-1481558369 { margin-left: 0px !important; }
+    & > div:only-child {
+      /* flex-grow: 1 !important; /* */
+      & > div:only-child {
+        /* flex-grow: 1 !important; /* */
+        & > div:first-child {
+          /* flex-grow: 1 !important; /* */
+          padding: 0px !important;
+          & > div[id^="gearMenu-Gameplay-Pill-TS"] {
+            /* flex-grow: 1 !important; /* */
+            & > div[id^="gearMenu-Gameplay-Pill-Header-TS"]:first-child {
+              /* See below. */
+            }
+            & > div:nth-child(2) {
+              /* height: 8px !important; /* */
+              height: unset !important; /* */
+              padding-top: 8px !important;/* */
+            }
+            /* Mount Points:
+            & > div[aria-label="AI settings" i]:nth-child(3) {
+            }
+            & > div[aria-label="Display settings" i]:nth-child(3) {
+            }
+            */
+          }
+          & > div:last-child {
+            height: unset !important;
+            min-height: unset !important;
+          }
+        }
+        & > div:last-child {
+          height: unset !important;
+          min-height: unset !important;
+        }
+      }
+    }
+  }
+
+  div[id^="gearMenu-Gameplay-Pill-Header-TS"] {
+    /* flex-grow: 0 !important; /* */
+    /* flex-shrink: 0 !important; /* */
+    padding-left: 0px !important; /* */
+    padding-right: 0px !important; /* */
+
+    & ._pl-1481558338 { padding-left: 0px !important; }
+
+    & > div:only-child {
+      & > div:nth-child(2) {
+        display: none !important;
+      }
+    }
+    div:has(> div[aria-label="Section Tabs"][role="tablist"]) {
+      margin-left: unset !important;
+      width: unset !important;
+    }
+
+    div[aria-label="Section Tabs"][role="tablist"] {
+      & > div:only-child {
+        & > div:nth-child(1) { display: none !important; }
+        & > div:nth-child(3) { display: none !important; }
+      }
+    }
+
+    div[role=button][aria-label="scroll right" i] {
+      display: none;
+    }
+    div[role=button][aria-label="scroll left" i] {
+      display: none;
+    }
+    & ._pl-1316335167 { padding-left: 0px !important; }
+    & ._pr-1316335167 { padding-right: 0px !important; }
+    & ._pb-1316335167 { padding-bottom: 8px !important; }
+    & ._pt-1316335167 { padding-top: 0px !important; }
+  }
+
+  div[aria-label="Display settings" i] {
+    /* max-height: 100% !important; /* */
+    padding-bottom: 8px !important; /* */
+    /* overflow-y: auto !important; /* */
+    /* scrollbar-gutter: stable !important; /* */
+    /* flex-grow: 1 !important; /* */
+    /* flex-shrink: 1 !important; /* */
+    div[aria-label="Theme"] {
+      height: unset !important;
+      padding: 8px !important;
+    }
+    div[aria-label="Accessibility"] {
+      height: unset !important;
+      padding: 8px !important;
+    }
+    div[aria-label="Behavior"] {
+      height: unset !important; /* */
+      padding: 8px !important;
+    }
+  }
+
+  div[aria-label="AI settings" i]
+  {
+    /* max-height: unset !important; /* */
+    padding-bottom: 0px !important;
+    /* overflow-y: auto !important; /* */
+    /* overflow-x: hidden !important; /* */
+    /* scrollbar-gutter: stable !important; /* */
+    /* flex-grow: 1 !important; /* */
+    /* flex-shrink: 0 !important; /* */
+    /* & ._ox-hidden { overflow-x: unset !important; } /* */
+    /* & ._oy-hidden { overflow-y: unset !important; } /* */
+
+    & div:has(> div[aria-label="Story Generator" i]) {
+      /* height: unset !important; /* */
+      /* overflow: unset !important; /* */
+      & > div[role="button"][aria-label="Story Generator" i]:first-child {
+        height: unset !important; /* */
+        padding: 8px !important;
+        /* overflow: unset !important; /* */
+      }
+      & > div:last-child {
+        height: unset !important; /* */
+        padding: 0px !important;
+        /* overflow: unset !important; /* */
+        & div[role="button"] {
+          height: unset !important; /* */
+          padding-top: 8px !important;
+          padding-bottom: 8px !important;
+        }
+      }
+    }
+
+    & div:has(> div[aria-label="Image Generator" i]) {
+      height: unset !important; /* */
+      /* overflow: unset !important; /* */
+      & > div[role="button"][aria-label="Image Generator" i]:first-child {
+        height: unset !important; /* */
+        padding: 8px !important;
+        /* overflow: unset !important; /* */
+      }
+      & > div:last-child {
+        height: unset !important; /* */
+        padding: 0px !important;
+        /* overflow: unset !important; /* */
+      }
+    }
+
+    & div:has(> div[aria-label="Testing & Feedback" i]) {
+      height: unset !important; /* */
+      /* overflow: unset !important; /* */
+      & > div[role="button"][aria-label="Testing & Feedback" i]:first-child {
+        height: unset !important; /* */
+        padding: 8px !important;
+        /* overflow: unset !important; /* */
+      }
+      & > div:last-child {
+        height: unset !important; /* */
+        padding: 0px !important;
+        /* overflow: unset !important; /* */
+      }
+    }
+  }
+`; // styleGearMenuGameplay
+GM_addStyle(styleGearMenuGameplay);
+
+if (1) {
+  let disclaimerReason = '';
+  if (!storedVersion || storedVersion !== currentVersion) {
+    GM_setValue('scriptVersion', currentVersion);
+    GM_deleteValue('disclaimerShown');
+    disclaimerReason = storedVersion ? ' (version change) ' : ' (initial run) ';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+
+    const popupHtml = `
+<div id="disclaimerPopup" style="visibility: visible;">
+  <div class="popup-content">
+    <center><h1>Enhanced QoL Tool</h1></center>
+    <center><h2>${scriptName} v.${currentVersion}${disclaimerReason}</h2></center>
+    <center>This script provides enhancements to the AI Dungeon website.</center>
+    <hr>
+    <center><h2>How to prevent hoof in mouth disease</h2></center>
+    <center><h3>(Please, actually read this and check the boxes.)</h3></center>
+    <hr>
+    <label class="disclaimer-label">
+      <input type="checkbox" class="disclaimer-checkbox">
+      You understand that using this tampermonkey Enhanced QoL Tool plugin modifies the AI Dungeon (AID) website code in your browser.
+      It may introduce problems with the <i>display</i> of the AID website.
+      While using it, if you find what looks like a bug in the AID website,
+      you will disable this tampermonkey plugin, retest and verify the bug is actually with the AID website before reporting bugs.
+    </label>
+    <hr>
+    <label class="disclaimer-label">
+      <input type="checkbox" class="disclaimer-checkbox">
+      Furthermore, the AI Dungeon website can change <i>without notice</i> thereby breaking this tampermonkey Enhanced QoL Tool script <i>at any time</i>.
+      AI Dungeon is under no obligation to users of this script to notify users of changes that may break this script (as it shouldn't be).
+    </label>
+    <hr>
+    <center><h3>Please, Please, Please!</h3></center>
+    <label class="disclaimer-label">
+      <input type="checkbox" class="disclaimer-checkbox">
+      If you use this script and think you've found a bug on AID's website,
+      DISABLE this script first and retest to ensure it is not a bug in this tool!
+      The AID development team work diligently to maintain and enhance their website,
+      the last thing any of us need is to occupy their time researching bugs that are not theirs.
+      If you report a bug to AID that is not theirs, but is from this tool, <b>then that will be your walk of shame</b>. You have been warned.
+      <i>If this is a problem for you, then please, do not use this tool.</i>
+    </label>
+    <hr>
+    <div id="scDelimInputSpan">
+      <button id="closePopup" disabled>I accept! (Close)</button>
+    </div>
+  </div>
+</div>
+`;
+
+    GM_addStyle(`
+  #disclaimerPopup {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-grow: 1;
+    justify-content: center;
+    align-items: center;
+    visibility: visible;
+    z-index: 1000000;
+    top: 0; /* */
+    left: 0; /* */
+    width: 100%; /* */
+    height: 100%; /* */
+  }
+  .popup-content {
+    z-index: 1000001;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: black;
+    color: white;
+    border: 1px solid gray;
+    padding: 20px;
+    width: 35%;
+    border-radius: 5px;
+    border-color: white;
+    border-width: 1px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    position: relative;
+  }
+  #scDelimInputSpan {
+    display: flex;
+    padding-top: calc(20px - 0.5em);
+    justify-content: center;
+  }
+  #closePopup {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0 auto;
+    padding: 8px;
+    border-width: 1px;
+    border-color: white;
+    border-style: solid;
+  }
+  .disclaimer-label {
+    position: relative;
+    z-index: 1000002;
+    opacity: 1;
+    color: white;
+    accent-color: white;
+    cursor: pointer;
+  }
+  .disclaimer-checkbox {
+    appearance: checkbox;
+    display: inline;
+    visibility: visible;
+    position: relative;
+    z-index: 1000003;
+    opacity: 1;
+    accent-color: white;
+    color: white;
+    margin-right: 5px;
+    margin-left: 0px;
+  }
+  `);
+
+    // Check if the popup has been shown before
+    //if (!localStorage.getItem('disclaimerShown')) {
+    if (!GM_getValue('disclaimerShown')) {
+      document.body.innerHTML += popupHtml;
+
+      // Show the popup
+      document.getElementById('disclaimerPopup').style.display = 'flex';
+
+      // Get all disclaimer checkboxes
+      const checkboxes = document.querySelectorAll('.disclaimer-checkbox');
+
+      // Function to check if all checkboxes are checked
+      function areAllCheckboxesChecked() {
+        return Array.from(checkboxes).every(checkbox => checkbox.checked);
+      }
+
+      const disabledColor = 'gray';
+      // Add event listeners to checkboxes
+      checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          // Enable/disable the close button based on checkbox states
+          const closeButton = document.getElementById('closePopup');
+          closeButton.disabled = !areAllCheckboxesChecked();
+          closeButton.style.backgroundColor = areAllCheckboxesChecked() ? '' : disabledColor; // Set background color
+          closeButton.style.cursor = areAllCheckboxesChecked() ? 'pointer' : 'none';
+          //document.getElementById('closePopup').disabled = !areAllCheckboxesChecked();
+        });
+      });
+
+      document.getElementById('closePopup').style.backgroundColor = disabledColor;
+
+      // Handle close button click
+      document.getElementById('closePopup').addEventListener('click', () => {
+        const popup = document.getElementById('disclaimerPopup');
+        popup.style.display = 'none';
+        popup.style.visibility = 'hidden';
+        popup.remove();
+        GM_setValue('disclaimerShown', true);
+        //localStorage.setItem('disclaimerShown', 'true'); // Mark popup as shown
+        location.reload(); // Force a page refresh
+      });
+    }
+  });
+}
+
+/**
+ * Adds a button clone to a container.
+ *
+ * @param {HTMLElement} cloneRef - An existing button element to be cloned for styling the new button.
+ * @param {HTMLElement} container - The container element where the button will be added.
+ * @param {string} label - The label or font icon to use as the label for the button.
+ * @param {function} eventHandler - The function to be called when the button is clicked.
+ * @param {string} [placement='beforeend'] - The placement of the button relative to the container's children. Possible values: 'beforebegin', 'afterbegin', 'beforeend', 'afterend', 'before', 'after'.
+ * @param {HTMLElement} [referenceChild=null] - An optional child element within the container. Used for 'before' and 'after' placements to insert the button before or after this child.
+ */
+function foo(cloneRef, container, label, eventHandler, placement = 'beforeend', referenceChild = null) {
+  return addButtonClone(cloneRef, container, "[ ]", toggleFullScreen, placement = 'beforeend', referenceChild = null);
+}
+if (1) {
+  const AISettings_Model_Settings_Selector = ''
+    + 'div:has(> div[aria-label="Model Settings" i]) ' // The Modal Settings heading.
+    ;
+  waitForKeyElements(AISettings_Model_Settings_Selector, (containerNodes) => {
+    if (!containerNodes || !containerNodes.length) {
+      console.log("containerNodes not defined.");
+      return;
+    }
+    //console.log("containerNodes found: ", containerNodes);
+    const modelContainer = containerNodes[0];
+
+    // Contains the menu content for the AI Model Pill Menu.
+    const AI_SettingsContainer = modelContainer.closest('[aria-label="AI Settings" i]');
+    //console.log("AI_SettingsContainer: ", AI_SettingsContainer);
+
+    //
+    const gearMenu = modelContainer.closest('div[id^=gearMenu-TS i]');
+    if (!gearMenu) console.log("Null gearMenu in AI Settings copy.");
+    const closeSettings = gearMenu?.querySelector('div[role=button][aria-label="Close settings" i]');
+    if (!closeSettings)
+      console.log("Cant get gear 'close settings' for cloner.");
+    else {
+      /**
+       * Event handler for copying settings data.
+       *
+       * @param {HTMLElement} buttonTextElement - A reference to the copy button.
+       */
+      async function copySettingsData(buttonTextElement) {
+        const modelNameContainer = AI_SettingsContainer.querySelector('div[aria-label^="AI Model:" i]');
+        const modelName = modelNameContainer ? modelNameContainer.ariaLabel.split(': ')[1] : "Unknown Model";
+
+        const modelSettingsAccordion = modelContainer.querySelector('div[aria-label="Model Settings"]');
+        if (modelSettingsAccordion.getAttribute('aria-expanded') === "false") {
+          modelSettingsAccordion.click();
+          await new Promise(resolve => setTimeout(resolve, 2));
+        }
+
+        const modelSettingsContainers = modelContainer.querySelectorAll('div[aria-label="Model Settings"] + div > div:only-child > div');
+        if (modelSettingsContainers.length > 0) {
+          let settingsData = { "AI Model": modelName, "await": 0 };
+          // if (1) {
+
+          for (let i = 0; i < modelSettingsContainers.length; i++) {
+            const element = modelSettingsContainers[i];
+
+            const currentSettingName = element.querySelector('p:first-child').innerHTML;
+            const currentSettingInputElement = element.querySelector('input[type="search"]');
+            const currentSettingInputValue = currentSettingInputElement ? currentSettingInputElement.value : "null input element";
+
+            const currentSettingSliderElement = element.querySelector('div[role="slider"]');
+            const currentSettingSliderValue = currentSettingSliderElement ? currentSettingSliderElement.getAttribute('aria-valuenow') : "null slider element";
+
+            if (currentSettingInputValue === "" || currentSettingSliderValue === "" || currentSettingInputValue !== currentSettingSliderValue) {
+              await new Promise(resolve => setTimeout(resolve, 1)); // Wait for 10ms
+              i--; // Decrement the counter to restart the current iteration
+              settingsData["await"]++;
+              continue; // Skip to the next iteration
+            }
+            settingsData[currentSettingName] = currentSettingInputValue;
+
+          }
+          // } else {
+
+          //   modelSettingsContainers.forEach((element) => {
+          //     const currentSettingName = element.querySelector('p:first-child').innerHTML;
+          //     const currentSettingInputElement = element.querySelector('input[type="search"]');
+          //     const currentSettingInputValue = currentSettingInputElement ? currentSettingInputElement.value : "null input element";
+
+          //     const currentSettingSliderElement = element.querySelector('div[role="slider"]');
+          //     const currentSettingSliderValue = currentSettingSliderElement ? currentSettingSliderElement.getAttribute('aria-valuenow') : "null slider element";
+
+          //     if (currentSettingInputValue === "" || currentSettingSliderValue === "" || currentSettingInputValue !== currentSettingSliderValue) {
+
+          //     }
+          //     settingsData[currentSettingName] = currentSettingInputValue;
+          //   });
+          // }
+
+          const jsonData = JSON.stringify(settingsData, null, 2);
+          //console.log("settingsData: ", jsonData);
+
+          // Copy to clipboard
+          navigator.clipboard.writeText(jsonData)
+            .then(() => {
+              console.log('Settings copied to clipboard:', jsonData);
+            })
+            .catch((err) => {
+              console.error('Failed to copy settings:', err);
+            });
+        }
+      }
+      function delayedCopy(buttonTextElement) {
+        delayedClicks([() => copySettingsData(buttonTextElement)]);
+      }
+
+      const clone = addButtonClone(closeSettings, modelContainer.firstChild.lastChild, "w_copy", delayedCopy, placement = 'before', referenceChild = modelContainer.firstChild.lastChild.lastChild);
+      //setTimeout(() => {
+        clone.id = 'ModelSettingsCopyButton';
+        clone.ariaLabel = 'ModelSettingsCopyButton';
+        clone.style.margin = '0px';
+        clone.style.minWidth = '0px';
+        clone.style.padding = '0px';
+        clone.style.paddingTop = '0px';
+        clone.style.paddingBottom = '0px';
+        clone.style.paddingLeft = '0px';
+        clone.style.paddingRight = '0px';
+        clone.style.backgroundColor = 'transparent';
+        GM_addStyle(`
+  div#ModelSettingsCopyButton[aria-label="ModelSettingsCopyButton"] {
+    padding: 0px !important;
+    margin: 0px !important;
+    minWidth: 0px !important;
+    backgroundColor: transparent !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+`);
+        console.log("clone: ", clone);
+
+      //}, 200);
+    }
+
+    /*
+        const observer = new MutationObserver((mutationsList, observer) => {
+          const modelNameContainer = AI_SettingsContainer.querySelector('div[aria-label^="AI Model:" i]');
+          //console.log("modelNameContainer: ", modelNameContainer);
+
+          // Extract model name using split
+          const modelName = modelNameContainer ? modelNameContainer.ariaLabel.split(': ')[1] : "Unknown Model";
+
+          const modelSettingsAccordion = modelContainer.querySelector('div[aria-label="Model Settings"]');
+          let settingsData = {};
+          for (const mutation of mutationsList) {
+            console.log("mutation: ", mutation);
+            if (mutation.type === 'childList' && mutation.target === modelContainer) {
+              const ariaExpanded = modelSettingsAccordion.getAttribute('aria-expanded');
+              if (ariaExpanded === "true") {
+                settingsData = { "AI Model": modelName, "aria-expanded": ariaExpanded };
+              } else {
+
+              }
+            }
+            else if (mutation.type === 'attributes') {
+              // Check if Model Settings are now visible
+
+              const modelSettingsContainers = modelContainer.querySelectorAll('div[aria-label="Model Settings"] + div > div:only-child > div');
+              if (modelSettingsContainers.length > 0) {
+                // Attach the contextmenu listener (see previous code)
+                modelSettingsContainers.forEach((element) => {
+                  //console.log(element);
+                  const currentSettingName = element.querySelector('p:first-child').innerHTML;
+
+                  const currentSettingSliderElement = element.querySelector('div[role="slider"]');
+                  const currentSettingSliderValue = currentSettingSliderElement?.getAttribute('aria-valuenow');
+
+                  const currentSettingInputElement = element.querySelector('input[type="search"]');
+                  const currentSettingInputValue = currentSettingInputElement ? currentSettingInputElement.value : "null input element";
+
+                  settingsData[currentSettingName] = currentSettingSliderValue;
+                  settingsData[currentSettingName + '_I'] = currentSettingInputValue; // This is always an empty string "", why?
+                });
+                console.log("settingsData: ", JSON.stringify(settingsData));
+
+              }
+            }
+          }
+        });
+        //const observerOptions = { childList: true, subtree: true, characterData: true };
+        //const observerOptions = { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded']};
+        const observerOptions = { childList: true, subtree: true, attributes: true, attributeFilter: ['value'] };
+        observer.observe(modelContainer, observerOptions);
+    */
+    /*
+    // Assuming `modelSettings` is the parent element of the Model Settings modal
+    modelSettings.addEventListener('contextmenu', (event) => {
+      event.preventDefault(); // Prevent the default context menu
+
+      const settingsContainer = document.querySelector('div[aria-label="Model Settings"] + div > div:only-child > div');
+      const settingsData = {};
+
+      settingsContainer.querySelectorAll('p, input').forEach((element) => {
+        if (element.tagName === 'P') {
+          currentSettingName = element.innerHTML;
+        } else if (element.tagName === 'INPUT' && element.type === 'range') {
+          settingsData[currentSettingName] = element.value;
+        }
+      });
+
+      const jsonData = JSON.stringify(settingsData, null, 2); // 2 spaces for indentation
+
+      // Copy to clipboard (you might need a library for this, see below)
+      navigator.clipboard.writeText(jsonData)
+        .then(() => {
+          console.log('Settings copied to clipboard:', jsonData);
+        })
+        .catch((err) => {
+          console.error('Failed to copy settings:', err);
+        });
+    });
+    */
+    /*
+    const settingsData = {};
+    modelContainer.children.forEach((element) => {
+      console.log(element);
+      const currentSettingName = element.querySelector('p:first-child').innerHTML;
+      const currentSettingValue = element.querySelectorAll('input')[0].value;
+      console.log(currentSettingName, ": ", currentSettingValue)
+      settingsData[currentSettingName] = currentSettingValue;
+    });
+    console.log("settingsData: ", settingsData);
+    */
+    /*
+        modelContainer.querySelectorAll('p:first-child, input').forEach((element) => {
+          if (element.tagName === 'P') {
+            currentSettingName = element.innerHTML;
+          } else if (element.tagName === 'INPUT' && element.type === 'range') {
+            settingsData[currentSettingName] = element.value;
+          }
+        });
+        console.log(settingsData);
+    */
+    /*
+      const jsonData = JSON.stringify(settingsData, null, 2);
+
+      navigator.clipboard.writeText(jsonData)
+        .then(() => {
+          console.log('Settings copied to clipboard:', jsonData);
+        })
+        .catch((err) => {
+          console.error('Failed to copy settings:', err);
+        });
+        */
+    /*
+      function getCreditsElement() {
+        const creditsButton = $(modelContainer).find("div[role=button]:has(> p:contains('Credits'))")[0];
+        //console.log("creditsButton", creditsButton);
+        if (creditsButton) {
+          return creditsButton.querySelector('& > div > p');
+        }
+        return null;
+      }
+
+      function getCredits(creditsElement) {
+        const credits = creditsElement?.textContent;
+        return parseInt(credits) || 0;
+      }
+
+      let creditsElement = getCreditsElement();
+      //console.log("creditsElement found: ", creditsElement);
+
+      function updateFlameIcon() {
+        if (creditsElement) {
+          const credits = getCredits(creditsElement); // Use textContent
+          //console.log("Credits:", credits);
+          //console.log("creditsElement found: ", creditsElement);
+          changeCreditUseIndicator(credits);
+        } else {
+          // If creditsElement is not found (e.g., on a free Story Generator)
+          changeCreditUseIndicator(0); // Set flame icon to default color
+        }
+      }
+
+      // Call updateFlameIcon initially
+      updateFlameIcon();
+      const creditsObserver = new MutationObserver((mutationsList, observer) => {
+        //console.log("mutation mutation 0.");
+        for (const mutation of mutationsList) {
+          //console.log("mutation: ", mutation);
+          if (mutation.type === "childList") {
+            // Re-query creditsElement whenever there's a childList mutation
+            creditsElement = getCreditsElement();
+            //console.log('new credits element: ', creditsElement);
+            updateFlameIcon();
+          }
+
+          if (
+            (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
+            creditsElement && // Check if creditsElement is defined
+            mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
+          ) {
+            //console.log("mutation mutation 2.");
+            updateFlameIcon();
+          }
+        }
+      });
+
+      // Start observing the modelContainer for changes in its child nodes
+      creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
+      */
+  }, false);
+}
+
+
+
+function addEventListeners(element, events, handler) {
+  events.forEach((event) => {
+    if (event.startsWith('touch')) {
+      element.addEventListener(event, handler, { passive: true }); // Mark touch events as passive
+    } else {
+      element.addEventListener(event, handler); // Other events can be added normally
+    }
+  });
+}
+
+/**
+ * Waits for elements matching a given selector to appear within a target node's subtree, then executes a callback.
+ *
+ * @param {string} selector - A CSS selector to identify the desired elements.
+ * @param {function} callback - A function to be executed when the elements are found. It receives an array of the found elements as its argument.
+ * @param {Node} targetNode - The DOM node within whose subtree to search for the elements.
+ * @param {boolean} [runImmediately=false] - If true, the callback is executed immediately if elements are already present; otherwise, it waits for new elements to appear.
+ */
+function waitForSubtreeElements(selector, callback, targetNode, runImmediately = false, keepObserverRunning = false) {
+  function mutationObserverCallback(mutationsList, observer) {
+    const elements = targetNode.querySelectorAll(selector);
+    if (elements.length > 0) {
+      callback(elements);
+      if (!keepObserverRunning) {
+        observer.disconnect();
+      }
+    }
+  }
+  let observer = new MutationObserver(mutationObserverCallback);
+  observer.observe(targetNode, { childList: true, subtree: true });
+  if (runImmediately) {
+    mutationObserverCallback([], observer);
+  }
+
+  // Return a function to disconnect the observer
+  return () => {
+    observer.disconnect();
+    observer = null; // Optional: Help with garbage collection
+  };
+}
+
+
+/********************************
+* Code for handling the configuration menu and for handling shortcuts.
+*/
+
+/**
+ * Retrieves or sets the value of an input element within a parent container.
+ * Handles both text inputs and checkboxes.
+ *
+ * @param {string|boolean[]} value - The value to set for the input element(s).
+ *                                 If `parent` is provided, this can be an array of booleans for checkboxes or a string for text inputs.
+ *                                 If `parent` is not provided, this is the selector for the input element.
+ * @param {string|HTMLElement|jQuery} [parent] - (Optional) The parent container or selector to find the input element(s) within.
+ *
+ * @returns {string|boolean[]|undefined} - If `parent` is not provided, returns the uppercase value of the input element or an array of boolean values for checkboxes.
+ *                                        If `parent` is provided, returns `undefined` (the function modifies the input elements in-place).
+ */
+const getSetTextFunc = (value, parent) => {
+  const inputElem = $(parent || value).find('input');
+  if (!parent) {
+    const booleans = inputElem
+      .filter(':checkbox')
+      .map((_, el) => el.checked)
+      .get();
+    if (!booleans[0]) return inputElem.val().toUpperCase();
+    return booleans;
+  } else {
+    inputElem.each((i, el) => {
+      if (el.type === 'checkbox') el.checked = value[i];
+      else el.value = value.toUpperCase();
+    });
+  }
+};
+
+const dummy = (value, parent) => {
+};
+
+/**
+ * Configuration object for the MonkeyConfig extension, used to customize user interactions and behavior.
+ */
+const cfg = new MonkeyConfig({
+  title: 'Configure',
+  menuCommand: true,
+  params: {
+    Modifier_Keys: {
+      type: 'custom',
+      html: '<input id="ALT" type="checkbox" name="ALT" /> <label for="ALT">ALT</label> <input id="CTRL" type="checkbox" name="CTRL" /> <label for="CTRL">CTRL</label> <input id="SHIFT" type="checkbox" name="SHIFT" /> <label for="SHIFT">SHIFT</label>',
+      set: getSetTextFunc,
+      get: getSetTextFunc,
+      default: [true, true, false]
+    },
+    Take_Turn: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'C' },
+    Continue: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'A' },
+    Retry: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'S' },
+    Retry_History: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'X' },
+    Erase: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'D' },
+    Do: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'Q' },
+    Say: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'W' },
+    Story: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'E' },
+    See: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'R' },
+    Response_Underline: { type: 'checkbox', default: true },
+    Response_Bg_Color: { type: 'checkbox', default: false },
+
+    '_label': {
+      type: 'custom',
+      label: '<HR>',
+      set: dummy, get: dummy,
+      html: '<HR>'
+    },
+
+    Toggle_Site: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'T' },
+    User_Name: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'Z' },
+    User_Profile: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'G' },
+    Continue_Adventure: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'V' },
+    Flame: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'F' },
+    Scroll_Top: { type: 'custom', html: '<input type="text" maxlength="1" />', set: getSetTextFunc, get: getSetTextFunc, default: 'H' },
+
+    Reset_Disclaimer: {
+      label: 'Reset Disclaimer Popup',
+      type: 'custom',
+      default: false,
+      html: '<input id="resetDisclaimer" type="checkbox" name="resetDisclaimer" />',
+      //html: '<input type="button" value="Reset">',
+      set: (value, parent) => {
+        console.log("SET value: ", value, "parent: ", parent); //value always valse
+        const checkbox = parent.querySelector('#resetDisclaimer');
+        //checkbox.checked = value;
+        checkbox.checked = false;
+        //localStorage.setItem('disclaimerShown', 'true');
+        //GM_setValue('disclaimerShown', true);
+      },
+      get: (parent) => {
+        const checkbox = parent.querySelector('#resetDisclaimer');
+        const value = checkbox.checked;
+        console.log("GET value", value, "parent: ", parent); // Value always false
+        if (value === true) { // Assuming the button click sets the value to true
+          //localStorage.removeItem('disclaimerShown');
+          GM_deleteValue('disclaimerShown');
+          alert('Disclaimer popup will be shown again on the next page load.');
+          checkbox.checked = false; // Reset the button
+        }
+        return value;
+      }
+    },
+
+    Modal_Dimensions: {
+      label: 'Modal Dim CSS',
+      type: 'custom',
+      html: `
+        <label for="Modal_Width">W:</label>
+        <input id="Modal_Width" type="text" style="width: 100px" />
+        <label for="Modal_Height">H:</label>
+        <input id="Modal_Height" type="text" style="width: 100px" />`,
+      set: (values, parent) => {
+        const [width, height] = values;
+        parent.querySelector('#Modal_Width').value = width;
+        parent.querySelector('#Modal_Height').value = height;
+      },
+      get: (parent) => {
+        return [parent.querySelector('#Modal_Width').value, parent.querySelector('#Modal_Height').value];
+      },
+      default: ['512px', '80vh'] // Default values for width and height
+    },
+
+    Reward_Claimer: { type: 'checkbox', default: true }, // Enable waiting for new rewards (scales and avatars) and claim them.
+    Save_Raw_Text: { type: 'checkbox', default: false }, // Save raw text rather than removing '>'
+    Fix_Actions: { type: 'checkbox', default: true }, // Fix editing past actions.
+    Action_Cleaner: { type: 'checkbox', default: false }, // Cleanup the current action.
+    Do_Action_Verb: { type: 'text', default: null }, // RFU
+
+    Default_SC_Notes: { type: 'text', default: 'Unused.' },
+
+    'Delimiter Settings': {
+      type: 'custom',
+      html: 'Customize delimiters for Story Card insertion.',
+      set: dummy, get: dummy,
+      default: 'Customize delimiters for Story Card insertion.'
+    },
+    Delimiter_Start: { type: 'text', default: '{ Story Card: ' },
+    Delimiter_End: { type: 'text', default: ' }' }
+  }
+});
+
+const modalDimensions = cfg.get('Modal_Dimensions');
+let [modalWidthCfg, modalHeightCfg] = modalDimensions;
+
+
+/**
+ * An array defining available actions within the application, potentially tied to UI elements.
+ *
+ * Each action object has the following properties:
+ * - `name`: A unique identifier for the action (e.g., 'Take_Turn', 'Retry').
+ * - `type`: Categorizes the action (e.g., 'Command', 'Mode', 'History').
+ * - `aria-Label`: Provides an accessible label for screen readers.
+ * - `active`: An array of routes/URLs where this action should be enabled/visible.
+ */
+const actionArray = [
+  { name: 'Take_Turn', type: 'Command', 'aria-Label': 'Command: take a turn', active: ["/play"] },
+  { name: 'Continue', type: 'Command', 'aria-Label': 'Command: continue', active: ["/play"] },
+  { name: 'Retry', type: 'Command', 'aria-Label': 'Command: retry', active: ["/play"] },
+  { name: 'Retry_History', type: 'History', 'aria-Label': 'Retry history', active: ["/play"] },
+  { name: 'Erase', type: 'Command', 'aria-Label': 'Command: erase', active: ["/play"] },
+  { name: 'Do', type: 'Mode', 'aria-Label': "Set to 'Do' mode", active: ["/play"] },
+  { name: 'Say', type: 'Mode', 'aria-Label': "Set to 'Say' mode", active: ["/play"] },
+  { name: 'Story', type: 'Mode', 'aria-Label': "Set to 'Story' mode", active: ["/play"] },
+  { name: 'See', type: 'Mode', 'aria-Label': "Set to 'See' mode", active: ["/play"] },
+  { name: 'Flame', type: 'Command', 'aria-Label': 'Game Menu', active: ["/play"] },
+  { name: 'User_Name', type: 'User_Name', 'aria-Label': 'Game Menu', active: ["/play"] },
+  { name: 'Scroll_Top', type: 'Scroll_Top', 'aria-Label': 'Scroll to top', active: ["/play"] },
+  { name: 'User_Profile', type: 'User_Profile', 'aria-Label': 'Game Menu', active: ["/play", "/profile/", "/scenario/", "/adventure/"] },
+  { name: 'Continue_Adventure', type: 'Continue_Adventure', 'aria-Label': 'Play', active: ["/profile/", "/scenario/", "/adventure/"] },
+  { name: 'Toggle_Site', type: 'Toggle_Site', 'aria-Label': 'Toggle Site', active: ["play.aidungeon.com", "beta.aidungeon.com"] }
+];
+
+const actionKeys = actionArray.map((action) => cfg.get(action.name));
+// Modified handleKeyPress function
+
+const isMac = window.navigator.userAgentData?.platform?.toLowerCase().includes('mac');
+
+/**
+ * Handles key press events, ensuring non-repeating keys and normalizing key values.
+ *
+ * @param {KeyboardEvent} e - The keyboard event object.
+ */
+const handleKeyPress = (e) => {
+  if (e.repeat) return;
+  const key = e.key.toUpperCase();
+
+  //const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => e[`${mod.toLowerCase()}Key`]);
+
+  const modifiers = ['ALT', 'CTRL', 'SHIFT'].map((mod) => {
+    // For Mac, use Cmd instead of Ctrl
+    return (mod === 'CTRL' && isMac) ? e.metaKey : e[`${mod.toLowerCase()}Key`];
+  });
+
+  const modifsActive = modifiers.every((value, index) => value === cfg.get('Modifier_Keys')[index]);
+  const index = actionKeys.indexOf(key);
+  if (modifsActive && index !== -1) {
+    const action = actionArray[index];
+    let isPageActive = false;
+    const fullURL = window.location.href;
+
+    // Determine if the current page is active based on the action's "active" property
+    if (Array.isArray(action.active)) {
+      // Array of strings: check if pathname includes any of the strings
+      isPageActive = action.active.some(path => fullURL.includes(path));
+    } else if (action.active instanceof RegExp) {
+      // Regular expression: check if pathname matches the regex
+      isPageActive = action.active.test(fullURL);
+    } else if (typeof action.active === 'function') {
+      // Function: call the function to determine if the page is active
+      isPageActive = action.active(fullURL);
+    } else {
+      console.warn("Invalid 'active' property type for action:", action.name);
+    }
+    if (isPageActive) {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetElem = `[aria-label="${action['aria-Label']}"]`;
+
+      if ($("[aria-label='Close text input']").length) $("[aria-label='Close text input']").click();
+      if (action.type === 'Command') setTimeout(() => $(targetElem).click(), 50);
+      else if (action.type === 'Mode') delayedClicks([() => $('[aria-label="Command: take a turn"]').click(), () => $('[aria-label="Change input mode"]').click(), () => $(targetElem).click()]);
+      else if (action.type === 'History' && $('[aria-label="Retry history"]').length) setTimeout(() => $(targetElem).click(), 50);
+      else if (action.type === 'User_Profile') {
+        if (window.location.pathname.includes('/play')) {
+          delayedClicks([
+            () => $('[role="button"][aria-label="Game Menu"]').click(),
+            () => $('[role="button"][aria-label^="View"][aria-label$="profile"]').click()
+          ]);
+        } else {
+          delayedClicks([
+            () => $('[role="button"][aria-label="User Menu"]').click(),
+            () => $('[role="button"][aria-label="My Stuff/Profile"]').click()
+          ]);
+        }
+      }
+      else if (action.type === 'Continue_Adventure') {
+        console.log("Got continue Adventure");
+        delayedClicks([
+          () => $('[role="button"][aria-label="Play"]').click(),
+          () => $('[role="button"][aria-label="Continue Adventure"]').click()
+        ]);
+      }
+      else if (action.type === 'User_Name') {
+        document.addEventListener('forceFocus', (event) => {
+          //.log("Got custome forced event.");
+          event.target.focus(); // Focus on the target of the event (the input field)
+        });
+        delayedClicks([
+          () => $('[role="button"][aria-label="Game Menu"]').click(),
+          () => $('[role="button"][aria-label="Open player menu"]').click(),
+          () => $('[role="button"][aria-label="Edit Character Name"]').click(),
+          //() => $('input#flameplayername').click(), // Doesn't work.
+          //() => $('input#flameplayername').trigger('click'), // Doesn't work.
+          () => $('input#flameplayername').focus()
+        ]
+        );
+      }
+      else if (action.type === 'Toggle_Site') {
+        const currentURL = window.location.href;
+        console.log("Got Site Toggle: ", currentURL);
+        const betaSite = 'beta.aidungeon.com';
+        const playSite = 'play.aidungeon.com';
+        const newURL = currentURL.includes(betaSite) ? currentURL.replace(betaSite, playSite) : currentURL.replace(playSite, betaSite);
+        console.log("Got Site Toggle: ", newURL);
+        window.location.href = newURL;
+      } // End action.type
+      else if (action.type === 'Scroll_Top') {
+        console.log("Got scroll cmd.");
+        const scrollContainer = document.querySelector('div#__next div.is_ScrollView'); // Find the scrollable container
+        if (scrollContainer) {
+          let previousScrollHeight = scrollContainer.scrollHeight;
+          let attempts = 0;
+          const maxAttempts = 200; // Adjust as needed
+          const timeout = 5000; // 5 seconds timeout (adjust as needed)
+          let startTime = Date.now();
+
+          function simulateScroll() {
+            // Simulate pressing Home
+            const homeEvent = new KeyboardEvent('keydown', { key: 'Home' });
+            scrollContainer.dispatchEvent(homeEvent);
+
+            setTimeout(() => {
+              if (scrollContainer.scrollTop === 0 || Date.now() - startTime > timeout) {
+                console.log("Reached the top or timeout.");
+                return; // Stop the loop
+              }
+
+              if (scrollContainer.scrollHeight > previousScrollHeight) {
+                previousScrollHeight = scrollContainer.scrollHeight;
+                attempts = 0; // Reset attempts if new content is loaded
+
+                // Simulate pressing Page Down
+                const pageDownEvent = new KeyboardEvent('keydown', { key: 'PageDown' });
+                scrollContainer.dispatchEvent(pageDownEvent);
+              }
+
+              if (attempts < maxAttempts) {
+                attempts++;
+                simulateScroll(); // Continue the loop
+              } else {
+                console.log("Max attempts reached. Stopping.");
+              }
+            }, 200); // Adjust delay as needed
+          }
+
+          simulateScroll();
+        } else {
+          console.warn("Scroll container not found.");
+        }
+      }
+
+    } // End isPageActive
+
+  }
+  const selectKeys = ['ARROWLEFT', 'ENTER', 'ARROWRIGHT'];
+  if (selectKeys.includes(key) && $('[role="dialog"]').length) {
+    setTimeout(() => $("[role='dialog']").find("[role='button']")[selectKeys.indexOf(key)].click(), 50);
+  }
+};
+
+
+/**
+ * Executes a series of click events with a delay between each, using requestAnimationFrame for optimal timing.
+ *
+ * @param {Function[]} clicks - An array of functions representing click events to be executed.
+ * @param {number} [i=0] - An optional index indicating the current click event being processed (used for recursion).
+ */
+const delayedClicks = (clicks, i = 0) => {
+  if (i < clicks.length) {
+    requestAnimationFrame(() => {
+      clicks[i]();
+      delayedClicks(clicks, i + 1);
+    });
+  }
+};
+
+/**
+ * A class that encapsulates a MutationObserver, providing convenient methods to manage and interact with it.
+ */
+class DOMObserver {
+  /**
+   * Creates a new DOMObserver instance.
+   *
+   * @param {MutationCallback} callback - The callback function to execute when mutations are observed.
+   * @param {Node} targetNode - The DOM node to observe for mutations.
+   * @param {MutationObserverInit} options - The configuration options for the MutationObserver.
+   * @param {boolean} [startImmediately=false] - Whether to start observing immediately upon creation.
+   */
+  constructor(callback, targetNode, options, startImmediately = false) {
+    this.observer = new MutationObserver(callback);
+    this.targetNode = targetNode;
+    this.options = options;
+
+    if (startImmediately) {
+      this.observe();
+    }
+  }
+
+  /**
+   * Destroys the DOMObserver instance, disconnecting the observer and clearing references.
+   */
+  destroy() {
+    this.disconnect();
+    this.observer = null;
+    this.targetNode = null;
+    this.options = null;
+  }
+
+  /**
+   * Starts observing the target node for mutations.
+   *
+   * @param {Node} [targetNode=this.targetNode] - The DOM node to observe (defaults to the one provided in the constructor).
+   * @param {MutationObserverInit} [options=this.options] - The configuration options (defaults to the ones provided in the constructor).
+   */
+  observe(targetNode = this.targetNode, options = this.options) {
+    if (this.observer && targetNode && targetNode.nodeType === Node.ELEMENT_NODE) { // Ensure targetNode is an Element
+      this.observer.observe(targetNode, options);
+    } else {
+      console.warn("Target node is not a valid element:", targetNode); // For debugging
+    }
+  }
+
+  /**
+   * Disconnects the MutationObserver, stopping observation.
+   */
+  disconnect() {
+    if (this.observer !== null) {
+      this.observer.disconnect();
+    }
+  }
+
+  /**
+   * Retrieves any pending mutation records from the observer and empties its record queue.
+   *
+   * @returns {MutationRecord[]} An array of MutationRecord objects representing the observed mutations.
+   */
+  takeRecords() {
+    return this.observer ? this.observer.takeRecords() : []; // Return empty array if observer is null
+  }
+
+  /**
+   * Checks if the observer is connected and actively observing.
+   *
+   * @returns {boolean} True if the observer is connected, false otherwise.
+   */
+  get isConnected() {
+    return this.observer && this.observer.isConnected(); // Check if observer exists and is connected
   }
 }
-`);
 
 //console.log("CSS_Elements: ", CSS_Elements);
+
 /**
  * Handles changes detected by a MutationObserver.
  * Clean up the the prompt area to make more efficient.
@@ -1720,6 +2250,7 @@ function buttonClone(cloneReference, label, action) {
   buttonTextElement.classList.remove('_o-0d0t546');
   button.onclick = (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Use stopPropagation to reliably stop propagation
     e.bubbles = false;
     action(buttonTextElement); // Pass the <p> element to the action function
   };
@@ -2043,7 +2574,7 @@ function setDefaultSizeStyling(modalNode) {
 
 /**
  * Centers a modal element within the viewport, optionally only if it overflows the viewport.
- * 
+ *
  * @param {HTMLElement} modalNodeTree - The root node of the modal tree within the document body.
  * @param {HTMLElement} modalNode - The specific modal element to be centered.
  * @param {boolean} [onlyIfVPOverflow=false] - If true, the modal will only be centered if it overflows the viewport.
@@ -2364,101 +2895,9 @@ if (cfg.get('Fix_Actions') === true) {
     }
   });
 }
-const flameIcon = document.getElementById('game-blur-button'); // Get the flame icon element
-/**
- * Function to update the credits being used indicators in the UI.
- *
- * @param {boolean} indicatorFlag - If true, turns on credits being used indicator.
- */
-function changeCreditUseIndicator(indicatorFlag) {
-  const flameIcon = document.querySelector(
-    'div[id="game-blur-button"][aria-label="Game Menu"] p.font_icons'
-  );
-  const commandBar = document.querySelector(
-    'div[role="toolbar" i][aria-label="Command Bar" i]'
-  );
-  const navigationBar = document.querySelector(
-    'div[role="toolbar" i][aria-label="Navigation Bar" i]'
-  );
 
-  const gearMenu_Header = document.querySelector(
-    'div#__next div[id^="gearMenu_Header_TS" i]'
-  );
-  const theDialog = document.querySelector(
-    'div#__next div[id^="TheDialog" i]'
-  );
-  const creditsOnColor = "red";
-  const creditsOffColor = "";
-  if (flameIcon) {
-    if (indicatorFlag > 0) {
-      flameIcon.style.color = creditsOnColor; // Change to red if value is greater than 0
-      flameIcon.parentNode.parentNode.title = `Context Credits Used: ${indicatorFlag}/action`; // Reset to default color if value is 0 or less
-    } else {
-      flameIcon.style.color = creditsOffColor; // Reset to default color if value is 0 or less
-      flameIcon.parentNode.parentNode.title = 'Context Credits Used: 0/action'; // Reset to default color if value is 0 or less
-    }
-  }
-  if (commandBar) {
-    // Target all descendant text elements within the command bar
-    const textElements = commandBar.querySelectorAll('span, p');
-
-    if (indicatorFlag > 0) {
-      textElements.forEach(element => {
-        element.style.color = creditsOnColor;
-      });
-    } else {
-      textElements.forEach(element => {
-        element.style.color = creditsOffColor;
-      });
-    }
-  }
-  if (navigationBar) {
-    // Target all descendant text elements within the command bar
-    const textElements = navigationBar.querySelectorAll('span, p');
-
-    if (indicatorFlag > 0) {
-      textElements.forEach(element => {
-        element.style.color = creditsOnColor;
-      });
-    } else {
-      textElements.forEach(element => {
-        element.style.color = creditsOffColor;
-      });
-    }
-  }
-  if (gearMenu_Header) {
-    // Target all descendant text elements within the gearMenu header
-    const textElements = gearMenu_Header.querySelectorAll('span, p');
-
-    if (indicatorFlag > 0) {
-      textElements.forEach(element => {
-        element.style.color = creditsOnColor;
-      });
-    } else {
-      textElements.forEach(element => {
-        element.style.color = creditsOffColor;
-      });
-    }
-  }
-  if (theDialog) {
-    // Target all descendant text elements within the TheDialog header
-    const textElements = theDialog.querySelectorAll('span, p');
-
-    if (indicatorFlag > 0) {
-      textElements.forEach(element => {
-        element.style.color = creditsOnColor;
-      });
-    } else {
-      textElements.forEach(element => {
-        element.style.color = creditsOffColor;
-      });
-    }
-  }
-
-}
 if (0) {
   // Example for how to get the values of a slider.
-
   const AISettings_StoryGen_Model_Slider_Selector = ' '
     + 'div[aria-label="Story Generator" i] ' // The Story Gen Title element.
     + ' + div' // The mext sibling is the Story Gen Content div.
@@ -2494,72 +2933,82 @@ if (0) {
     const mo_opts = {
       //childList: true
       //, subtree: true
-      //, characterData: true 
+      //, characterData: true
       attributes: true
       , attributeFilter: ['aria-valuemax', 'aria-valuemin', 'aria-valuenow']
     };
     sliderObserver.observe(sliderNode, mo_opts);
   }, false);
+} // Slider example.
+
+/**
+ * Function to update the credits being used indicators in the UI.
+ *
+ * @param {boolean} indicatorFlag - If true, turns on credits being used indicator.
+ */
+
+let updateElements = [];
+
+function changeCreditUseIndicator(indicatorFlag) {
+
+  updateElements = [];
+  const flameIcon = document.querySelector('div[aria-label="Game Menu"] p.font_icons');
+  if (flameIcon) {
+    updateElements.push(flameIcon);
+    flameIcon.parentNode.parentNode.title = indicatorFlag > 0 ? `Context Credits Used: ${indicatorFlag}/action` : 'Context Credits Used: 0/action';
+  }
+
+  const commandBar = document.querySelector('div[role="toolbar" i][aria-label="Command Bar" i]');
+  if (commandBar) updateElements.push(...commandBar.querySelectorAll('span, p'));
+
+  const navigationBar = document.querySelector('div[role="toolbar" i][aria-label="Navigation Bar" i]');
+  if (navigationBar) updateElements.push(...navigationBar.querySelectorAll('span, p'));
+
+  const theDialog = document.querySelector('div#__next div[id^="TheDialog" i]');
+  if (theDialog) updateElements.push(...theDialog.querySelectorAll('span, p'));
+
+  const gearMenu = document.querySelector('div#__next div[id^="gearMenu-TS" i]');
+  if (!gearMenu) console.log("Cant get gearMenu");
+
+  const gearMenu_Header = gearMenu?.querySelector('div[id^="gearMenu-Header-TS" i]');
+  if (gearMenu_Header) updateElements.push(...gearMenu_Header.querySelectorAll('span, p'));
+
+  const story_Generator = gearMenu?.querySelector('div[aria-label="Story Generator" i]');
+  if (story_Generator) updateElements.push(...story_Generator.querySelectorAll('span, p'));
+
+  const pillTab_AI_Models = gearMenu?.querySelector('div[aria-label*="tab ai models" i]');
+  if (pillTab_AI_Models) updateElements.push(...pillTab_AI_Models.querySelectorAll('span, p'));
+
+  const Memory_System = gearMenu?.querySelector('div[aria-label="Memory System" i]');
+  if (Memory_System) updateElements.push(...Memory_System.querySelectorAll('span, p'));
+
+  if (gearMenu) {
+    if (indicatorFlag > 0 && Memory_System.getAttribute('aria-expanded') === "false") {
+      Memory_System.click();
+    }
+    const contentLengthDivs = $(gearMenu).find('div[aria-label="Memory System"] + div p:contains("Context Length")');
+    if (contentLengthDivs.length > 0) {
+      updateElements.push(contentLengthDivs[0]);
+    } else {
+      console.log("no content length divs.")
+    }
+  }
+
+  if (story_Generator) {
+    //const creditsButton = $(story_Generator).find("div[role=button]:has(> p:contains('Credits'))")[0];
+    const creditsButton = $(gearMenu).find('div[aria-label="Story Generator"] + div div[role=button]:has(> p:contains("Credits"))')[0];
+    if (creditsButton) updateElements.push(...creditsButton.querySelectorAll('span, p'));
+    else console.log("no credits button.");
+
+  }
+
+  const creditsOnColor = "OrangeRed";
+  const creditsOffColor = "";
+  const color = indicatorFlag > 0 ? creditsOnColor : creditsOffColor;
+  updateElements.forEach(element => { element.style.color = color; });
+
 }
 
-if (0) {
-  // How to get the credits indicator. But doesn't work as it can't detect a missing credits indicator.
-  const AISettings_StoryGen_Model_Container_Selector =
-    'div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
-    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
-    + ' > div.is_Column:only-child' // A wrapper.
-    + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
-    + ' div:has(img[alt="credits" i]) + p' // The mext sibling is the Story Gen content window.
-    ;
-  waitForKeyElements(AISettings_StoryGen_Model_Container_Selector, (creditsElements) => {
-    if (!creditsElements || !creditsElements?.length) {
-      console.log("creditElements not defined.");
-      return;
-    }
-    //console.log("creditsElements found: ", creditsElements);
-    const creditsElement = creditsElements[0]; // Get the first matching element
-    console.log("creditsElements: ", creditsElements);
-
-    creditsElement.dataset.uniqueId = Date.now(); // Using a timestamp as a simple unique ID
-
-    function getCredits(creditsElement) {
-      const credits = creditsElement?.textContent;
-      return parseInt(credits) || 0;
-    }
-
-    function updateFlameIcon(creditsElement) {
-      if (creditsElement) {
-        const credits = getCredits(creditsElement); // Use textContent
-        //console.log("Credits:", credits);
-        //console.log("creditsElement found: ", creditsElement);
-        changeCreditUseIndicator(credits);
-      } else {
-        // If creditsElement is not found (e.g., on a free Story Generator)
-        changeCreditUseIndicator(0); // Set flame icon to default color
-      }
-    }
-
-    // Call updateFlameIcon initially
-    updateFlameIcon(creditsElement);
-
-
-    const creditsObserver = new MutationObserver((mutationsList, observer) => {
-      console.log("mutation mutation 0.");
-      for (const mutation of mutationsList) {
-        console.log("mutation: ", mutation);
-        if (mutation.type === 'characterData') {
-          console.log("mutation mutation 2.");
-          updateFlameIcon(mutation.target);
-        }
-      }
-    });
-
-    // Start observing the modelContainer for changes in its child nodes
-    //creditsObserver.observe(creditsElement, { subtree: true, characterData: true, attributes: true });
-    //childList: true
-    creditsObserver.observe(creditsElement, { childList: true, subtree: true, characterData: true });
-  }, false);
-}
 /*
 ** In the react DOM, this is a somewhat stable element to wait for. Once this is active,
 ** we use a mutation observer to watch for credits above 0 being used and notify the UI.
@@ -2623,18 +3072,19 @@ if (1) {
         }
 
         if (
-          (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
+          (mutation.type === "childList" || mutation.type === "characterData" || mutation.type === "attributes") && // Observe both childList and characterData
           creditsElement && // Check if creditsElement is defined
           mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
         ) {
-          //console.log("mutation mutation 2."); 
+          //console.log("mutation mutation 2.");
           updateFlameIcon();
         }
       }
     });
 
     // Start observing the modelContainer for changes in its child nodes
-    creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
+    //creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true, attributes: true });
+    creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true, attributes: true });
   }, false);
 }
 /**
@@ -2669,7 +3119,7 @@ function appendBeforeTimestampDash(idString, ...stringsToAppend) {
 
 /**
  * Removes the timestamp suffix (e.g., "-TS1234567890") from an ID string.
- * 
+ *
  * @param {string} idString - The ID string potentially containing a timestamp suffix.
  * @returns {string} The ID string with the timestamp suffix removed, if present.
  */
@@ -2688,24 +3138,60 @@ function appendBeforeTimestampDash(idString, ...stringsToAppend) {
   const appendedString = stringsToAppend.join('-'); // Join the strings with dashes
   return idString.replace(/-TS(\d+)$/, `-${appendedString}-TS$1`);
 }
+
+/**
+ * Sets the ID of a node if it's currently null or different from the provided value.
+ * Optionally disconnects and reattaches a MutationObserver if provided.
+ *
+ * @param {HTMLElement} node - The HTML element whose ID needs to be set.
+ * @param {string} value - The desired ID value for the node.
+ * @param {boolean} [ignoreTimestamp=false] - (Optional) Whether to ignore the timestamp suffix during comparison.
+ * @param {MutationObserver} [observer] - (Optional) The MutationObserver to disconnect and reattach.
+ * @param {MutationObserverInit} [options] - (Optional) The options for reattaching the observer.
+ * @returns {string|null} - The final ID value of the node, or null if the node's ID cannot be set.
+ */
+function setIdIfNullOrDifferent(node, value, ignoreTimestamp, observer, options) {
+  observer = observer || null;
+  options = options || null;
+  if (node && 'id' in node) {
+    const currentId = ignoreTimestamp ? node.id.replace(/-TS\d+$/, '') : node.id;
+    const targetId = ignoreTimestamp ? value.replace(/-TS\d+$/, '') : value;
+
+    if (currentId !== targetId) {
+      if (observer) {
+        observer.disconnect();
+      }
+      node.id = value;
+      if (observer) {
+        observer.observe(node, options || { childList: true, subtree: true });
+      }
+    }
+    return node.id;
+  }
+  return null; // No node, return null.
+}
+
 if (1) {
   /*
-  ** In the react DOM, these are somewhat stable elements to wait for. 
+  ** In the react DOM, these are somewhat stable elements to wait for.
   ** The only purpose is to create unique IDs for the gearMenu elements.
   ** Other code uses the IDs, including CSS.
   */
-  //const gameScreenSelector =
-  //'body > div.app-root > div#__next > div > span > div:nth-child(2)';
-  //const gameScreenNode = document.querySelector(gameScreenSelector);
+  let gearMenuObserver = null;
+  //updateGearMenu_Content(gearMenu);
+  const gearMenuObserverOptions = {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: ['aria-label', 'aria-hidden']
+  };
 
   const gearMenuSelector =
-    //'#__next > div > span > div:nth-child(2) > div:nth-child(2), ' +  
-    '#__next > div > span > span > div:nth-child(2) > div:nth-child(2)'; /* Prod/Beta/Alpha */
+    //'#__next > div > span > span > div:nth-child(2) > div:nth-child(2):has(> div:only-child > div:only-child > div:nth-child(2))';
+    '#__next > div > span > span > div:nth-child(2) > div:nth-child(2)';
 
   waitForKeyElements(gearMenuSelector, (gearMenuNodes) => {
     //console.log(gearMenuNodes);
     if (gearMenuNodes.length < 1) {
-      console.warn("Missing GearMenuNode, Bailing.");
+      console.warn("Missing GearMenuNode.");
       return;
     }
 
@@ -2713,143 +3199,144 @@ if (1) {
     const timestamp = "-TS" + Date.now();
 
     const gearBase = 'gearMenu';
-
-    gearMenuNode.id = `${gearBase}Node` + timestamp;
+    //gearMenuNode.id = `${gearBase}Node` + timestamp;
+    setIdIfNullOrDifferent(gearMenuNode, `${gearBase}Node` + timestamp, true, gearMenuObserver, gearMenuObserverOptions);
 
     const gearMenu_Wrapper = gearMenuNode?.firstChild;
-    gearMenu_Wrapper.id = `${gearBase}-Wrapper` + timestamp;
+    //gearMenu_Wrapper.id = `${gearBase}-Wrapper` + timestamp;
+    setIdIfNullOrDifferent(gearMenu_Wrapper, `${gearBase}-Wrapper` + timestamp, true, gearMenuObserver, gearMenuObserverOptions);
 
     const gearMenu = gearMenu_Wrapper?.firstChild;
     if (!gearMenu) {
       console.warn("Missing GearMenu Wrapper, Bailing.");
       return;
     }
-    gearMenu.id = `${gearBase}` + timestamp;
+    //gearMenu.id = `${gearBase}` + timestamp;
+    if (!setIdIfNullOrDifferent(gearMenu, `${gearBase}` + timestamp, true, gearMenuObserver, gearMenuObserverOptions)) {
+      console.warn("Missing GearMenu, Bailing.");
+      return;
+    }
 
     const gearMenu_Header = gearMenu?.children[0];
-    gearMenu_Header.id = appendBeforeTimestampDash(gearMenu.id, "Header");
+    //gearMenu_Header.id = appendBeforeTimestampDash(gearMenu.id, "Header");
+    if (!setIdIfNullOrDifferent(gearMenu_Header, appendBeforeTimestampDash(gearMenu.id, "Header"), true, gearMenuObserver, gearMenuObserverOptions)) {
+      console.warn("Missing GearMenu_Header, Bailing.");
+      return;
+    }
 
     let gearMenu_Content = null;
-    //let gearMenu_Content = gearMenu?.children[1];
-    //gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
 
     /**
      * Called by the mutation observer on gearMenu that hunts for a new gearMenu_Content.
      * Waits for sub tree elements for the Pill Menu and the Pill Content.
-     * 
+     *
      * @param {HTMLElement} gearMenu - The the div element containing the modified or replaced gearMenu_Content element.
      */
     function updateGearMenu_Content(gearMenu) {
-      // // The child list of gearMenu has changed, so re-run waitForKeyElements
-      // const tmp = gearMenu?.children[1];
-      // if (!tmp) {
-      //   console.warn("No content node for gear menu!");
-      //   return;
-      // }
-      // gearMenu_Content = tmp;
-      // gearMenu_Content.id = 'gearMenu_Content_' + timestamp;
-      //'&:has(& > :nth-child(2)), div:has(&>div[aria-label*="AI settings"]), div:has(&>div[aria-label*="Display settings"])',
-      console.log("gearMenu: ", gearMenu);
+      //console.log("gearMenu: ", gearMenu);
 
       gearMenu_Content = gearMenu?.children[1];
 
       if (!gearMenu_Content) {
         console.warn("Cannot get gearMenu content div from gearMenu: ", gearMenu);
+        return;
+      }
+      if (!setIdIfNullOrDifferent(gearMenu_Content,
+        appendBeforeTimestampDash(gearMenu.id, "Content"), true,
+        gearMenuObserver, gearMenuObserverOptions)) {
+        console.warn("Cannot get gearMenu_Content.id: ", gearMenu_Content);
+        return;
       }
 
-      gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content");
-      console.log("gearMenu-Content: ", gearMenu_Content);
+      //gearMenuObserver.disconnect();
+      //gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content");
+      //gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
 
-      //stripTimestampSuffix(idString)
+      //console.log("gearMenu-Content: ", gearMenu_Content);
 
-      //const gearMenu_Content_Selector = `#${gearMenu_Content.id}:has(:nth-child(2))`;
       const gearMenu_Content_Selector = ''
         + `div[id^="${gearBase}-Content-"]:has(:nth-child(2):last-child)`
-        //+ `, div[aria-label*="AI settings"]`
-        //+ `, div[aria-label*="Display settings"]`
         ;
-      const gearMenu_Content_Selectorz = ''
-        + `  div[id^="${gearBase}-TS"]:has(:nth-child(2) div[aria-label*="selected tab plot" i])`
-        + `, div[id^="${gearBase}-TS"]:has(:nth-child(2) div[aria-label*="selected tab plot" i])`
-        + `, div[aria-label*="AI settings"]`
-        + `, div[aria-label*="Display settings"]`
-        ;
-
-
-
-      console.log("gearMenu_Content_Selector: ", gearMenu_Content_Selector);
-
-      //const foo = gearMenu.querySelectorAll(gearMenu_Content_Selector);
-      const foo = $(gearMenu).find(gearMenu_Content_Selector);
-      console.log("foo: ", foo);
+      //console.log("gearMenu_Content_Selector: ", gearMenu_Content_Selector);
 
       waitForSubtreeElements(
         gearMenu_Content_Selector,
         (matchingElements) => {
-          console.log("matchingElements: ", matchingElements);
+          //console.log("matchingElements: ", matchingElements);
 
-          // const matchingElement = matchingElements.length > 0 ? matchingElements[0] : null;
           matchingElements.forEach(matchingElement => {
             if (matchingElement) {
-              console.log("matchingElement: ", matchingElement);
-              //const foo = matchingElement.querySelector('div[aria-label="AI settings"i]');
-              //console.log("AI settings match: ", foo);
+              //console.log("matchingElement: ", matchingElement);
               let match = null;
               if (match = matchingElement.querySelector('div[aria-label="AI settings" i]')) {
+                gearMenuObserver.disconnect();
                 const pillNode = match.parentNode;
                 gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Gameplay");
                 pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
                 pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
                 match.id = appendBeforeTimestampDash(pillNode.id, "AI_Settings");
-                match.dataset.uniqueId = "TS"+Date.now();
+                //match.dataset.uniqueId = "TS" + Date.now();
+                gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
               }
               else if (match = matchingElement.querySelector('div[aria-label="Display settings" i]')) {
+                gearMenuObserver.disconnect();
                 const pillNode = match.parentNode;
                 gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Gameplay");
                 pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
                 pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
                 match.id = appendBeforeTimestampDash(pillNode.id, "Display_Settings");
-                match.dataset.uniqueId = "TS"+Date.now();
+                //match.dataset.uniqueId = "TS" + Date.now();
+                gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
               }
- /*             
-              else if (matchingElement.ariaLabel && matchingElement.ariaLabel.match(/Display settings/i)) {
-                const pillNode = matchingElement.parentNode;
-                pillNode.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill");
-                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Gameplay");
-                pillNode.firstChild.id = appendBeforeTimestampDash(pillNode.id, "Header");
-                matchingElement.id = appendBeforeTimestampDash(pillNode.id, "Content", "Display");
-              }
-                */
-              else if (matchingElement.children.length === 4) { // This is for production only
-                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
+              else if (matchingElement.children.length === 2) {
+                gearMenuObserver.disconnect();
+                //gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Adventure");
+                if (!setIdIfNullOrDifferent(gearMenu_Content, appendBeforeTimestampDash(gearMenu.id, "Adventure"), true)) {
+                  console.warn("Cannot set gearMenu_Content.id: ", gearMenu_Content);
+                  return;
+                }
 
-                gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
-                // Eventually "Content" would be Plot, StoryCard, or Details.
-                const pill_Content = $(gearMenu_Content).find('div[aria-hidden][aria-hidden!="true"]');
-                if (pill_Content) {
-                  pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
-                  console.log("pill_Content: ", pill_Content);
-                } else {
-                  console.log("Cant find pill content.");
+                const pillHeader = gearMenu_Content.children[0];
+                //pillHeader.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
+                if (!setIdIfNullOrDifferent(pillHeader, appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header"), true)) {
+                  console.warn("Cannot set pillHeader.id: ", gearMenu_Content);
+                  return;
                 }
-                //gearMenu_Content.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
-              } else if (matchingElement.children.length === 2) { // This is for alpha only.
-                gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
-                gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
-                const gearMenu_Content_Pill_Content = gearMenu_Content.children[1];
-                gearMenu_Content_Pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
-                if (gearMenu_Content_Pill_Content.querySelector('img[alt="Content Image" i]')) {
-                  gearMenu_Content_Pill_Content.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content", "Details");
+
+                const pillContent = gearMenu_Content.children[1];
+                //pillContent.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
+                if (!setIdIfNullOrDifferent(pillContent, appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content"), true)) {
+                  console.warn("Cannot set pillContent.id: ", pillContent);
+                  return;
                 }
-                // Eventually "Content" would be Plot, StoryCard, or Details.
-              } else if (matchingElement.children.length === 1) { 
+
+                const pillContent_Inner = pillContent.firstChild;
+                //pillContent_Inner.id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content_Inner");
+                if (!setIdIfNullOrDifferent(pillContent_Inner, appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content_Inner"), true)) {
+                  console.warn("Cannot set Content_Inner.id: ", pillContent_Inner);
+                  return;
+                }
+
+                if (pillHeader.querySelector('div[aria-label="Selected tab plot" i]')) {
+                  pillContent_Inner.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Plot");
+                }
+                else if (pillHeader.querySelector('div[aria-label="Selected tab Story Cards" i]')) {
+                  // Story Cards come and go from this div.
+                  pillContent_Inner.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Story_Cards");
+                }
+                else if (pillHeader.querySelector('div[aria-label="Selected tab details" i]')) {
+                  pillContent_Inner.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Details");
+                }
+
+                gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
+              } else if (matchingElement.children.length === 1) {
                 //gearMenu_Content.id = appendBeforeTimestampDash(gearMenu.id, "Content", "Adventure");
                 //gearMenu_Content.children[0].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Header");
                 //gearMenu_Content.children[1].id = appendBeforeTimestampDash(gearMenu_Content.id, "Pill", "Content");
                 // Eventually "Content" would be Plot, StoryCard, or Details.
               } else {
 
-                console.log("No matching selector: ", matchingElement)
+                //console.log("No matching selector: ", matchingElement)
               }
             }
           });
@@ -2860,30 +3347,30 @@ if (1) {
 
     }
     let count = 0;
-    let gearMenuObserver = null;
-    updateGearMenu_Content(gearMenu);
-    const gearMenuObserverOptions =  { childList: true, subtree: true, attributes: true };
     // Create the mutation observer
     gearMenuObserver = new MutationObserver((mutationsList, observer) => {
       for (const mutation of mutationsList) {
         //if (mutation.type === 'childList' && mutation.target === gearMenu) {
         //if (mutation.target === gearMenu) {
-          console.log("mutation: ", mutation);
-          //console.log("observer: ", observer);
-          observer.disconnect();
-          updateGearMenu_Content(gearMenu); 
-          gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
+        //console.log("mutation: ", mutation);
+        //console.log("observer: ", observer);
+        //observer.disconnect();
+        //setTimeout(() => {
+        updateGearMenu_Content(gearMenu);
+        //}, 500);
+        //gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
         //} else {
-          if (!(count++ % 100)){
-            console.log("Cnt:", count , " Other mutation MutationEvent: ", mutation);
-        //  }
-        }
+        //if (!(count++ % 100)) {
+        //console.log("Cnt:", count , " Other mutation MutationEvent: ", mutation);
+        //}
+        //}
       }
     });
     // Start observing gearMenu for childList changes
     gearMenuObserver.observe(gearMenu, gearMenuObserverOptions);
   }, false);
 }
+
 if (cfg.get('Reward_Claimer') === true) {
   waitForKeyElements('#__next div[aria-label="Daily Rewards" i]:has(+ div)', (dailyRewards) => {
     const dailyReward = dailyRewards[0];
@@ -2909,13 +3396,13 @@ if (cfg.get('Reward_Claimer') === true) {
 ** These are helper functions for finding the common sub node structures within
 ** modal nodes. Sometimes sub nodes are placed within class wrappers that must be skipped over.
 ** Most modal nodes follow a reasonably common structure. These functions help parse the structure
-** so ID's can be assigned. 
+** so ID's can be assigned.
 */
 
 /**
   * If a node is a span, skip one layer returning the first child.
   * Otherwise return the node.
-  * 
+  *
   * @param {HTMLElement} node - The the div element containing the span wrapper to skip.
   * @returns {HTMLElement|null} - Return the first element of a span.
   */
@@ -2930,7 +3417,7 @@ function skipSpan(node) {
 
 /**
   * Some modal nodes have an inner div wrapper. Skip it or return null.
-  * 
+  *
   * @param {HTMLElement} modalNode - The modal node to extract inner content from.
   * @returns {HTMLElement|null} - The inner content node if found, or null if the modal structure is unexpected.
   */
@@ -2941,7 +3428,7 @@ function getModalInner(modalNode) {
 
 /**
   * Given a modalNode, return the modal node header.
-  * 
+  *
   * @param {HTMLElement} modalNode - The modal node to extract the header from.
   * @returns {HTMLElement} - Return the modal node header or the modal node itself.
   */
@@ -2955,7 +3442,7 @@ function getModalHeader(modalNode) {
 
 /**
   * Given a modalNode, return the modal node title.
-  * 
+  *
   * @param {HTMLElement} modalNode - The modal node to extract the title from.
   * @returns {HTMLElement|null} - Return the modal node header or null.
   */
@@ -2965,7 +3452,7 @@ function getModalHeader_Title(modalNode) {
 
 /**
   * Given a modalNode, return the modal node header menu (usually a pill menu).
-  * 
+  *
   * @param {HTMLElement} modalNode - The the div element that is the potential wrapper.
   * @returns {HTMLElement|null} - Return the modal menu or null.
   */
@@ -2975,7 +3462,7 @@ function getModalHeader_Menu(modalNode) {
 
 /**
   * Given a modalNode, return the modal node content div (the block under the header).
-  * 
+  *
   * @param {HTMLElement} modalNode - The the div element that is holds the modal node content block.
   * @returns {HTMLElement|null} - Return the modal content div or null.
   */
@@ -2986,7 +3473,7 @@ function getModalContent(modalNode) {
 
 /**
   * Given a modalNode, return the modal node inner content div (many modals have inner content wrappers).
-  * 
+  *
   * @param {HTMLElement} modalNode - The the div element that is the modal node.
   * @returns {HTMLElement|null} - Return the modal content inner div or null.
   */
@@ -2996,7 +3483,7 @@ function getModalContent_Inner(modalNode) {
 
 /**
   * Given a modalNode, return the modal node footer div (Most do not have footers).
-  * 
+  *
   * @param {HTMLElement} modalNode - The the div element that is the potential wrapper.
   * @returns {HTMLElement|null} - Return the modal footer div or null.
   */
@@ -3009,6 +3496,70 @@ function getModalFooter(modalNode) {
 }
 
 /**
+ * Adds a button clone to a container.
+ *
+ * @param {HTMLElement} cloneRef - An existing button element to be cloned for styling the new button.
+ * @param {HTMLElement} container - The container element where the button will be added.
+ * @param {string} label - The label or font icon to use as the label for the button.
+ * @param {function} eventHandler - The function to be called when the button is clicked.
+ * @param {string} [placement='beforeend'] - The placement of the button relative to the container's children. Possible values: 'beforebegin', 'afterbegin', 'beforeend', 'afterend', 'before', 'after'.
+ * @param {HTMLElement} [referenceChild=null] - An optional child element within the container. Used for 'before' and 'after' placements to insert the button before or after this child.
+ * @returns {HTMLElement} The cloned button element that was added to the container.
+ */
+function addButtonClone(cloneRef, container, label, eventHandler, placement = 'beforeend', referenceChild = null) {
+  if (!cloneRef) {
+    console.warn("Null cloneRef in addButtonClone!");
+    return null;
+  }
+
+  const clonedButton = buttonClone(
+    cloneRef,
+    label,
+    eventHandler
+  );
+
+  // Apply styles to the button
+  clonedButton.style.marginRight = '8px';
+  clonedButton.style.minWidth = '30px';
+  clonedButton.style.whiteSpace = 'nowrap';
+
+  // Insert the button based on the specified placement and referenceChild
+  switch (placement) {
+    case 'beforebegin':
+      container.parentNode.insertBefore(clonedButton, container);
+      break;
+    case 'afterbegin':
+      container.insertBefore(clonedButton, container.firstChild);
+      break;
+    case 'beforeend':
+      container.appendChild(clonedButton);
+      break;
+    case 'afterend':
+      container.parentNode.insertBefore(clonedButton, container.nextSibling);
+      break;
+    case 'before':
+      if (referenceChild && referenceChild.parentNode === container) {
+        container.insertBefore(clonedButton, referenceChild);
+      } else {
+        console.warn("Invalid referenceChild or referenceChild not found within container. Using default 'beforeend' placement.");
+        container.appendChild(clonedButton);
+      }
+      break;
+    case 'after':
+      if (referenceChild && referenceChild.parentNode === container) {
+        container.insertBefore(clonedButton, referenceChild.nextSibling);
+      } else {
+        console.warn("Invalid referenceChild or referenceChild not found within container. Using default 'beforeend' placement.");
+        container.appendChild(clonedButton);
+      }
+      break;
+    default:
+      console.warn("Invalid placement specified. Using default 'beforeend' placement.");
+      container.appendChild(clonedButton);
+  }
+  return clonedButton;
+}
+/**
  * Adds a full-screen button to a modal header, allowing the user to toggle between normal and full-screen modes.
  *
  * @param {HTMLElement} cloneRef - An existing button element to be cloned for styling the new button.
@@ -3016,96 +3567,47 @@ function getModalFooter(modalNode) {
  * @param {function} eventHandler - The function to be called when the button is clicked (typically the `toggleFullScreen` function).
  * @param {string} [placement='beforeend'] - The placement of the button relative to the container's children. Possible values: 'beforebegin', 'afterbegin', 'beforeend', 'afterend', 'before', 'after'.
  * @param {HTMLElement} [referenceChild=null] - An optional child element within the container. Used for 'before' and 'after' placements to insert the button before or after this child.
+ * @returns {HTMLElement} The cloned button element that was added to the container.
  */
-function modalAddFullScreenButton(cloneRef, container, eventHandler, placement = 'beforeend', referenceChild = null) {
-  if (!cloneRef) {
-    console.warn("Null cloneRef in modalAddFullScreenButton!");
-    return;
-  }
+function modalAddFullScreenButton(cloneRef, container, placement = 'beforeend', referenceChild = null) {
+  /**
+   * Event handler for toggling full screen mode.
+   *
+   * @param {HTMLElement} buttonTextElement - A reference to the toggle button.
+   */
+  function toggleFullScreen(buttonTextElement) {
+    const modalNode = buttonTextElement.closest("div[aria-label*='Modal' i]");
+    if (!modalNode) {
+      console.error("Error: Modal node not found. Fullscreen toggle failed.");
+      return;
+    }
+    const modalRect = modalNode.getBoundingClientRect();
+    if (modalNode.requestFullscreen) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+        buttonTextElement.innerText = "[ ]";
 
-  const fullScreenButton = buttonClone(
-    cloneRef,
-    "[ ]",
-    eventHandler
-  );
+        // Restore previous size and position (ensure consistent pixel values)
+        modalNode.style.width = modalNode.dataset.originalWidth + 'px';
+        modalNode.style.height = modalNode.dataset.originalHeight + 'px';
+        modalNode.style.left = modalNode.dataset.originalLeft + 'px';
+        modalNode.style.top = modalNode.dataset.originalTop + 'px';
 
-  // Apply styles to the button
-  fullScreenButton.style.marginRight = '8px';
-  fullScreenButton.style.minWidth = '30px';
-  fullScreenButton.style.whiteSpace = 'nowrap';
-
-  // Insert the button based on the specified placement and referenceChild
-  switch (placement) {
-    case 'beforebegin':
-      container.parentNode.insertBefore(fullScreenButton, container);
-      break;
-    case 'afterbegin':
-      container.insertBefore(fullScreenButton, container.firstChild);
-      break;
-    case 'beforeend':
-      container.appendChild(fullScreenButton);
-      break;
-    case 'afterend':
-      container.parentNode.insertBefore(fullScreenButton, container.nextSibling);
-      break;
-    case 'before':
-      if (referenceChild && referenceChild.parentNode === container) {
-        container.insertBefore(fullScreenButton, referenceChild);
+        // Force reflow to ensure styles are applied correctly
+        void modalNode.offsetWidth; // Trigger a reflow
       } else {
-        console.warn("Invalid referenceChild or referenceChild not found within container. Using default 'beforeend' placement.");
-        container.appendChild(fullScreenButton);
+        // Store current size and position before going fullscreen (ensure pixel values)
+        modalNode.dataset.originalWidth = modalRect.width;
+        modalNode.dataset.originalHeight = modalRect.height;
+        modalNode.dataset.originalLeft = modalRect.left;
+        modalNode.dataset.originalTop = modalRect.top;
+
+        modalNode.requestFullscreen();
+        buttonTextElement.innerText = "[X]";
       }
-      break;
-    case 'after':
-      if (referenceChild && referenceChild.parentNode === container) {
-        container.insertBefore(fullScreenButton, referenceChild.nextSibling);
-      } else {
-        console.warn("Invalid referenceChild or referenceChild not found within container. Using default 'beforeend' placement.");
-        container.appendChild(fullScreenButton);
-      }
-      break;
-    default:
-      console.warn("Invalid placement specified. Using default 'beforeend' placement.");
-      container.appendChild(fullScreenButton);
-  }
-}
-
-/**
- * Event handler for toggling full screen mode.
- *
- * @param {HTMLElement} buttonTextElement - A reference to the toggle button.
- */
-function toggleFullScreen(buttonTextElement) {
-  const modalNode = buttonTextElement.closest("div[aria-label*='Modal' i]");
-  if (!modalNode) {
-    console.error("Error: Modal node not found. Fullscreen toggle failed.");
-    return;
-  }
-  const modalRect = modalNode.getBoundingClientRect();
-  if (modalNode.requestFullscreen) {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-      buttonTextElement.innerText = "[ ]";
-
-      // Restore previous size and position (ensure consistent pixel values)
-      modalNode.style.width = modalNode.dataset.originalWidth + 'px';
-      modalNode.style.height = modalNode.dataset.originalHeight + 'px';
-      modalNode.style.left = modalNode.dataset.originalLeft + 'px';
-      modalNode.style.top = modalNode.dataset.originalTop + 'px';
-
-      // Force reflow to ensure styles are applied correctly
-      void modalNode.offsetWidth; // Trigger a reflow
-    } else {
-      // Store current size and position before going fullscreen (ensure pixel values)
-      modalNode.dataset.originalWidth = modalRect.width;
-      modalNode.dataset.originalHeight = modalRect.height;
-      modalNode.dataset.originalLeft = modalRect.left;
-      modalNode.dataset.originalTop = modalRect.top;
-
-      modalNode.requestFullscreen();
-      buttonTextElement.innerText = "[X]";
     }
   }
+  return addButtonClone(cloneRef, container, "[ ]", toggleFullScreen, placement = 'beforeend', referenceChild = null);
 }
 
 /**
@@ -3246,7 +3748,7 @@ function handleNewModal(modalNodeTree) {
                         console.log(closeButton);
                         console.log(container);
                       } else {
-                        modalAddFullScreenButton(closeButton, container, toggleFullScreen);
+                        modalAddFullScreenButton(closeButton, container);
                         container.style.justifyContent = 'space-between';
                         modalContent_Inner.style.minHeight = '0px';
                       }
@@ -3275,7 +3777,7 @@ function handleNewModal(modalNodeTree) {
                 /// makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
                 modifyStoryCardEditor(modalNode);
                 const cloneButton = modalNode.querySelector("div[role='button'][aria-label='More' i]");
-                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild, toggleFullScreen);
+                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild);
                 modalHeader_Title.style.justifyContent = 'space-between';
                 modalHeader_Title.style.alignItems = 'center';
                 modalHeader_Title.firstChild.style.display = 'flex';
@@ -3306,7 +3808,7 @@ function handleNewModal(modalNodeTree) {
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ImageOptions");
                 const cloneButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
-                modalAddFullScreenButton(cloneButton, modalHeader, toggleFullScreen, 'before', cloneButton);
+                modalAddFullScreenButton(cloneButton, modalHeader, 'before', cloneButton);
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
 
@@ -3319,7 +3821,7 @@ function handleNewModal(modalNodeTree) {
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_MemoryViewer");
                 const cloneButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
-                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild.lastChild, toggleFullScreen);
+                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild.lastChild);
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
             }
@@ -3331,7 +3833,7 @@ function handleNewModal(modalNodeTree) {
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_TokenViewer");
                 const cloneButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
-                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild.lastChild, toggleFullScreen);
+                modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild.lastChild);
                 makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               }, 100); // adjust as needed
             }
@@ -3344,7 +3846,7 @@ function handleNewModal(modalNodeTree) {
 
                 }, true);
                 const cloneButton = modalHeader_Title.querySelector("div[role='button'][aria-label='back' i]");
-                modalAddFullScreenButton(cloneButton, modalHeader_Title, toggleFullScreen);
+                modalAddFullScreenButton(cloneButton, modalHeader_Title);
 
                 modalNode.style.position = `absolute`;
                 modalNode.style.top = `8px`;
