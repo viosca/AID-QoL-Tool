@@ -1,4 +1,4 @@
-# AID-QoL-Tool
+# Enhanced AID-QoL-Tool
 
 Enhanced Tampermonkey Script for AI Dungeon.
 Warning, this TamperMonkey script may break at any time. AID may change their website without notice (as is their right.)
@@ -13,6 +13,7 @@ This script was originally based on AliH2K's script. It adds many features and e
 - Enhanced memory editing.
 - Hide Do/Say Actions Toggle.
 - Credits Being Used Indicator.
+- Copy model settings as JSON button.
 - Additional hotkeys:
   - Flame menu.
   - beta/play toggle.
