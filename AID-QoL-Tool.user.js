@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         AID-QoL-Toolc
-// @version      2.0.0d
+// @name         AID-EQoL-Tool
+// @version      2.0.1
 // @description  An Enhanced QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows, etc.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -24,10 +24,6 @@
 /* global jQuery, $, waitForKeyElements, MonkeyConfig */
 
 // Feature
-
-/// @downloadURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.user.js
-/// @updateURL https://update.greasyfork.org/scripts/1302066/AIDungeon%20QoL%20Tool.meta.js
-/// require      https://cdn.jsdelivr.net/npm/tampermonkey-require-for-react
 
 $ = jQuery.noConflict(true);
 
@@ -97,6 +93,7 @@ GM_addStyle(`
   }
 `);
 
+// Fixes for the Nav bar. Make it opaque. Turn off the scrolling gradient.
 GM_addStyle(`
   /* This is nested CSS, it mostly mirrors the AID site. */
   /* div#__next > div > span, /* beta and prod. */
@@ -125,6 +122,8 @@ GM_addStyle(`
   }
 `);
 
+// This is partially broken. There were recent changes to the site.
+// The Scenario and Adventure editors are no long fully encapsulated in a DIV
 GM_addStyle(`
   div[id^="modalNodeTree_ScenarioAdventureEditor_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
@@ -160,6 +159,7 @@ GM_addStyle(`
   }
 `);
 
+// Make Scenario/Adventure images resizeable.
 GM_addStyle(`
   &:has(div:has(img[alt="Content Image" i][data-nimg="fill"])) {
     /* Styles for the grandparent div if it has the image as a descendant */
@@ -186,44 +186,8 @@ GM_addStyle(`
         }
     }
 `);
-GM_addStyle(`
-    div[id^="modalNodeTree_ViewContext_TS" i] {
-    & div[role="alertdialog"][aria-label*="Modal"] {
-      flex-grow: 0;
-      flex-shrink: 1;
-      & div[id^="modalHeader_TS" i] {
-        & div[id^="modalHeader_Title_TS" i] {
-          flex-grow: 1 !important;
-          flex-shrink: 1 !important;
-        }
-      }
-      & div[id^="modalContent_TS" i] {
-        /* height: min-content !important; */
-        flex-grow: 1 !important;
-        flex-shrink: 1 !important;
-        padding: 8px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        & div.is_ScrollView[id^="modalContent_Inner_TS" i] {
-          /* height: unset !important; /* */
-          /* width: unset !important; /* */
-          flex-grow: 1 !important;
-          & > div:only-child {
-            & > div:only-child {
-              & > div.is_Column:only-child {
-                padding: 0px !important;
-                flex-grow: 1 !important;
-              }
-            }
-          }
-        }
-      }
-      & div[id^="modalFooter_TS" i] {
-        min-height: 60px !important;
-      }
-    }
-  }
-`);
+
+// More Scenario/Adventure image resizing.
 GM_addStyle(`
   div[id^="modalNodeTree_ImageOptions_TS" i] {
     & div[role="alertdialog"][aria-label*="Modal"] {
@@ -286,6 +250,48 @@ GM_addStyle(`
     }
   }
 `);
+
+// Fixes for the Context Viewer.
+GM_addStyle(`
+    div[id^="modalNodeTree_ViewContext_TS" i] {
+    & div[role="alertdialog"][aria-label*="Modal"] {
+      flex-grow: 0;
+      flex-shrink: 1;
+      & div[id^="modalHeader_TS" i] {
+        & div[id^="modalHeader_Title_TS" i] {
+          flex-grow: 1 !important;
+          flex-shrink: 1 !important;
+        }
+      }
+      & div[id^="modalContent_TS" i] {
+        /* height: min-content !important; */
+        flex-grow: 1 !important;
+        flex-shrink: 1 !important;
+        padding: 8px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        & div.is_ScrollView[id^="modalContent_Inner_TS" i] {
+          /* height: unset !important; /* */
+          /* width: unset !important; /* */
+          flex-grow: 1 !important;
+          & > div:only-child {
+            & > div:only-child {
+              & > div.is_Column:only-child {
+                padding: 0px !important;
+                flex-grow: 1 !important;
+              }
+            }
+          }
+        }
+      }
+      & div[id^="modalFooter_TS" i] {
+        min-height: 60px !important;
+      }
+    }
+  }
+`);
+
+// Fixes for the Memory and Token viewers.
 GM_addStyle(`
   div[id^="modalNodeTree_MemoryViewer_TS" i],
   div[id^="modalNodeTree_TokenViewer_TS" i] {
@@ -348,14 +354,16 @@ GM_addStyle(`
     }
   }
 `);
+
+// This turns off the background mask for all modals so that game play text is visible during modal editing.
 GM_addStyle(`
-  /* This turns off the background mask for all modals so that game play text is visible during modal editing. */
   body > div[id^="modalNodeTree_"] > span > span > div > button {
     opacity: 0 !important;
   }
 `);
+
+// This is the fix for the script editor. AID has new fixed this.
 GM_addStyle(`
-  /* This is the fix for the script editor */
   div[id*="ScriptEditor_TS" i] div[role="alertdialog"][aria-label*="Modal"] {
     flex-grow: 1;
 
@@ -371,10 +379,10 @@ GM_addStyle(`
     }
   }
 `);
-GM_addStyle(`
-  /* Modal: Generic Modal Styling.
-  */
 
+/* Modal: Generic Modal Styling.
+*/
+GM_addStyle(`
   div[role="alertdialog"][aria-label*="Modal" i] {
     /* flex-grow: 1 !important; /* */
 
@@ -574,9 +582,10 @@ GM_addStyle(`
     }
   }
 `);
+
+/* Modal: StoryCardsTab Styling.
+*/
 GM_addStyle(`
-  /* Modal: Story Card Styling.
-  */
   /*
   div[id^="modalContent_Inner_storyCardsTab_TS" i] div > div[role="button"] {
     padding: 8px !important;
@@ -613,22 +622,48 @@ GM_addStyle(`
     padding-bottom: 0px !important;
   }
 `);
+/* StoryCardEditor
+*/
 GM_addStyle(`
 div[id^="modalContent_Inner_StoryCardEditor_TS" i] {
   padding-bottom: 8px !important;
 }
 `);
+
+/* Miscelaneous Styles.
+*/
 GM_addStyle(`
-  /* Miscelaneous Styles.
-  */
   /* These classes must be overridden to get the square corner. */
   ._bbrr-1307609874 {
-    border-bottom-right-radius: 0px !important;
+    border-bottom-right-radius: 0 !important;
   }
   ._bbrr-1881205710 {
-    border-bottom-right-radius: 0px !important;
+    border-bottom-right-radius: 0 !important;
   }
-
+  :root ._btlr-t-radius-1-1448 {
+    border-top-left-radius: 3px !important;
+  }
+  :root ._btrr-t-radius-1-1448 {
+    border-top-right-radius: 3px !important;
+  }
+  :root ._bblr-t-radius-1-1448 {
+    border-bottom-left-radius: 3px !important;
+  }
+  :root ._bbrr-t-radius-1-1448 {
+    border-bottom-right-radius: 0 !important;
+  }
+  :root ._btlr-t-radius-0 {
+    border-top-left-radius: 3px !important;
+  }
+  :root ._btrr-t-radius-0 {
+    border-top-left-radius: 3px !important;
+  }
+  :root ._bblr-t-radius-0 {
+    border-bottom-left-radius: 3px !important;
+  }
+  :root ._bbrr-t-radius-0 {
+    border-bottom-right-radius: 0 !important;
+  }
   /* Chrome/Opera Fatten up the scroll bar a bit. This also fixes textarea resize icon. */
   ::-webkit-scrollbar {
     width: 8px !important;
@@ -648,9 +683,10 @@ GM_addStyle(`
     }
   }
 `);
+
+/* TextArea Styling.
+*/
 GM_addStyle(`
-  /* TextArea Styling.
-  */
   /* Put vertical resizers on all textareas. */
   textarea:not(
     [aria-label="Text input field" i], /* Not gameplay/action entry. */
@@ -661,7 +697,7 @@ GM_addStyle(`
     {
     min-height: 50px !important;  /* Or min-height: 0; */
     max-height: unset !important;
-    maxlength: 1000000 !important;
+    /* maxlength: 1000000 !important; */
     resize: vertical !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable !important;
@@ -676,7 +712,7 @@ GM_addStyle(`
   textarea[aria-label="Notes" i] {
     min-height: 50px !important;  /* Or min-height: 0; */
     max-height: unset !important;
-    maxlength: 1000000 !important;
+    /* maxlength: 1000000 !important; */
     resize: vertical !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable !important;
@@ -749,6 +785,7 @@ const styleGearMenuAdventure = `
     flex-shrink: 0 !important;
     padding-left: 0px !important;
     padding-right: 0px !important;
+    padding-bottom: 8px !important;
     & > div:only-child {
       & > div:nth-child(2) {
         display: none !important;
@@ -806,72 +843,41 @@ const styleGearMenuAdventure = `
       & > div[id^="gearMenu-Adventure-Pill-Story_Cards-TS"] {
         max-width: 100% !important;
         width: 100% !important;
+        height: unset !important;
         & .r-11yh6sk { overflow: unset !important; }
-        & > div:only-child {
-          overflow: unset !important;
-          height: 100% !important;
-          width: 100% !important;
+        & > div:nth-child(1) {
+          padding: 0 !important;
+          /* padding-bottom: 8px !important; */
+          & > div {
+            gap: 8px;
+          }
+        }
+        & > div:nth-child(2) {
           & > div:only-child {
-            height: 100% !important;
-            width: 100% !important;
             & > div:only-child {
-              height: 100% !important;
-              width: 100% !important;
-              padding: 0px !important;
+              padding: 0 !important;
               & > div:only-child {
-                height: 100% !important;
-                width: 100% !important;
-                & > div:nth-child(1) {
-                  /* Padding? */
-                  padding-left: 0px !important;
-                  padding-right: 0px !important;
-                }
-                & > div:nth-child(2) {
-                  /* Search and Filters container. */
-                  padding-bottom: 8px !important;
-                }
                 & > div:nth-child(3) {
-                  /* The list of story card buttons and add story card begins here. */
-                  height: 100% !important;
-                  width: 100% !important;
-                  padding-bottom: 8px !important;
-                  padding-top: 8px !important;
+                  width: unset !important;
+                  & div[aria-label="add a story card" i] {
+                    padding: 8px !important;
+                    height: unset !important;
+                  }
                   & > div {
-                    max-width: 100% !important;
                     width: 100% !important;
-                    & > div:nth-child(1) {
-                      max-width: 100% !important;
+                    & > div {
                       width: 100% !important;
-                      gap: 4px !important;
-                      & > div[role="button" i]:only-child {
-                        width: 100% !important;
-                        margin-right: 0px !important;
-                        align-items: center !important;
-                        /*height: unset !important;
-                        max-height: unset !important; */
-                        padding: 6px !important;
-                        & ._h-1611761759 { height: unset !important; }
-                        & > div#top-down-mask {
-                          -webkit-mask-image: none !important;
-                          mask-image: none !important;
-                        }
-                        & > div:nth-child(3) {
-                          background-color: rgb(30 30 30)!important;
-                          opacity: 1 !important;
-                        }
+                      & > div[role="button"] {
+                        padding: 8px !important;
+                        height: unset !important;
                       }
-                    }
-                    & > div:nth-child(2) {
-                      width: 100% !important;
-                      height: 4px !important;
                     }
                   }
                 }
-
-                & > div:nth-child(4) {
-                }
                 & > div:nth-child(5) {
-                  padding: 0px !important;
+                  height: unset !important;
+                  width: unset !important;
+                  padding: unset !important;
                 }
               }
             }
@@ -1273,10 +1279,13 @@ if (1) {
  * @param {function} eventHandler - The function to be called when the button is clicked.
  * @param {string} [placement='beforeend'] - The placement of the button relative to the container's children. Possible values: 'beforebegin', 'afterbegin', 'beforeend', 'afterend', 'before', 'after'.
  * @param {HTMLElement} [referenceChild=null] - An optional child element within the container. Used for 'before' and 'after' placements to insert the button before or after this child.
- */
 function foo(cloneRef, container, label, eventHandler, placement = 'beforeend', referenceChild = null) {
   return addButtonClone(cloneRef, container, "[ ]", toggleFullScreen, placement = 'beforeend', referenceChild = null);
 }
+ */
+
+/* Make a copy button to get the current model settings and copy them to the clipboard.
+*/
 if (1) {
   const AISettings_Model_Settings_Selector = ''
     + 'div:has(> div[aria-label="Model Settings" i]) ' // The Modal Settings heading.
@@ -1297,9 +1306,9 @@ if (1) {
     const gearMenu = modelContainer.closest('div[id^=gearMenu-TS i]');
     if (!gearMenu) console.log("Null gearMenu in AI Settings copy.");
     const closeSettings = gearMenu?.querySelector('div[role=button][aria-label="Close settings" i]');
-    if (!closeSettings)
+    if (!closeSettings) {
       console.log("Cant get gear 'close settings' for cloner.");
-    else {
+    } else {
       /**
        * Event handler for copying settings data.
        *
@@ -1317,7 +1326,7 @@ if (1) {
 
         const modelSettingsContainers = modelContainer.querySelectorAll('div[aria-label="Model Settings"] + div > div:only-child > div');
         if (modelSettingsContainers.length > 0) {
-          let settingsData = { "AI Model": modelName, "await": 0 };
+          let settingsData = { "AI Model": modelName };
           // if (1) {
 
           for (let i = 0; i < modelSettingsContainers.length; i++) {
@@ -1333,28 +1342,11 @@ if (1) {
             if (currentSettingInputValue === "" || currentSettingSliderValue === "" || currentSettingInputValue !== currentSettingSliderValue) {
               await new Promise(resolve => setTimeout(resolve, 1)); // Wait for 10ms
               i--; // Decrement the counter to restart the current iteration
-              settingsData["await"]++;
               continue; // Skip to the next iteration
             }
             settingsData[currentSettingName] = currentSettingInputValue;
 
           }
-          // } else {
-
-          //   modelSettingsContainers.forEach((element) => {
-          //     const currentSettingName = element.querySelector('p:first-child').innerHTML;
-          //     const currentSettingInputElement = element.querySelector('input[type="search"]');
-          //     const currentSettingInputValue = currentSettingInputElement ? currentSettingInputElement.value : "null input element";
-
-          //     const currentSettingSliderElement = element.querySelector('div[role="slider"]');
-          //     const currentSettingSliderValue = currentSettingSliderElement ? currentSettingSliderElement.getAttribute('aria-valuenow') : "null slider element";
-
-          //     if (currentSettingInputValue === "" || currentSettingSliderValue === "" || currentSettingInputValue !== currentSettingSliderValue) {
-
-          //     }
-          //     settingsData[currentSettingName] = currentSettingInputValue;
-          //   });
-          // }
 
           const jsonData = JSON.stringify(settingsData, null, 2);
           //console.log("settingsData: ", jsonData);
@@ -1374,18 +1366,17 @@ if (1) {
       }
 
       const clone = addButtonClone(closeSettings, modelContainer.firstChild.lastChild, "w_copy", delayedCopy, placement = 'before', referenceChild = modelContainer.firstChild.lastChild.lastChild);
-      //setTimeout(() => {
-        clone.id = 'ModelSettingsCopyButton';
-        clone.ariaLabel = 'ModelSettingsCopyButton';
-        clone.style.margin = '0px';
-        clone.style.minWidth = '0px';
-        clone.style.padding = '0px';
-        clone.style.paddingTop = '0px';
-        clone.style.paddingBottom = '0px';
-        clone.style.paddingLeft = '0px';
-        clone.style.paddingRight = '0px';
-        clone.style.backgroundColor = 'transparent';
-        GM_addStyle(`
+      clone.id = 'ModelSettingsCopyButton';
+      clone.ariaLabel = 'ModelSettingsCopyButton';
+      clone.style.margin = '0px';
+      clone.style.minWidth = '0px';
+      clone.style.padding = '0px';
+      clone.style.paddingTop = '0px';
+      clone.style.paddingBottom = '0px';
+      clone.style.paddingLeft = '0px';
+      clone.style.paddingRight = '0px';
+      clone.style.backgroundColor = 'transparent';
+      GM_addStyle(`
   div#ModelSettingsCopyButton[aria-label="ModelSettingsCopyButton"] {
     padding: 0px !important;
     margin: 0px !important;
@@ -1395,192 +1386,11 @@ if (1) {
     justify-content: flex-end !important;
   }
 `);
-        console.log("clone: ", clone);
-
-      //}, 200);
     }
 
-    /*
-        const observer = new MutationObserver((mutationsList, observer) => {
-          const modelNameContainer = AI_SettingsContainer.querySelector('div[aria-label^="AI Model:" i]');
-          //console.log("modelNameContainer: ", modelNameContainer);
-
-          // Extract model name using split
-          const modelName = modelNameContainer ? modelNameContainer.ariaLabel.split(': ')[1] : "Unknown Model";
-
-          const modelSettingsAccordion = modelContainer.querySelector('div[aria-label="Model Settings"]');
-          let settingsData = {};
-          for (const mutation of mutationsList) {
-            console.log("mutation: ", mutation);
-            if (mutation.type === 'childList' && mutation.target === modelContainer) {
-              const ariaExpanded = modelSettingsAccordion.getAttribute('aria-expanded');
-              if (ariaExpanded === "true") {
-                settingsData = { "AI Model": modelName, "aria-expanded": ariaExpanded };
-              } else {
-
-              }
-            }
-            else if (mutation.type === 'attributes') {
-              // Check if Model Settings are now visible
-
-              const modelSettingsContainers = modelContainer.querySelectorAll('div[aria-label="Model Settings"] + div > div:only-child > div');
-              if (modelSettingsContainers.length > 0) {
-                // Attach the contextmenu listener (see previous code)
-                modelSettingsContainers.forEach((element) => {
-                  //console.log(element);
-                  const currentSettingName = element.querySelector('p:first-child').innerHTML;
-
-                  const currentSettingSliderElement = element.querySelector('div[role="slider"]');
-                  const currentSettingSliderValue = currentSettingSliderElement?.getAttribute('aria-valuenow');
-
-                  const currentSettingInputElement = element.querySelector('input[type="search"]');
-                  const currentSettingInputValue = currentSettingInputElement ? currentSettingInputElement.value : "null input element";
-
-                  settingsData[currentSettingName] = currentSettingSliderValue;
-                  settingsData[currentSettingName + '_I'] = currentSettingInputValue; // This is always an empty string "", why?
-                });
-                console.log("settingsData: ", JSON.stringify(settingsData));
-
-              }
-            }
-          }
-        });
-        //const observerOptions = { childList: true, subtree: true, characterData: true };
-        //const observerOptions = { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded']};
-        const observerOptions = { childList: true, subtree: true, attributes: true, attributeFilter: ['value'] };
-        observer.observe(modelContainer, observerOptions);
-    */
-    /*
-    // Assuming `modelSettings` is the parent element of the Model Settings modal
-    modelSettings.addEventListener('contextmenu', (event) => {
-      event.preventDefault(); // Prevent the default context menu
-
-      const settingsContainer = document.querySelector('div[aria-label="Model Settings"] + div > div:only-child > div');
-      const settingsData = {};
-
-      settingsContainer.querySelectorAll('p, input').forEach((element) => {
-        if (element.tagName === 'P') {
-          currentSettingName = element.innerHTML;
-        } else if (element.tagName === 'INPUT' && element.type === 'range') {
-          settingsData[currentSettingName] = element.value;
-        }
-      });
-
-      const jsonData = JSON.stringify(settingsData, null, 2); // 2 spaces for indentation
-
-      // Copy to clipboard (you might need a library for this, see below)
-      navigator.clipboard.writeText(jsonData)
-        .then(() => {
-          console.log('Settings copied to clipboard:', jsonData);
-        })
-        .catch((err) => {
-          console.error('Failed to copy settings:', err);
-        });
-    });
-    */
-    /*
-    const settingsData = {};
-    modelContainer.children.forEach((element) => {
-      console.log(element);
-      const currentSettingName = element.querySelector('p:first-child').innerHTML;
-      const currentSettingValue = element.querySelectorAll('input')[0].value;
-      console.log(currentSettingName, ": ", currentSettingValue)
-      settingsData[currentSettingName] = currentSettingValue;
-    });
-    console.log("settingsData: ", settingsData);
-    */
-    /*
-        modelContainer.querySelectorAll('p:first-child, input').forEach((element) => {
-          if (element.tagName === 'P') {
-            currentSettingName = element.innerHTML;
-          } else if (element.tagName === 'INPUT' && element.type === 'range') {
-            settingsData[currentSettingName] = element.value;
-          }
-        });
-        console.log(settingsData);
-    */
-    /*
-      const jsonData = JSON.stringify(settingsData, null, 2);
-
-      navigator.clipboard.writeText(jsonData)
-        .then(() => {
-          console.log('Settings copied to clipboard:', jsonData);
-        })
-        .catch((err) => {
-          console.error('Failed to copy settings:', err);
-        });
-        */
-    /*
-      function getCreditsElement() {
-        const creditsButton = $(modelContainer).find("div[role=button]:has(> p:contains('Credits'))")[0];
-        //console.log("creditsButton", creditsButton);
-        if (creditsButton) {
-          return creditsButton.querySelector('& > div > p');
-        }
-        return null;
-      }
-
-      function getCredits(creditsElement) {
-        const credits = creditsElement?.textContent;
-        return parseInt(credits) || 0;
-      }
-
-      let creditsElement = getCreditsElement();
-      //console.log("creditsElement found: ", creditsElement);
-
-      function updateFlameIcon() {
-        if (creditsElement) {
-          const credits = getCredits(creditsElement); // Use textContent
-          //console.log("Credits:", credits);
-          //console.log("creditsElement found: ", creditsElement);
-          changeCreditUseIndicator(credits);
-        } else {
-          // If creditsElement is not found (e.g., on a free Story Generator)
-          changeCreditUseIndicator(0); // Set flame icon to default color
-        }
-      }
-
-      // Call updateFlameIcon initially
-      updateFlameIcon();
-      const creditsObserver = new MutationObserver((mutationsList, observer) => {
-        //console.log("mutation mutation 0.");
-        for (const mutation of mutationsList) {
-          //console.log("mutation: ", mutation);
-          if (mutation.type === "childList") {
-            // Re-query creditsElement whenever there's a childList mutation
-            creditsElement = getCreditsElement();
-            //console.log('new credits element: ', creditsElement);
-            updateFlameIcon();
-          }
-
-          if (
-            (mutation.type === "childList" || mutation.type === "characterData") && // Observe both childList and characterData
-            creditsElement && // Check if creditsElement is defined
-            mutation.target.parentNode === creditsElement  // Check if target is a descendant of creditsElement
-          ) {
-            //console.log("mutation mutation 2.");
-            updateFlameIcon();
-          }
-        }
-      });
-
-      // Start observing the modelContainer for changes in its child nodes
-      creditsObserver.observe(modelContainer, { childList: true, subtree: true, characterData: true });
-      */
   }, false);
 }
 
-
-
-function addEventListeners(element, events, handler) {
-  events.forEach((event) => {
-    if (event.startsWith('touch')) {
-      element.addEventListener(event, handler, { passive: true }); // Mark touch events as passive
-    } else {
-      element.addEventListener(event, handler); // Other events can be added normally
-    }
-  });
-}
 
 /**
  * Waits for elements matching a given selector to appear within a target node's subtree, then executes a callback.
@@ -2373,6 +2183,8 @@ function modifyStoryCardEditor(modalNode) {
   const entryLabel = modalNode.querySelector("p#scEntryLabel");
   const entrySection = entryLabel.parentNode;
 
+  entryField.maxLength = 1000000;
+
   //const delimEntryButton = cloneAndModifyModalButton(modalNode, "div[role='button'][aria-label='Close modal']", "Insert", "w_add");
   const delimEntryButton = cloneAndModifyModalButton(modalNode, "div[role='button' i][aria-label='More' i]", "Insert", "w_add");
   if (!delimEntryButton) return; // Handle the case where the button wasn't found
@@ -2523,18 +2335,6 @@ const classListRemove = [
   'r-1wbh5a2', // flex-shrink: 1;
   'r-agouwx' // transform: translateZ(0);
 ];
-const classListRemove2 = [
-  '_mih-0px', '_miw-0px', '_fs-0',
-  /* Padding we want removed */
-  '_pt-1481558400', '_pr-1481558400', '_pb-1481558400', '_pl-1481558400',
-  'r-150rngu', // -webkit-overflow-scrolling: touch; // (has error.)
-  'r-1rnoaur', // overflow-y: auto; // (we don't want auto scrolling on nested divs. have unset)
-  'r-11yh6sk', // overflow-x: auto; // (we don't want auto scrolling on nested divs. have unset)
-  'r-eqz5dr', // flex-direction: column;
-  'r-16y2uox', // flex-grow: 1;
-  'r-1wbh5a2', // flex-shrink: 1;
-  'r-agouwx' // transform: translateZ(0);
-];
 
 function classListRemoveRecursively(node, classList) {
   // Unset all overflow properties on the current node
@@ -2624,7 +2424,7 @@ function makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode) {
 
   // Get some references to important things.
   const modalHeader = getModalHeader(modalNode);
-  const modalContent = getModalContent(modalNode);
+  //const modalContent = getModalContent(modalNode);
   let modalContent_Inner = getModalContent_Inner(modalNode);
   if (!modalContent_Inner) {
     console.error("modalContent_Inner Failed.");
@@ -2895,51 +2695,6 @@ if (cfg.get('Fix_Actions') === true) {
     }
   });
 }
-
-if (0) {
-  // Example for how to get the values of a slider.
-  const AISettings_StoryGen_Model_Slider_Selector = ' '
-    + 'div[aria-label="Story Generator" i] ' // The Story Gen Title element.
-    + ' + div' // The mext sibling is the Story Gen Content div.
-    //
-    + ' div[aria-label="Memory System" i]' // The Memory System Title Element.
-    + ' + div' // The Memory System Content element.
-    // There could be intervening elements here in the tree.
-    + ' div[role="slider" i]' // The specific model's container for button and info.
-    + ', '
-    + ' div[aria-label="Story Generator" i]:nth-child(1)' // The story Generator heading.
-    + ' + div:nth-child(2)' // The mext sibling is the Story Gen content window.
-    + ' > div.is_Column:only-child' // A wrapper.
-    + ' > div.is_Column:nth-child(1)' // The specific model's container for button and info.
-    + ' div:has(img[alt="credits" i]) + p' // The mext sibling is the Story Gen content window.
-    ;
-  waitForKeyElements(AISettings_StoryGen_Model_Slider_Selector, (sliderNodes) => {
-    const sliderNode = sliderNodes[0]; // Get the first matching element
-
-    console.log("sliderNodes: ", sliderNodes);
-
-    const sliderObserver = new MutationObserver((mutationsList, observer) => {
-      for (const mutation of mutationsList) {
-        const currentValue = sliderNode.getAttribute('aria-valuenow');
-        const maxValue = sliderNode.getAttribute('aria-valuemax');
-        const minValue = sliderNode.getAttribute('aria-valuemin');
-
-        console.log("mutation.target: ", mutation.target);
-      }
-    });
-
-    // Start observing the modelContainer for changes in its child nodes
-    //sliderObserver.observe(sliderNode, { childList: true, subtree: true, characterData: true });
-    const mo_opts = {
-      //childList: true
-      //, subtree: true
-      //, characterData: true
-      attributes: true
-      , attributeFilter: ['aria-valuemax', 'aria-valuemin', 'aria-valuenow']
-    };
-    sliderObserver.observe(sliderNode, mo_opts);
-  }, false);
-} // Slider example.
 
 /**
  * Function to update the credits being used indicators in the UI.
@@ -3709,17 +3464,17 @@ function handleNewModal(modalNodeTree) {
             const tablistSelector =
               'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="plot" i], ' +
               'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="Story Cards" i],' +
-              'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i],' +
-              'div[role="button"][aria-label="Close modal" i] > div > p';
+              'div[role="tablist"][aria-label="Section Tabs"] [role="tab"][aria-label*="details" i]';
+            //', div[role="button"][aria-label="Close modal" i] > div > p';
             // Look for the Scenario/Adventure editor.
             //
-            if (modalNode.querySelectorAll(tablistSelector).length >= 4) {
+            if (modalNode.querySelectorAll(tablistSelector).length >= 3) {
               modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
               modalNode.style.height = !modalHeightCfg ? '90vh' : `${modalHeightCfg}`;
               waitForSubtreeElements(
                 tablistSelector,
                 (matchingElements) => {
-                  if (matchingElements.length >= 4) { // Check if all 3 tabs are found
+                  if (matchingElements.length >= 3) { // Check if all 3 tabs are found
                     modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ScenarioAdventureEditor");
 
                     // Find the nested button
@@ -3792,7 +3547,7 @@ function handleNewModal(modalNodeTree) {
             // Look for the Context Viewer.
             //
             else if ($(modalHeader_Title).find("p:contains('View Context')").length > 0) {
-              modalNode.style.width = ' min-content';
+              modalNode.style.width = 'min-content';
               modalNode.style.height = 'max-content';
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ViewContext");
@@ -3803,7 +3558,7 @@ function handleNewModal(modalNodeTree) {
             // Look for the "See" viewer Image Options modal.
             //
             else if ($(modalHeader_Title).find("h1:contains('Image Options')").length > 0) {
-              modalNode.style.width = ' min-content';
+              modalNode.style.width = 'min-content';
               modalNode.style.height = 'max-content';
               setTimeout(() => {
                 modalNodeTree.id = appendBeforeTimestamp(modalNodeTree.id, "_ImageOptions");
@@ -3856,6 +3611,14 @@ function handleNewModal(modalNodeTree) {
               }, 100); // adjust as needed
               makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
             } else {
+              modalNode.style.width = !modalWidthCfg ? '512px' : `${modalWidthCfg}`;
+              modalNode.style.height = !modalHeightCfg ? '90vh' : `${modalHeightCfg}`;
+              let cloneButton = modalNode.querySelector("div[role='button'][aria-label='Close modal' i]");
+              if (!cloneButton) {
+                cloneButton = modalNode.querySelector("div[role='button'][aria-label='back' i]");
+              }
+              modalAddFullScreenButton(cloneButton, modalHeader_Title.firstChild.lastChild);
+              makeModalDraggableAndResizable(timestamp, modalNodeTree, modalNode);
               //console.log("Found other modal", modalNode);
               // ... you can add handlers for other types of modals here ...
             }
