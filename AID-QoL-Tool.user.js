@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-EQoL-Tool
-// @version      2.0.1
+// @version      2.0.2
 // @description  An Enhanced QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows, etc.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
