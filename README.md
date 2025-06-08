@@ -9,6 +9,7 @@ This script was originally based on AliH2K's script. It adds many features and e
 - Modal window fullsize screen toggle.
 - Modal window undim/unmask gameplay log.
 - Sitewide Textarea resizing.
+- Model switcher tighter styling for desktop.
 - See action image resize and fullscreen.
 - Enhanced memory editing.
 - Hide Do/Say Actions Toggle.

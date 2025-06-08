@@ -93,6 +93,36 @@ GM_addStyle(`
   }
 `);
 
+/* Make the model menu tighter.
+*/
+GM_addStyle(`
+  div[role="dialog"][aria-labelledby="model-switcher-title" i] {
+    padding: 8px !important;
+    max-height: unset !important;
+    border-bottom-right-radius: 0 !important;
+    resize: both !important;
+    & div[role="button"][aria-label="Show fewer AI models" i],
+    & div[role="button"][aria-label="Show more AI models" i] {
+      padding: 0px !important;
+      & p {
+        padding:4px !important;
+      }
+    }
+    & ul[role="list"][aria-label="Available AI models" i] {
+      max-height: unset !important;
+      & div > div > li > div {
+        padding: 0 !important;
+      }
+      & div[role="img"][aria-label="Best Memory badge" i] {
+      display: none;
+      }
+      & div[role="img"][aria-label="Superior Logic badge" i] {
+        display: none;
+      }
+    }
+  }
+`);
+
 // Fixes for the Nav bar. Make it opaque. Turn off the scrolling gradient.
 GM_addStyle(`
   /* This is nested CSS, it mostly mirrors the AID site. */
