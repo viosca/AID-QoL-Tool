@@ -5,10 +5,8 @@ Warning, this TamperMonkey script may break at any time. AID may change their we
 
 This script was originally based on AliH2K's script. It adds many features and enhancements and restructures their code a bit.
 
-- Modal window drag and resize.
-- Modal window fullsize screen toggle.
-- Modal window undim/unmask gameplay log.
-- Sitewide Textarea resizing.
+- Modal window: drag and resize, fullsize screen toggle, undim/unmask gameplay log.
+- Sitewide modal textarea and img drag resizing.
 - Model switcher tighter styling for desktop.
 - See action image resize and fullscreen.
 - Enhanced memory editing.
