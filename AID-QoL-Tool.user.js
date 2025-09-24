@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-EQoL-Tool
-// @version      2.0.2
+// @version      2.0.3
 // @description  An Enhanced QoL script for AID, adding customizable hotkeys, increases performance, providing draggable and resizable modal windows, etc.
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -430,6 +430,11 @@ GM_addStyle(`
     & input._h-606181821 { height: var(--size-6); }
     & div[id^="modalContent_Inner_detailsTab_TS"] {
       gap: 4px !important;
+    }
+    & div[role="button"],
+    & button[type=button],
+    & input {
+      height: 30px !important;
     }
   }
   /* Tweak the padding for modals.
@@ -1581,6 +1586,7 @@ const cfg = new MonkeyConfig({
     Save_Raw_Text: { type: 'checkbox', default: false }, // Save raw text rather than removing '>'
     Fix_Actions: { type: 'checkbox', default: true }, // Fix editing past actions.
     Action_Cleaner: { type: 'checkbox', default: false }, // Cleanup the current action.
+    Auto_Quote_Do_Actions: { type: 'checkbox', default: true }, // Automatically pre-fill the 'Do' action with quotes.
     Do_Action_Verb: { type: 'text', default: null }, // RFU
 
     Default_SC_Notes: { type: 'text', default: 'Unused.' },
@@ -3830,3 +3836,222 @@ waitForKeyElements('[role="article"]', (targetNodes) => {
 
 });
 
+/*
+** Automatically pre-fills the "Do" action textarea with double quotes
+** by watching for the placeholder text to change.
+*/
+waitForKeyElements("#game-text-input", (textareaNodes) => {
+  const textarea = textareaNodes[0];
+  if (!textarea) return;
+
+    // A reusable function to apply the quotes.
+    const prefillQuotesIfNeeded = () => {
+    // Check if the feature is enabled in the config.
+    if (!cfg.get('Auto_Quote_Do_Actions')) {
+      return;
+    }
+
+    const placeholder = textarea.getAttribute('placeholder');
+    // Check if we are in "Do" mode and the textarea is empty.
+    if (placeholder === 'What do you do?') {
+      // If the Do is empty, put quotes in it and position the cursor between them.
+      if (textarea.value.trim() === '') {
+        // Set the value in a way React can understand.
+        setNativeValue(textarea, '""');
+
+        const inputEvent = new InputEvent('input', { bubbles: true });
+        textarea.dispatchEvent(inputEvent);
+
+        // Set the cursor position between the quotes.
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(1, 1);
+        }, 50);
+      } 
+      else if (!textarea.value.includes('"')) {
+        setNativeValue(textarea, '"' + textarea.value + '"');
+
+        const inputEvent = new InputEvent('input', { bubbles: true });
+        textarea.dispatchEvent(inputEvent);
+
+        // Set the focus.
+        setTimeout(() => {
+          textarea.focus();
+        }, 50);
+      }
+    }
+    // Check if we are in "Say" mode.
+    else if (placeholder === 'What do you say?') {
+      // Got empty quotes, remove them and set focus.
+      if (textarea.value.trim() === '""') {
+        setNativeValue(textarea, '');
+
+        const inputEvent = new InputEvent('input', { bubbles: true });
+        textarea.dispatchEvent(inputEvent);
+
+        // Set the focus.
+        setTimeout(() => {
+          textarea.focus();
+        }, 50);
+      }
+    }
+    // Check if we are in "Story" mode.
+    else if (placeholder === 'What happens next?') {
+      // Got empty quotes, remove them and set focus.
+      if (textarea.value.trim() === '""') {
+        setNativeValue(textarea, '');
+
+        const inputEvent = new InputEvent('input', { bubbles: true });
+        textarea.dispatchEvent(inputEvent);
+
+        // Set the focus.
+        setTimeout(() => {
+          textarea.focus();
+        }, 50);
+      }
+    }
+    // Check if we are in "See" mode.
+    else if (placeholder === 'What do you see?') {
+      // Got empty quotes, remove them and set focus.
+      if (textarea.value.trim() === '""') {
+        setNativeValue(textarea, '');
+
+        const inputEvent = new InputEvent('input', { bubbles: true });
+        textarea.dispatchEvent(inputEvent);
+
+        // Set the focus.
+        setTimeout(() => {
+          textarea.focus();
+        }, 50);
+      }
+    }
+  };
+
+  // Run the check immediately in case "Do" mode is already active.
+  //prefillQuotesIfNeeded();
+  //setTimeout(prefillQuotesIfNeeded, 200);
+  setTimeout(prefillQuotesIfNeeded, 100);
+
+  // This function runs whenever an attribute on the textarea changes.
+  const observerCallback = (mutationsList, observer) => {
+    for (const mutation of mutationsList) {
+      // We only care about the 'placeholder' attribute changing.
+      if (mutation.attributeName === 'placeholder') {
+        setTimeout(prefillQuotesIfNeeded, 100);
+      }
+      if (mutation.attributeName === 'class') {
+        setTimeout(prefillQuotesIfNeeded, 100);
+      }
+    }
+  };
+
+  // Create an observer to watch for attribute changes on the textarea.
+  const observer = new MutationObserver(observerCallback);
+  observer.observe(textarea, { attributes: true });
+  setTimeout(prefillQuotesIfNeeded, 100);
+
+}, false);
+
+/*
+** Automatically pre-fills the "Do" action textarea with double quotes
+** by watching for the placeholder text to change.
+*/
+// const waitforIdStr = "#editing-view-port";
+// //const waitforIdStr = "#full-screen-text-input";
+// waitForKeyElements(waitforIdStr, (nodes) => {
+//   const node = nodes[0];
+//   if (!node) return;
+//   console.log("Got ${waitforIdStr}")
+//   node.focus();
+// }, false);
+/*
+** Automatically focuses the full-screen text input when it becomes visible
+** by finding and focusing the specific inner div inside its shadow root.
+*/
+waitForKeyElements("#full-screen-text-input", (inputNodes) => {
+    const inputElement = inputNodes[0];
+    if (!inputElement) return;
+    console.log("saw text input.");
+    // This function checks if the element is visible and then focuses the correct div inside the shadow root.
+    const focusIfNeeded = () => {
+        console.log("called focusIfNeeded.");
+        if (inputElement.offsetParent !== null) {
+            setTimeout(() => {
+                // --- THE SOLUTION ---
+                // We can't enter a 'closed' shadow root.
+                // Instead, we programmatically click the host element. This will
+                // trigger the component's own internal click handler, which
+                // is responsible for correctly setting focus on the inner div.
+                inputElement.click();
+            }, 2000);
+            // setTimeout(() => {
+            //     const shadow = inputElement.shadowRoot;
+            //     if (shadow) {
+            //         console.log("found shadow root");
+            //         // --- SOLUTION ---
+            //         // This now uses a precise selector to find the correct div.
+            //         const editableDiv = shadow.querySelector('#editing-view-port > div');
+
+            //         if (editableDiv) {
+            //             console.log("sending focus.")
+            //             editableDiv.focus();
+            //         }
+            //     }
+            // }, 500);
+        }
+    };
+
+    // This function starts a loop to check where the focus is.
+    const hijackFocus = () => {
+        let attempts = 0;
+        const maxAttempts = 50; // Try for 5 seconds (50 * 100ms)
+        console.log("hijack called.")
+
+        const intervalId = setInterval(() => {
+            attempts++;
+
+            // --- IMPORTANT ---
+            // This selector is a best guess for the "Continue" button.
+            // You may need to inspect the page and adjust this selector if it doesn't work.
+            //const continueButton = document.querySelector('div[role="button"]:has(span:contains("Continue"))');
+            const continueButton = $('input:has(div:contains("#editing-port-view"))')[0];
+
+            // Check if the "Continue" button exists and if it is the currently focused element.
+            if (continueButton) {
+              console.log("found continue button.")
+              if (document.activeElement === continueButton) {
+                  // SUCCESS! The UI is ready. Move the focus to our input.
+                  console.log("sending focus.")
+                  inputElement.focus();
+                  clearInterval(intervalId); // Stop checking.
+                  return;
+              }
+            }
+            // Stop checking after a timeout to prevent an infinite loop.
+            if (attempts >= maxAttempts) {
+                console.log("bailing, timed out.")
+                clearInterval(intervalId);
+            }
+        }, 100);
+    };
+
+    // Set up an observer to watch for the class attribute changing (which controls visibility).
+    const observer = new MutationObserver((mutationsList) => {
+        for (const mutation of mutationsList) {
+            if (mutation.attributeName === 'class' && inputElement.offsetParent !== null) {
+                focusIfNeeded();
+                //hijackFocus();
+            }
+        }
+    });
+
+    // Start observing.
+    observer.observe(inputElement, { attributes: true });
+
+    // if (inputElement.offsetParent !== null) {
+    //     hijackFocus();
+    // }
+    // Run the check once when the element is first found, in case it's already visible.
+    focusIfNeeded();
+
+}, false);
