@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-EQoL-Tool
 // @version      3.0.0
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Draggable/Resizable Modals).
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modal Drag/Resize).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -36,7 +36,7 @@
   if (CONFIG.get('autoFocusInput') === undefined) CONFIG.set('autoFocusInput', true);
   if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
   if (CONFIG.get('actionsVisible') === undefined) CONFIG.set('actionsVisible', true);
-  if (CONFIG.get('modalsDraggable') === undefined) CONFIG.set('modalsDraggable', true);
+  if (CONFIG.get('storyCardModalsEnabled') === undefined) CONFIG.set('storyCardModalsEnabled', true);
   if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
 
   // Register Tampermonkey menu commands
@@ -64,9 +64,9 @@
   );
 
   GM_registerMenuCommand(
-    `Draggable Modals: ${CONFIG.get('modalsDraggable') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    `Story Card Modals (Drag/Resize): ${CONFIG.get('storyCardModalsEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
-      CONFIG.set('modalsDraggable', !CONFIG.get('modalsDraggable'));
+      CONFIG.set('storyCardModalsEnabled', !CONFIG.get('storyCardModalsEnabled'));
       location.reload();
     }
   );
@@ -717,38 +717,50 @@
   };
 
   // =========================================================================
-  // Feature Module 4: Draggable & Resizable Modals
+  // Feature Module 4: Story Card Modals (Drag & Top-Left Anchored Resize)
   // =========================================================================
-  const ModalWindowModule = {
-    name: 'Draggable & Resizable Modals',
+  const StoryCardModalModule = {
+    name: 'Story Card Modals',
 
     init() {
-      Logger.info('Initializing ModalWindowModule...');
+      Logger.info('Initializing StoryCardModalModule...');
 
-      if (!CONFIG.get('modalsDraggable')) return;
+      if (!CONFIG.get('storyCardModalsEnabled')) return;
 
       this.injectStyles();
 
-      // Observe for dialog contents appearing in the DOM
+      // Observe for dialogs appearing in the DOM
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
-        this.setupModal(modalNode);
+        // Allow a brief moment for child elements to mount
+        setTimeout(() => {
+          if (this.isStoryCardModal(modalNode)) {
+            this.setupStoryCardModal(modalNode);
+          }
+        }, 60);
       });
     },
 
     injectStyles() {
       GM_addStyle(`
         /* 
-         * Resizable modal styling.
-         * Only applied once modal is fixed-anchored to prevent center-growing!
+         * Resizable Story Card modal styling.
+         * max-width: none !important overrides Tailwind's max-w-[512px] and max-w-lg
+         * so horizontal resizing is fully unlocked!
+         * Neutralizes Tailwind's transform variables so dragging never jumps or snaps!
          */
-        .aid-qol-resizable-modal {
+        .aid-qol-story-card-modal {
           resize: both !important;
           overflow: auto !important;
+          max-width: none !important;
+          max-height: 96vh !important;
           border-bottom-right-radius: 0px !important;
           box-sizing: border-box !important;
+          transform: none !important;
+          --tw-translate-x: 0px !important;
+          --tw-translate-y: 0px !important;
         }
 
-        /* Drag handle cursor */
+        /* Drag handle on the visible header bar */
         .aid-qol-modal-handle {
           cursor: grab !important;
           user-select: none !important;
@@ -766,68 +778,110 @@
           max-width: 96vw !important;
           max-height: 94vh !important;
           transform: none !important;
+          --tw-translate-x: 0px !important;
+          --tw-translate-y: 0px !important;
         }
       `);
     },
 
     /**
-     * Enhances a modal node with drag and top-left anchored resize capabilities.
+     * Determines whether a given modal element represents a Story Card editor or previewer.
+     * @param {HTMLElement} modal
+     * @returns {boolean}
+     */
+    isStoryCardModal(modal) {
+      if (!modal || modal.nodeType !== Node.ELEMENT_NODE) return false;
+
+      // 1. Explicit AID attribute on Story Card Edit modal
+      if (modal.getAttribute('data-block-gameplay-undo-redo') === 'story-card') {
+        return true;
+      }
+
+      // 2. Story Card editor specific fields
+      if (modal.querySelector('#scTypeLabel, #scEntryLabel, #scTitleLabel, [data-slot="story-card-publishing-fields"], [data-keyboard-scroll-region*="story-card"]')) {
+        return true;
+      }
+
+      // 3. Title mentions story card
+      const title = modal.querySelector('[data-slot="platform-dialog-title"], h2');
+      if (title && /story\s*card/i.test(title.textContent)) {
+        return true;
+      }
+
+      // 4. Previewer modal: has platform-badge and description paragraph
+      if (modal.querySelector('[data-slot="platform-badge"]') && modal.querySelector('[data-slot="platform-dialog-description"]')) {
+        return true;
+      }
+
+      return false;
+    },
+
+    /**
+     * Enhances a Story Card modal with drag and top-left anchored resize capabilities.
      * @param {HTMLElement} modal
      */
-    setupModal(modal) {
+    setupStoryCardModal(modal) {
       if (modal.dataset.aidQolModal) return;
       modal.dataset.aidQolModal = 'true';
 
-      // Slight delay so AID finishes mounting and rendering its natural layout
-      setTimeout(() => {
-        const initialRect = modal.getBoundingClientRect();
+      Logger.log('Setting up Story Card modal:', modal);
 
-        // Skip tiny popovers or dropdown menus
-        if (initialRect.width < 220 || initialRect.height < 150) {
-          return;
-        }
+      // 1. Strip Tailwind centering & translation classes that cause jumping:
+      modal.classList.remove(
+        '-translate-x-1/2', 
+        '-translate-y-1/2', 
+        'translate-x-1/2', 
+        'translate-y-1/2', 
+        'm-auto',
+        'max-w-[512px]',
+        'max-w-lg'
+      );
 
-        Logger.log('Setting up draggable modal:', modal, initialRect);
+      // 2. Capture the actual rendered viewport rect
+      const rect = modal.getBoundingClientRect();
+      const initialLeft = Math.round(rect.left);
+      const initialTop = Math.round(rect.top);
+      const initialWidth = Math.round(rect.width);
+      const initialHeight = Math.round(rect.height);
 
-        // 1. ANCHOR TOP-LEFT: Disable flexbox centering so resizing grows strictly down & right
-        // This solves the issue where resizing was symmetrically expanding/shrinking from center!
-        const initialLeft = Math.round(initialRect.left);
-        const initialTop = Math.round(initialRect.top);
-        const initialWidth = Math.round(initialRect.width);
-        const initialHeight = Math.round(initialRect.height);
+      // 3. Anchor top-left with fixed pixel coordinates
+      // This permanently solves the issue where resizing was expanding symmetrically from the center!
+      modal.style.position = 'fixed';
+      modal.style.left = `${initialLeft}px`;
+      modal.style.top = `${initialTop}px`;
+      modal.style.width = `${initialWidth}px`;
+      modal.style.height = `${initialHeight}px`;
+      modal.style.maxWidth = 'none';
+      modal.style.margin = '0px';
+      modal.style.transform = 'none';
 
-        modal.style.position = 'fixed';
-        modal.style.left = `${initialLeft}px`;
-        modal.style.top = `${initialTop}px`;
-        modal.style.width = `${initialWidth}px`;
-        modal.style.height = `${initialHeight}px`;
-        modal.style.margin = '0px';
-        modal.style.transform = 'none';
+      // Unset parent centering so it doesn't fight fixed coordinates
+      if (modal.parentElement) {
+        modal.parentElement.style.justifyContent = 'unset';
+        modal.parentElement.style.alignItems = 'unset';
+      }
 
-        // Unset parent centering so it doesn't fight fixed coordinates
-        if (modal.parentElement) {
-          modal.parentElement.style.justifyContent = 'unset';
-          modal.parentElement.style.alignItems = 'unset';
-        }
+      // 4. Enable native resize
+      modal.classList.add('aid-qol-story-card-modal');
 
-        // 2. Enable native resize
-        modal.classList.add('aid-qol-resizable-modal');
+      // 5. Locate the visible header row to use as the drag handle
+      const header = this.findModalHeader(modal);
+      if (!header) {
+        Logger.warn('Visible header not found for modal:', modal);
+        return;
+      }
 
-        // 3. Locate the header row to use as the drag handle
-        const header = this.findModalHeader(modal);
-        if (!header) return;
+      header.classList.add('aid-qol-modal-handle');
+      Logger.log('Attached drag handle to header:', header);
 
-        header.classList.add('aid-qol-modal-handle');
+      // 6. Bind drag events
+      this.bindDragEvents(modal, header);
 
-        // 4. Bind dragging
-        this.bindDragEvents(modal, header);
-
-        // 5. Double-click title bar to maximize / restore
-        header.addEventListener('dblclick', (e) => {
-          if (this.isInteractiveElement(e.target)) return;
-          this.toggleMaximize(modal);
-        });
-      }, 120);
+      // 7. Double-click title bar to maximize / restore
+      header.addEventListener('dblclick', (e) => {
+        if (this.isInteractiveElement(e.target)) return;
+        this.toggleMaximize(modal);
+      });
     },
 
     /**
@@ -836,32 +890,38 @@
      * @returns {boolean}
      */
     isInteractiveElement(target) {
-      return !!target.closest('button, input, textarea, select, a, [role="tab"], [aria-label*="close" i]');
+      return !!target.closest('button, input, textarea, select, a, [role="tab"], [data-slot="platform-dropdown-menu-trigger"], [data-slot="platform-dialog-close"], [aria-label*="close" i]');
     },
 
     /**
-     * Finds the modal's top header row to use as the drag handle.
+     * Finds the modal's visible top header row to use as the drag handle.
+     * Explicitly skips visually hidden screen-reader titles (.sr-only).
      * @param {HTMLElement} modal
      * @returns {HTMLElement|null}
      */
     findModalHeader(modal) {
-      // 1. Look for a close button inside the modal
-      const closeBtn = modal.querySelector('[aria-label*="close" i]');
-      if (closeBtn) {
-        // The header row is usually the direct parent or grandparent of the close button
-        const row = closeBtn.closest('div:has([aria-label*="close" i])') ||
-                    closeBtn.parentElement?.parentElement ||
-                    closeBtn.parentElement;
-        if (row && row !== modal) return row;
+      // 1. Look for a VISIBLE heading (ignore .sr-only!)
+      const headings = modal.querySelectorAll('h2, h3, h4, [data-slot="platform-dialog-title"]');
+      for (const h of headings) {
+        if (!h.classList.contains('sr-only')) {
+          const parentRow = h.parentElement;
+          if (parentRow && parentRow !== modal) {
+            return parentRow;
+          }
+        }
       }
 
-      // 2. Look for a heading inside the modal
-      const heading = modal.querySelector('[role="heading"], h1, h2, h3, h4, [aria-labelledby]');
-      if (heading && heading.parentElement && heading.parentElement !== modal) {
-        return heading.parentElement;
+      // 2. Look for explicit platform-dialog-header container
+      const headerSlot = modal.querySelector('[data-slot="platform-dialog-header"]');
+      if (headerSlot) return headerSlot;
+
+      // 3. Look for the top row containing the "More" button or Close button
+      const moreBtn = modal.querySelector('button[aria-label="More" i], [data-slot="platform-dialog-close"]');
+      if (moreBtn && moreBtn.parentElement && moreBtn.parentElement !== modal) {
+        return moreBtn.parentElement;
       }
 
-      // 3. Fallback to top-most child
+      // 4. Fallback to first element child
       return modal.firstElementChild;
     },
 
@@ -875,7 +935,7 @@
         // Left click only
         if (e.button !== 0) return;
 
-        // Skip dragging when clicking buttons, inputs, tabs, or close icons
+        // Skip dragging when clicking interactive buttons, tabs, or close icons
         if (this.isInteractiveElement(e.target)) {
           return;
         }
@@ -963,7 +1023,7 @@
     StoryInputModule,
     HotkeysModule,
     ActionToggleModule,
-    ModalWindowModule,
+    StoryCardModalModule,
   ];
 
   function bootstrap() {
