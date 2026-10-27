@@ -37,6 +37,9 @@
   if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
   if (CONFIG.get('actionsVisible') === undefined) CONFIG.set('actionsVisible', true);
   if (CONFIG.get('storyCardModalsEnabled') === undefined) CONFIG.set('storyCardModalsEnabled', true);
+  if (CONFIG.get('scModalWidth') === undefined) CONFIG.set('scModalWidth', '680px');
+  if (CONFIG.get('scModalHeight') === undefined) CONFIG.set('scModalHeight', '82vh');
+  if (CONFIG.get('rememberSCSize') === undefined) CONFIG.set('rememberSCSize', true);
   if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
 
   // Register Tampermonkey menu commands
@@ -64,9 +67,39 @@
   );
 
   GM_registerMenuCommand(
-    `Story Card Modals (Drag/Resize): ${CONFIG.get('storyCardModalsEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    `Story Card Modals: ${CONFIG.get('storyCardModalsEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
       CONFIG.set('storyCardModalsEnabled', !CONFIG.get('storyCardModalsEnabled'));
+      location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Configure SC Default Size (${CONFIG.get('scModalWidth')} × ${CONFIG.get('scModalHeight')})`,
+    () => {
+      const currentW = CONFIG.get('scModalWidth', '680px');
+      const currentH = CONFIG.get('scModalHeight', '82vh');
+      const input = prompt(
+        'Enter default Story Card Dimensions as "Width, Height":\n(Examples: "680px, 82vh", "750px, 850px", "50vw, 80vh")',
+        `${currentW}, ${currentH}`
+      );
+      if (input) {
+        const parts = input.split(',').map(s => s.trim());
+        if (parts.length >= 2 && parts[0] && parts[1]) {
+          CONFIG.set('scModalWidth', parts[0]);
+          CONFIG.set('scModalHeight', parts[1]);
+          alert(`Story Card default size saved: ${parts[0]} × ${parts[1]}`);
+        } else {
+          alert('Invalid format. Please use "Width, Height" (e.g. "680px, 82vh").');
+        }
+      }
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Remember Resized SC Size: ${CONFIG.get('rememberSCSize') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      CONFIG.set('rememberSCSize', !CONFIG.get('rememberSCSize'));
       location.reload();
     }
   );
@@ -744,14 +777,18 @@
       GM_addStyle(`
         /* 
          * Resizable Story Card modal styling.
-         * max-width: none !important overrides Tailwind's max-w-[512px] and max-w-lg
-         * so horizontal resizing is fully unlocked!
-         * Neutralizes Tailwind's transform variables so dragging never jumps or snaps!
+         * Explicit right: auto !important and bottom: auto !important prevents Tailwind's
+         * inset-0 and w-full from stretching the modal across the entire viewport!
          */
         .aid-qol-story-card-modal {
           resize: both !important;
           overflow: auto !important;
-          max-width: none !important;
+          right: auto !important;
+          bottom: auto !important;
+          margin: 0px !important;
+          min-width: 320px !important;
+          min-height: 250px !important;
+          max-width: 98vw !important;
           max-height: 96vh !important;
           border-bottom-right-radius: 0px !important;
           box-sizing: border-box !important;
@@ -782,6 +819,30 @@
           --tw-translate-y: 0px !important;
         }
       `);
+    },
+
+    /**
+     * Parses dimension string (e.g. "680px", "82vh", "50vw", "70%") into pixel value.
+     * @param {string|number} dim
+     * @param {number} totalSize
+     * @returns {number}
+     */
+    parseDimension(dim, totalSize) {
+      if (typeof dim === 'number') return dim;
+      const str = String(dim).trim().toLowerCase();
+      if (str.endsWith('vh')) {
+        return (parseFloat(str) / 100) * window.innerHeight;
+      }
+      if (str.endsWith('vw')) {
+        return (parseFloat(str) / 100) * window.innerWidth;
+      }
+      if (str.endsWith('%')) {
+        return (parseFloat(str) / 100) * totalSize;
+      }
+      if (str.endsWith('px')) {
+        return parseFloat(str);
+      }
+      return parseFloat(str) || totalSize;
     },
 
     /**
@@ -826,8 +887,10 @@
 
       Logger.log('Setting up Story Card modal:', modal);
 
-      // 1. Strip Tailwind centering & translation classes that cause jumping:
+      // 1. Strip Tailwind classes that stretch or center the modal:
       modal.classList.remove(
+        'inset-0',
+        'w-full',
         '-translate-x-1/2', 
         '-translate-y-1/2', 
         'translate-x-1/2', 
@@ -837,25 +900,29 @@
         'max-w-lg'
       );
 
-      // 2. Capture the actual rendered viewport rect
-      const rect = modal.getBoundingClientRect();
-      const initialLeft = Math.round(rect.left);
-      const initialTop = Math.round(rect.top);
-      const initialWidth = Math.round(rect.width);
-      const initialHeight = Math.round(rect.height);
+      // 2. Calculate initial dimensions from configured defaults or saved preferences
+      const configuredWidth = CONFIG.get('scModalWidth', '680px');
+      const configuredHeight = CONFIG.get('scModalHeight', '82vh');
+
+      const widthPx = Math.min(window.innerWidth - 30, Math.round(this.parseDimension(configuredWidth, window.innerWidth)));
+      const heightPx = Math.min(window.innerHeight - 40, Math.round(this.parseDimension(configuredHeight, window.innerHeight)));
+
+      // Center symmetrically with equal margins on all four sides:
+      const leftPx = Math.max(10, Math.round((window.innerWidth - widthPx) / 2));
+      const topPx = Math.max(10, Math.round((window.innerHeight - heightPx) / 2));
 
       // 3. Anchor top-left with fixed pixel coordinates
-      // This permanently solves the issue where resizing was expanding symmetrically from the center!
       modal.style.position = 'fixed';
-      modal.style.left = `${initialLeft}px`;
-      modal.style.top = `${initialTop}px`;
-      modal.style.width = `${initialWidth}px`;
-      modal.style.height = `${initialHeight}px`;
-      modal.style.maxWidth = 'none';
+      modal.style.left = `${leftPx}px`;
+      modal.style.top = `${topPx}px`;
+      modal.style.width = `${widthPx}px`;
+      modal.style.height = `${heightPx}px`;
+      modal.style.right = 'auto';
+      modal.style.bottom = 'auto';
       modal.style.margin = '0px';
       modal.style.transform = 'none';
 
-      // Unset parent centering so it doesn't fight fixed coordinates
+      // Unset parent flex centering
       if (modal.parentElement) {
         modal.parentElement.style.justifyContent = 'unset';
         modal.parentElement.style.alignItems = 'unset';
@@ -864,24 +931,70 @@
       // 4. Enable native resize
       modal.classList.add('aid-qol-story-card-modal');
 
-      // 5. Locate the visible header row to use as the drag handle
+      // 5. Watch for user manual resize and save dimensions if enabled
+      this.bindResizeSaver(modal);
+
+      // 6. Locate the visible header row to use as the drag handle
       const header = this.findModalHeader(modal);
       if (!header) {
-        Logger.warn('Visible header not found for modal:', modal);
+        delete modal.dataset.aidQolModal;
+        Logger.warn('Visible header not found yet for modal, will retry:', modal);
         return;
       }
 
       header.classList.add('aid-qol-modal-handle');
       Logger.log('Attached drag handle to header:', header);
 
-      // 6. Bind drag events
+      // 7. Bind drag events
       this.bindDragEvents(modal, header);
 
-      // 7. Double-click title bar to maximize / restore
+      // 8. Double-click title bar to maximize / restore
       header.addEventListener('dblclick', (e) => {
         if (this.isInteractiveElement(e.target)) return;
         this.toggleMaximize(modal);
       });
+    },
+
+    /**
+     * Saves user's resized modal dimensions so future modals remember it.
+     * Uses ResizeObserver with debouncing for clean, leak-free persistence.
+     * @param {HTMLElement} modal
+     */
+    bindResizeSaver(modal) {
+      if (!CONFIG.get('rememberSCSize') || typeof ResizeObserver === 'undefined') return;
+
+      let isInitial = true;
+      let debounceTimer = null;
+
+      const observer = new ResizeObserver(() => {
+        // Skip the initial layout pass right after opening
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+
+        // Never remember maximized dimensions
+        if (modal.classList.contains('aid-qol-modal-maximized')) return;
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (!modal.isConnected) {
+            observer.disconnect();
+            return;
+          }
+          if (modal.classList.contains('aid-qol-modal-maximized')) return;
+
+          const currentW = Math.round(modal.offsetWidth);
+          const currentH = Math.round(modal.offsetHeight);
+          if (currentW > 250 && currentH > 200) {
+            CONFIG.set('scModalWidth', `${currentW}px`);
+            CONFIG.set('scModalHeight', `${currentH}px`);
+            Logger.log(`Saved new Story Card dimensions: ${currentW}px × ${currentH}px`);
+          }
+        }, 300);
+      });
+
+      observer.observe(modal);
     },
 
     /**
@@ -952,6 +1065,8 @@
         modal.style.position = 'fixed';
         modal.style.margin = '0';
         modal.style.transform = 'none';
+        modal.style.right = 'auto';
+        modal.style.bottom = 'auto';
         modal.style.left = `${rect.left}px`;
         modal.style.top = `${rect.top}px`;
         modal.style.zIndex = '999999';
