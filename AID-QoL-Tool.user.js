@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-EQoL-Tool
 // @version      3.0.0
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, UI Tweaks).
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, UI Tweaks).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -35,6 +35,7 @@
   if (CONFIG.get('autoQuoteDo') === undefined) CONFIG.set('autoQuoteDo', true);
   if (CONFIG.get('autoFocusInput') === undefined) CONFIG.set('autoFocusInput', true);
   if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
+  if (CONFIG.get('actionsVisible') === undefined) CONFIG.set('actionsVisible', true);
   if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
 
   // Register Tampermonkey menu commands
@@ -51,6 +52,13 @@
     () => {
       CONFIG.set('hotkeysEnabled', !CONFIG.get('hotkeysEnabled'));
       location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Action Visibility: ${CONFIG.get('actionsVisible') ? 'VISIBLE (A+)' : 'HIDDEN (A-)'} (Click to toggle)`,
+    () => {
+      ActionToggleModule.toggle();
     }
   );
 
@@ -253,6 +261,7 @@
             setNativeValue(textarea, `"${textarea.value}"`);
             setTimeout(() => {
               textarea.focus();
+              // Preserve cursor position offset by leading quote
               textarea.setSelectionRange(start + 1, end + 1);
             }, 30);
             Logger.log('Wrapped text in quotes for Do action');
@@ -390,6 +399,12 @@
           if (!isPlayPage) return;
           e.preventDefault();
           this.switchMode('See');
+          break;
+
+        // --- Action Visibility Toggle ---
+        case 'U': // Toggle Actions (A+ / A-)
+          e.preventDefault();
+          ActionToggleModule.toggle();
           break;
 
         // --- Menus & Navigation ---
@@ -548,11 +563,153 @@
   };
 
   // =========================================================================
+  // Feature Module 3: Action Visibility Toggle (A+ / A-)
+  // =========================================================================
+  const ActionToggleModule = {
+    name: 'Action Visibility Toggle',
+    buttonId: 'aid-qol-action-toggle',
+
+    init() {
+      Logger.info('Initializing ActionToggleModule...');
+
+      // Inject CSS rules for hiding actions and styling the header button
+      this.injectStyles();
+
+      // Apply initial saved visibility state to the document
+      this.applyVisibility();
+
+      // Watch for the header / navigation bar to inject the toggle button
+      observeSelector('[aria-label="Undo change" i], [aria-label="Navigation bar" i]', (target) => {
+        this.injectButton(target);
+      });
+    },
+
+    injectStyles() {
+      GM_addStyle(`
+        /* Hide actions cleanly when .aid-actions-hidden is active */
+        body.aid-actions-hidden div:has(> #action-icon),
+        body.aid-actions-hidden div:has(#action-text),
+        body.aid-actions-hidden #action-icon,
+        body.aid-actions-hidden #action-text,
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-text),
+        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote {
+          display: none !important;
+          visibility: hidden !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+        }
+
+        /* QoL Toggle Button in Navigation Bar */
+        #${this.buttonId} {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 28px;
+          min-width: 36px;
+          padding: 0 8px;
+          margin: 0 4px;
+          font-family: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          user-select: none;
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          background-color: rgba(255, 255, 255, 0.08);
+          color: #e2e8f0;
+          transition: all 0.15s ease-in-out;
+          vertical-align: middle;
+          z-index: 1000;
+        }
+
+        #${this.buttonId}:hover {
+          background-color: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.3);
+          color: #ffffff;
+        }
+
+        #${this.buttonId}.actions-off {
+          background-color: rgba(239, 68, 68, 0.15);
+          border-color: rgba(239, 68, 68, 0.35);
+          color: #fca5a5;
+          text-decoration: line-through;
+        }
+      `);
+    },
+
+    applyVisibility() {
+      const isVisible = CONFIG.get('actionsVisible', true);
+      if (isVisible) {
+        document.body.classList.remove('aid-actions-hidden');
+      } else {
+        document.body.classList.add('aid-actions-hidden');
+      }
+      this.updateButtonDisplay();
+    },
+
+    toggle() {
+      const current = CONFIG.get('actionsVisible', true);
+      const next = !current;
+      CONFIG.set('actionsVisible', next);
+      Logger.info(`Toggled Action Visibility: ${next ? 'VISIBLE (A+)' : 'HIDDEN (A-)'}`);
+      this.applyVisibility();
+    },
+
+    updateButtonDisplay() {
+      const btn = document.getElementById(this.buttonId);
+      if (!btn) return;
+
+      const isVisible = CONFIG.get('actionsVisible', true);
+      btn.innerText = isVisible ? 'A+' : 'A-';
+      btn.title = isVisible 
+        ? 'Actions: Visible (Click or Alt+Ctrl+U to hide)' 
+        : 'Actions: Hidden (Click or Alt+Ctrl+U to show)';
+
+      if (isVisible) {
+        btn.classList.remove('actions-off');
+      } else {
+        btn.classList.add('actions-off');
+      }
+    },
+
+    injectButton(targetElement) {
+      if (document.getElementById(this.buttonId)) return;
+
+      const btn = document.createElement('button');
+      btn.id = this.buttonId;
+      btn.type = 'button';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggle();
+      });
+
+      // Prefer inserting near the Undo button container if available
+      const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
+      if (undoBtn && undoBtn.parentElement) {
+        undoBtn.parentElement.parentElement?.insertBefore(btn, undoBtn.parentElement.nextSibling) ||
+        undoBtn.parentElement.appendChild(btn);
+      } else if (targetElement) {
+        targetElement.appendChild(btn);
+      }
+
+      this.updateButtonDisplay();
+      Logger.log('Injected Action Toggle button into header');
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
     StoryInputModule,
     HotkeysModule,
+    ActionToggleModule,
   ];
 
   function bootstrap() {
