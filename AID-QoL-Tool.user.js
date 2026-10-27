@@ -586,13 +586,13 @@
 
     injectStyles() {
       GM_addStyle(`
-        /* Hide actions cleanly when .aid-actions-hidden is active */
-        body.aid-actions-hidden div:has(> #action-icon),
-        body.aid-actions-hidden div:has(#action-text),
-        body.aid-actions-hidden #action-icon,
-        body.aid-actions-hidden #action-text,
-        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-text),
-        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote {
+        /* 
+         * Hide ONLY the specific story action segment containing #action-icon.
+         * We specifically target .gameplay-story-edit-dim-target with a child #action-icon
+         * so we NEVER match parent containers like #gameplay-story-scrollview or #__next!
+         */
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(> #action-icon),
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(> [id="action-icon"]) {
           display: none !important;
           visibility: hidden !important;
           height: 0 !important;
@@ -601,6 +601,11 @@
           margin-bottom: 0 !important;
           padding-top: 0 !important;
           padding-bottom: 0 !important;
+        }
+
+        /* Read page blockquote support */
+        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote {
+          display: none !important;
         }
 
         /* QoL Toggle Button in Navigation Bar */
@@ -622,7 +627,7 @@
           border: 1px solid rgba(255, 255, 255, 0.15);
           background-color: rgba(255, 255, 255, 0.08);
           color: #e2e8f0;
-          transition: all 0.15s ease-in-out;
+          transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out;
           vertical-align: middle;
           z-index: 1000;
         }
@@ -634,10 +639,9 @@
         }
 
         #${this.buttonId}.actions-off {
-          background-color: rgba(239, 68, 68, 0.15);
-          border-color: rgba(239, 68, 68, 0.35);
+          background-color: rgba(239, 68, 68, 0.2);
+          border-color: rgba(239, 68, 68, 0.4);
           color: #fca5a5;
-          text-decoration: line-through;
         }
       `);
     },
