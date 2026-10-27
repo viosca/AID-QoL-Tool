@@ -34,14 +34,22 @@
   // Default configuration values
   if (CONFIG.get('autoQuoteDo') === undefined) CONFIG.set('autoQuoteDo', true);
   if (CONFIG.get('autoFocusInput') === undefined) CONFIG.set('autoFocusInput', true);
+  if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
   if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
 
   // Register Tampermonkey menu commands
   GM_registerMenuCommand(
     `Auto-Quote "Do": ${CONFIG.get('autoQuoteDo') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
-      const current = CONFIG.get('autoQuoteDo');
-      CONFIG.set('autoQuoteDo', !current);
+      CONFIG.set('autoQuoteDo', !CONFIG.get('autoQuoteDo'));
+      location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Hotkeys (Alt+Ctrl): ${CONFIG.get('hotkeysEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      CONFIG.set('hotkeysEnabled', !CONFIG.get('hotkeysEnabled'));
       location.reload();
     }
   );
@@ -49,8 +57,7 @@
   GM_registerMenuCommand(
     `Debug Logs: ${CONFIG.get('debugLogging') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
-      const current = CONFIG.get('debugLogging');
-      CONFIG.set('debugLogging', !current);
+      CONFIG.set('debugLogging', !CONFIG.get('debugLogging'));
       location.reload();
     }
   );
@@ -77,9 +84,32 @@
   };
 
   // =========================================================================
-  // DOM & React Utilities
+  // DOM & Event Utilities
   // =========================================================================
-  
+
+  /**
+   * Dispatches complete pointer + mouse + click events for Tamagui & React.
+   * Ensures handlers like `onPress` fire even when elements aren't standard buttons.
+   *
+   * @param {HTMLElement} element
+   * @returns {boolean} True if element was found and clicked
+   */
+  function triggerClick(element) {
+    if (!element) return false;
+    try {
+      element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+      element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+      element.click();
+      return true;
+    } catch (err) {
+      Logger.warn('triggerClick error:', err);
+      element.click();
+      return true;
+    }
+  }
+
   /**
    * Sets value on React controlled inputs (React 16-19 compatible).
    * Overrides native prototype setter and dispatches synthetic events.
@@ -151,12 +181,31 @@
     return observer;
   }
 
+  /**
+   * Utility for executing an async sequence of functions with delay between steps.
+   *
+   * @param {Array<function(): void>} steps
+   * @param {number} delayMs
+   */
+  async function executeSequence(steps, delayMs = 60) {
+    for (const step of steps) {
+      try {
+        step();
+      } catch (err) {
+        Logger.warn('Step failed in sequence:', err);
+      }
+      if (delayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
   // =========================================================================
-  // Feature Module: Story Input Tweaks
+  // Feature Module 1: Story Input Tweaks
   // =========================================================================
   const StoryInputModule = {
     name: 'Story Input Tweaks',
-    
+
     init() {
       Logger.info('Initializing StoryInputModule...');
 
@@ -204,7 +253,6 @@
             setNativeValue(textarea, `"${textarea.value}"`);
             setTimeout(() => {
               textarea.focus();
-              // Preserve cursor position offset by leading quote
               textarea.setSelectionRange(start + 1, end + 1);
             }, 30);
             Logger.log('Wrapped text in quotes for Do action');
@@ -246,10 +294,265 @@
   };
 
   // =========================================================================
+  // Feature Module 2: Hotkeys & Keyboard Navigation
+  // =========================================================================
+  const HotkeysModule = {
+    name: 'Hotkeys & Navigation',
+
+    isMac: navigator.userAgentData?.platform?.toLowerCase().includes('mac') ||
+           navigator.platform?.toLowerCase().includes('mac'),
+
+    init() {
+      Logger.info('Initializing HotkeysModule...');
+      document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    },
+
+    handleKeyDown(e) {
+      if (!CONFIG.get('hotkeysEnabled') || e.repeat) return;
+
+      const key = e.key.toUpperCase();
+      const ctrlOrCmd = this.isMac ? e.metaKey : e.ctrlKey;
+      const modifsActive = e.altKey && ctrlOrCmd && !e.shiftKey;
+
+      // Dialog navigation (ArrowLeft / Enter / ArrowRight when modal dialog is active)
+      const selectKeys = ['ARROWLEFT', 'ENTER', 'ARROWRIGHT'];
+      if (selectKeys.includes(key)) {
+        const dialog = document.querySelector('[role="dialog"], [role="alertdialog"]');
+        if (dialog) {
+          const buttons = dialog.querySelectorAll('[role="button"], button');
+          const btnIndex = selectKeys.indexOf(key);
+          if (buttons[btnIndex]) {
+            e.preventDefault();
+            triggerClick(buttons[btnIndex]);
+            return;
+          }
+        }
+      }
+
+      // Modifier-based Hotkeys (Alt + Ctrl / Option + Cmd)
+      if (!modifsActive) return;
+
+      const fullURL = window.location.href;
+      const isPlayPage = fullURL.includes('/play');
+
+      switch (key) {
+        // --- Gameplay Turn Commands ---
+        case 'C': // Take a Turn
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Command: take a turn" i], [data-fs-element="AID Take a turn" i]');
+          break;
+
+        case 'A': // Continue
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Command: continue" i], [data-fs-element="AID Continue" i]');
+          break;
+
+        case 'S': // Retry
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Command: retry" i], [data-fs-element="AID Retry" i]');
+          break;
+
+        case 'X': // Retry History
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Retry history" i]');
+          break;
+
+        case 'D': // Erase / Undo
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Command: erase" i], [aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
+          break;
+
+        // --- Mode Switching (Do / Say / Story / See) ---
+        case 'Q': // Do mode
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.switchMode('Do');
+          break;
+
+        case 'W': // Say mode
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.switchMode('Say');
+          break;
+
+        case 'E': // Story mode
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.switchMode('Story');
+          break;
+
+        case 'R': // See mode
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.switchMode('See');
+          break;
+
+        // --- Menus & Navigation ---
+        case 'F': // Game Menu / Flame
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.triggerSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
+          break;
+
+        case 'H': // Scroll to Top
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.scrollToTop();
+          break;
+
+        case 'T': // Toggle Site (play.aidungeon.com <-> beta.aidungeon.com)
+          e.preventDefault();
+          this.toggleSite();
+          break;
+
+        case 'G': // User Profile
+          e.preventDefault();
+          this.openUserProfile(isPlayPage);
+          break;
+
+        case 'V': // Continue Adventure
+          e.preventDefault();
+          this.continueAdventure();
+          break;
+
+        case 'Z': // Edit Character Name
+          if (!isPlayPage) return;
+          e.preventDefault();
+          this.editCharacterName();
+          break;
+
+        default:
+          break;
+      }
+    },
+
+    triggerSelector(selector) {
+      const el = document.querySelector(selector);
+      if (el) {
+        Logger.log('Triggering click on selector:', selector);
+        triggerClick(el);
+        return true;
+      }
+      Logger.warn('Element not found for selector:', selector);
+      return false;
+    },
+
+    /**
+     * Switches input mode to Do, Say, Story, or See.
+     * Opens mode dropdown if needed and selects target mode.
+     */
+    async switchMode(modeName) {
+      Logger.log(`Switching mode to: ${modeName}`);
+      const targetLabelSelector = `[aria-label*="'${modeName}' mode" i], [aria-label="${modeName}" i]`;
+
+      // 1. If mode option is already open/visible, click it directly
+      const visibleOption = document.querySelector(targetLabelSelector);
+      if (visibleOption) {
+        triggerClick(visibleOption);
+        return;
+      }
+
+      // 2. Otherwise open input mode dropdown and select
+      await executeSequence([
+        () => {
+          // If turn input is closed, open it
+          const takeTurnBtn = document.querySelector('[aria-label="Command: take a turn" i]');
+          if (takeTurnBtn) triggerClick(takeTurnBtn);
+        },
+        () => {
+          // Click "Change input mode"
+          const changeModeBtn = document.querySelector('[aria-label="Change input mode" i]');
+          if (changeModeBtn) triggerClick(changeModeBtn);
+        },
+        () => {
+          // Select requested mode
+          const option = document.querySelector(targetLabelSelector);
+          if (option) {
+            triggerClick(option);
+          } else {
+            Logger.warn(`Option for mode '${modeName}' not found.`);
+          }
+        },
+        () => {
+          // Refocus input
+          const input = document.getElementById('game-text-input');
+          if (input) input.focus();
+        }
+      ], 60);
+    },
+
+    scrollToTop() {
+      Logger.log('Scrolling story to top...');
+      const scroller = document.getElementById('gameplay-story-scrollview') ||
+                       document.querySelector('[id*="scrollview" i]') ||
+                       document.querySelector('main') ||
+                       window;
+      scroller.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    toggleSite() {
+      const currentURL = window.location.href;
+      const betaHost = 'beta.aidungeon.com';
+      const playHost = 'play.aidungeon.com';
+      let newURL = currentURL;
+
+      if (currentURL.includes(betaHost)) {
+        newURL = currentURL.replace(betaHost, playHost);
+      } else if (currentURL.includes(playHost)) {
+        newURL = currentURL.replace(playHost, betaHost);
+      }
+
+      if (newURL !== currentURL) {
+        Logger.info(`Toggling site to: ${newURL}`);
+        window.location.href = newURL;
+      }
+    },
+
+    openUserProfile(isPlayPage) {
+      if (isPlayPage) {
+        executeSequence([
+          () => this.triggerSelector('[aria-label="Game Menu" i]'),
+          () => this.triggerSelector('[role="button"][aria-label*="profile" i]')
+        ], 100);
+      } else {
+        executeSequence([
+          () => this.triggerSelector('[aria-label="User Menu" i]'),
+          () => this.triggerSelector('[role="button"][aria-label*="Profile" i]')
+        ], 100);
+      }
+    },
+
+    continueAdventure() {
+      executeSequence([
+        () => this.triggerSelector('[role="button"][aria-label="Play" i]'),
+        () => this.triggerSelector('[role="button"][aria-label="Continue Adventure" i]')
+      ], 100);
+    },
+
+    editCharacterName() {
+      executeSequence([
+        () => this.triggerSelector('[aria-label="Game Menu" i]'),
+        () => this.triggerSelector('[role="button"][aria-label*="player menu" i]'),
+        () => this.triggerSelector('[role="button"][aria-label*="Character Name" i]'),
+        () => {
+          const input = document.querySelector('input#flameplayername, input[placeholder*="name" i]');
+          if (input) input.focus();
+        }
+      ], 100);
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
     StoryInputModule,
+    HotkeysModule,
   ];
 
   function bootstrap() {
