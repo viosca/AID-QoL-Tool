@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.2.2
+// @version      3.3.0
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -598,6 +598,32 @@
       observeSelector('[aria-label="Undo change" i], [aria-label="Navigation bar" i]', (target) => {
         this.injectButton(target);
       });
+
+      // Synchronize theme on user interactions (e.g. clicking themes in Display drawer)
+      document.addEventListener('click', () => {
+        requestAnimationFrame(() => this.syncWithNativeButton());
+        setTimeout(() => this.syncWithNativeButton(), 80);
+        setTimeout(() => this.syncWithNativeButton(), 300);
+      }, { passive: true });
+
+      // Observe root class changes when theme changes
+      try {
+        const themeObserver = new MutationObserver(() => {
+          this.syncWithNativeButton();
+        });
+        themeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class', 'style', 'data-theme']
+        });
+        if (document.body) {
+          themeObserver.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['class', 'style', 'data-theme']
+          });
+        }
+      } catch (err) {
+        Logger.warn('Theme observer registration skipped:', err);
+      }
     },
 
     injectStyles() {
@@ -624,42 +650,59 @@
           display: none !important;
         }
 
-        /* QoL Buttons in Navigation Bar */
+        /* QoL Buttons in Navigation Bar - 100% Theme Matched in Alignment, Colors & Squircle Shape */
         #${this.buttonId},
         #aid-qol-settings-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          height: 28px;
-          min-width: 32px;
-          padding: 0 8px;
-          margin: 0 2px;
-          font-family: inherit;
-          font-size: 13px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          cursor: pointer;
-          user-select: none;
-          border-radius: 6px;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          background-color: rgba(255, 255, 255, 0.08);
-          color: #e2e8f0;
-          transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out;
-          vertical-align: middle;
-          z-index: 1000;
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-sizing: border-box !important;
+          height: var(--t-size-5, 32px) !important;
+          min-height: var(--t-size-5, 32px) !important;
+          max-height: var(--t-size-5, 32px) !important;
+          width: var(--t-size-5, 32px) !important;
+          min-width: var(--t-size-5, 32px) !important;
+          max-width: var(--t-size-5, 32px) !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border-radius: var(--btn-theme-radius, var(--t-radius-10, 10px)) !important;
+          border: 1px solid var(--btn-theme-border, var(--borderColor, rgba(255, 255, 255, 0.2))) !important;
+          background-color: var(--btn-theme-bg, var(--blackA7, var(--background, rgba(0, 0, 0, 0.45)))) !important;
+          color: var(--btn-theme-color, var(--color, var(--core9, #e2e8f0))) !important;
+          font-family: var(--f-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+          letter-spacing: 0 !important;
+          line-height: 1 !important;
+          cursor: pointer !important;
+          user-select: none !important;
+          position: relative !important;
+          overflow: hidden !important;
+          vertical-align: middle !important;
+          box-shadow: 0 0 0 var(--shadowColor, transparent) !important;
+          transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, transform 0.1s ease !important;
+        }
+
+        #aid-qol-settings-btn {
+          font-size: 15px !important;
+        }
+
+        #${this.buttonId}:active,
+        #aid-qol-settings-btn:active {
+          transform: scale(0.94) !important;
         }
 
         #${this.buttonId}:hover,
         #aid-qol-settings-btn:hover {
-          background-color: rgba(255, 255, 255, 0.18);
-          border-color: var(--color-aid-primary, rgba(249, 115, 22, 0.5));
-          color: #ffffff;
+          background-color: var(--backgroundHover, var(--hover-background, rgba(255, 255, 255, 0.12))) !important;
+          border-color: var(--borderColorHover, var(--hover-borderColor, var(--btn-theme-border, var(--color-aid-primary, #f97316)))) !important;
+          color: var(--colorHover, var(--color, #ffffff)) !important;
         }
 
         #${this.buttonId}.actions-off {
-          background-color: rgba(239, 68, 68, 0.2);
-          border-color: rgba(239, 68, 68, 0.4);
-          color: #fca5a5;
+          background-color: rgba(239, 68, 68, 0.2) !important;
+          border-color: rgba(239, 68, 68, 0.6) !important;
+          color: #fca5a5 !important;
         }
       `);
     },
@@ -699,43 +742,134 @@
       }
     },
 
-    injectButton(targetElement) {
-      if (document.getElementById(this.buttonId)) return;
-
-      const btn = document.createElement('button');
-      btn.id = this.buttonId;
-      btn.type = 'button';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.toggle();
-      });
-
-      // Settings shortcut button
-      const settingsBtn = document.createElement('button');
-      settingsBtn.id = 'aid-qol-settings-btn';
-      settingsBtn.type = 'button';
-      settingsBtn.innerText = '⚙';
-      settingsBtn.title = 'AID-QoL Settings (Alt+Ctrl+,)';
-      settingsBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        ConfigUIModule.open();
-      });
-
-      // Prefer inserting near the Undo button container if available
+    syncWithNativeButton() {
       const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
+      const btn = document.getElementById(this.buttonId);
+      const settingsBtn = document.getElementById('aid-qol-settings-btn');
+      if (!btn || !settingsBtn) return;
+
+      if (undoBtn) {
+        // Sync class list from undoBtn if it changed
+        if (undoBtn.className && (!btn.className || btn.className !== undoBtn.className)) {
+          const off = btn.classList.contains('actions-off');
+          btn.className = undoBtn.className;
+          settingsBtn.className = undoBtn.className;
+          if (off) btn.classList.add('actions-off');
+        }
+
+        const computed = getComputedStyle(undoBtn);
+        const borderColor = computed.borderTopColor || computed.borderColor;
+        const bgColor = computed.backgroundColor;
+        const color = computed.color;
+        const radius = computed.borderTopLeftRadius || computed.borderRadius;
+
+        [btn, settingsBtn].forEach(el => {
+          if (borderColor && borderColor !== 'rgba(0, 0, 0, 0)' && borderColor !== 'transparent') {
+            el.style.setProperty('--btn-theme-border', borderColor);
+          }
+          if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+            el.style.setProperty('--btn-theme-bg', bgColor);
+          }
+          if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
+            el.style.setProperty('--btn-theme-color', color);
+          }
+          if (radius) {
+            el.style.setProperty('--btn-theme-radius', radius);
+          }
+        });
+
+        // Ensure wrappers have the latest theme classes matching undo's parent
+        const undoParent = undoBtn.parentElement;
+        if (undoParent && undoParent.classList.contains('t_sub_theme')) {
+          const actionWrapper = document.getElementById('aid-qol-action-toggle-wrapper');
+          const settingsWrapper = document.getElementById('aid-qol-settings-wrapper');
+          if (actionWrapper && actionWrapper.className !== undoParent.className) {
+            actionWrapper.className = undoParent.className;
+          }
+          if (settingsWrapper && settingsWrapper.className !== undoParent.className) {
+            settingsWrapper.className = undoParent.className;
+          }
+        }
+      }
+    },
+
+    injectButton(targetElement) {
+      let btn = document.getElementById(this.buttonId);
+      let settingsBtn = document.getElementById('aid-qol-settings-btn');
+
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = this.buttonId;
+        btn.type = 'button';
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggle();
+        });
+      }
+
+      if (!settingsBtn) {
+        settingsBtn = document.createElement('button');
+        settingsBtn.id = 'aid-qol-settings-btn';
+        settingsBtn.type = 'button';
+        settingsBtn.innerText = '⚙';
+        settingsBtn.title = 'AID-QoL Settings (Alt+Ctrl+,)';
+        settingsBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          ConfigUIModule.open();
+        });
+      }
+
+      const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
+
+      // Apply native classes from undoBtn if available
+      if (undoBtn && undoBtn.className) {
+        btn.className = undoBtn.className;
+        settingsBtn.className = undoBtn.className;
+      }
+
+      // Wrap each button in a themed span matching undoBtn's parent
+      const getOrCreateWrapper = (wrapperId, child) => {
+        let wrapper = document.getElementById(wrapperId);
+        if (!wrapper) {
+          wrapper = document.createElement('span');
+          wrapper.id = wrapperId;
+          wrapper.className = (undoBtn && undoBtn.parentElement && undoBtn.parentElement.classList.contains('t_sub_theme'))
+            ? undoBtn.parentElement.className
+            : 't_sub_theme t_gameplayTopButton is_Theme';
+          wrapper.style.cssText = 'color: var(--color); display: contents;';
+          wrapper.appendChild(child);
+        } else if (!wrapper.contains(child)) {
+          wrapper.appendChild(child);
+        }
+        return wrapper;
+      };
+
+      const actionWrapper = getOrCreateWrapper('aid-qol-action-toggle-wrapper', btn);
+      const settingsWrapper = getOrCreateWrapper('aid-qol-settings-wrapper', settingsBtn);
+
+      // Prefer inserting into the button row container next to Undo and Redo
       if (undoBtn && undoBtn.parentElement) {
-        const parent = undoBtn.parentElement.parentElement || undoBtn.parentElement;
-        parent.appendChild(btn);
-        parent.appendChild(settingsBtn);
+        const buttonRow = undoBtn.parentElement.parentElement || undoBtn.parentElement;
+        if (!buttonRow.contains(actionWrapper)) {
+          buttonRow.appendChild(actionWrapper);
+        }
+        if (!buttonRow.contains(settingsWrapper)) {
+          buttonRow.appendChild(settingsWrapper);
+        }
       } else if (targetElement) {
-        targetElement.appendChild(btn);
-        targetElement.appendChild(settingsBtn);
+        if (!targetElement.contains(actionWrapper)) {
+          targetElement.appendChild(actionWrapper);
+        }
+        if (!targetElement.contains(settingsWrapper)) {
+          targetElement.appendChild(settingsWrapper);
+        }
       }
 
       this.updateButtonDisplay();
-      Logger.log('Injected Action Toggle and Settings buttons into header');
+      this.syncWithNativeButton();
+      Logger.log('Injected Action Toggle and Settings buttons with theme alignment');
     }
   };
 
@@ -1866,7 +2000,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.2.2</span>
+              <span class="aid-qol-config-badge">v3.3.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2337,7 +2471,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.2.2 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.0 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
