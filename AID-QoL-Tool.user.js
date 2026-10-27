@@ -554,7 +554,7 @@
     continueAdventure() {
       executeSequence([
         () => this.triggerSelector('[role="button"][aria-label="Play" i]'),
-        () => this.triggerSelector('[role="button"][aria-label="Continue Adventure" i]')
+        () => this.triggerSelector('[role="button"][aria-label*="Continue Adventure" i]')
       ], 100);
     },
 
@@ -729,7 +729,7 @@
 
       this.injectStyles();
 
-      // Observe for any dialogs or modal alerts appearing in the DOM
+      // Observe for dialog contents appearing in the DOM
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
         this.setupModal(modalNode);
       });
@@ -737,26 +737,18 @@
 
     injectStyles() {
       GM_addStyle(`
-        /* Allow modals to be freely resizable */
+        /* 
+         * Resizable modal styling.
+         * Only applied once modal is fixed-anchored to prevent center-growing!
+         */
         .aid-qol-resizable-modal {
           resize: both !important;
           overflow: auto !important;
-          min-width: 320px !important;
-          min-height: 180px !important;
-          max-width: 98vw !important;
-          max-height: 96vh !important;
-          box-sizing: border-box !important;
           border-bottom-right-radius: 0px !important;
+          box-sizing: border-box !important;
         }
 
-        /* Ensure inner children stretch and scroll cleanly within resized modal */
-        .aid-qol-resizable-modal > div {
-          max-height: 100% !important;
-          max-width: 100% !important;
-          flex-grow: 1 !important;
-        }
-
-        /* Visual cue on the draggable header area */
+        /* Drag handle cursor */
         .aid-qol-modal-handle {
           cursor: grab !important;
           user-select: none !important;
@@ -779,43 +771,72 @@
     },
 
     /**
-     * Enhances a modal node with drag and resize capabilities.
+     * Enhances a modal node with drag and top-left anchored resize capabilities.
      * @param {HTMLElement} modal
      */
     setupModal(modal) {
       if (modal.dataset.aidQolModal) return;
       modal.dataset.aidQolModal = 'true';
 
-      // Slight delay to allow Tamagui to finish initial layout calculation
+      // Slight delay so AID finishes mounting and rendering its natural layout
       setTimeout(() => {
-        // Filter out tiny popovers/tooltips (must be at least 200px wide or high)
         const initialRect = modal.getBoundingClientRect();
-        if (initialRect.width < 180 && initialRect.height < 120) {
+
+        // Skip tiny popovers or dropdown menus
+        if (initialRect.width < 220 || initialRect.height < 150) {
           return;
         }
 
-        Logger.log('Enhancing modal:', modal);
+        Logger.log('Setting up draggable modal:', modal, initialRect);
 
-        // 1. Enable CSS resizing
+        // 1. ANCHOR TOP-LEFT: Disable flexbox centering so resizing grows strictly down & right
+        // This solves the issue where resizing was symmetrically expanding/shrinking from center!
+        const initialLeft = Math.round(initialRect.left);
+        const initialTop = Math.round(initialRect.top);
+        const initialWidth = Math.round(initialRect.width);
+        const initialHeight = Math.round(initialRect.height);
+
+        modal.style.position = 'fixed';
+        modal.style.left = `${initialLeft}px`;
+        modal.style.top = `${initialTop}px`;
+        modal.style.width = `${initialWidth}px`;
+        modal.style.height = `${initialHeight}px`;
+        modal.style.margin = '0px';
+        modal.style.transform = 'none';
+
+        // Unset parent centering so it doesn't fight fixed coordinates
+        if (modal.parentElement) {
+          modal.parentElement.style.justifyContent = 'unset';
+          modal.parentElement.style.alignItems = 'unset';
+        }
+
+        // 2. Enable native resize
         modal.classList.add('aid-qol-resizable-modal');
 
-        // 2. Locate or create the drag handle (header area)
+        // 3. Locate the header row to use as the drag handle
         const header = this.findModalHeader(modal);
         if (!header) return;
 
         header.classList.add('aid-qol-modal-handle');
 
-        // 3. Bind drag events
+        // 4. Bind dragging
         this.bindDragEvents(modal, header);
 
-        // 4. Double-click header to maximize / restore
+        // 5. Double-click title bar to maximize / restore
         header.addEventListener('dblclick', (e) => {
-          if (e.target.closest('button, [role="button"], input, textarea, select, a, [role="tab"]')) {
-            return;
-          }
+          if (this.isInteractiveElement(e.target)) return;
           this.toggleMaximize(modal);
         });
-      }, 80);
+      }, 120);
+    },
+
+    /**
+     * Checks if a clicked element inside the header is an interactive button/input.
+     * @param {HTMLElement} target
+     * @returns {boolean}
+     */
+    isInteractiveElement(target) {
+      return !!target.closest('button, input, textarea, select, a, [role="tab"], [aria-label*="close" i]');
     },
 
     /**
@@ -824,41 +845,44 @@
      * @returns {HTMLElement|null}
      */
     findModalHeader(modal) {
-      // Look for a close button or heading in the modal
+      // 1. Look for a close button inside the modal
       const closeBtn = modal.querySelector('[aria-label*="close" i]');
-      if (closeBtn && closeBtn.parentElement) {
+      if (closeBtn) {
         // The header row is usually the direct parent or grandparent of the close button
-        const row = closeBtn.parentElement.parentElement || closeBtn.parentElement;
+        const row = closeBtn.closest('div:has([aria-label*="close" i])') ||
+                    closeBtn.parentElement?.parentElement ||
+                    closeBtn.parentElement;
         if (row && row !== modal) return row;
       }
 
+      // 2. Look for a heading inside the modal
       const heading = modal.querySelector('[role="heading"], h1, h2, h3, h4, [aria-labelledby]');
       if (heading && heading.parentElement && heading.parentElement !== modal) {
         return heading.parentElement;
       }
 
-      // Fallback: first element child of the modal
+      // 3. Fallback to top-most child
       return modal.firstElementChild;
     },
 
     /**
-     * Binds mouse and touch drag listeners to the modal header.
+     * Binds mouse drag listeners to the modal header.
      * @param {HTMLElement} modal
      * @param {HTMLElement} header
      */
     bindDragEvents(modal, header) {
       const onMouseDown = (e) => {
-        // Only trigger on left-click
+        // Left click only
         if (e.button !== 0) return;
 
-        // Skip dragging when clicking interactive elements in the header
-        if (e.target.closest('button, [role="button"], input, textarea, select, a, [role="tab"]')) {
+        // Skip dragging when clicking buttons, inputs, tabs, or close icons
+        if (this.isInteractiveElement(e.target)) {
           return;
         }
 
         e.preventDefault();
 
-        // If maximized, restore size on drag
+        // If maximized, restore normal size on drag
         if (modal.classList.contains('aid-qol-modal-maximized')) {
           modal.classList.remove('aid-qol-modal-maximized');
         }
@@ -902,7 +926,7 @@
     },
 
     /**
-     * Toggles modal between maximized (fullscreen) and restored size.
+     * Toggles modal between maximized and restored size.
      * @param {HTMLElement} modal
      */
     toggleMaximize(modal) {
