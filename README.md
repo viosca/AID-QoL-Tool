@@ -58,7 +58,13 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh`).
 * **Auto-Remember Dimensions**: Uses a debounced `ResizeObserver` to automatically remember any size you adjust the card to.
 
-### 5. Native In-Game Configuration Dialog
+### 5. Game Play Menu Horizontal Resize (Split Screen)
+* **Draggable Left Border**: Hover over the left edge of the right-hand Game Menu (Settings/Adventure/Story Cards) to grab the vertical split-screen resize handle.
+* **Fluid Layout**: Dragging left expands the menu panel and fluidly resizes all tab contents, Story Card listings, and search bars.
+* **Double-Click Reset**: Double-click the resize border to toggle/reset between custom width and default width (424px).
+* **Auto-Remember Width**: Automatically saves your preferred sidebar width so it stays that size next time you open the menu.
+
+### 6. Native In-Game Configuration Dialog
 * Modern, dark-themed Settings Dialog replacing legacy MonkeyConfig.
 * Easily accessed via:
   * **Header Button**: Click the `⚙` button next to `A+` in the story navigation bar.
@@ -67,7 +73,7 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Full Customization**:
   * **Hotkeys**: Set custom keys for turn actions, mode switches, and navigation. Just click any key box and press your desired key.
   * **Modifier Keys**: Choose any combination of `Alt`, `Ctrl`, and `Shift`.
-  * **Story Card Dimensions**: Set default width/height and toggle auto-remember.
+  * **Story Card & Menu Dimensions**: Set default width/height and toggle auto-remember.
   * **General Options**: Toggle auto-quoting, auto-focus, action visibility, and debug logs.
   * **Reset to Defaults**: One-click restore button.
 
