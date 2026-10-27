@@ -1,5 +1,8 @@
 # AID-QoL-Tool (v3.0.0)
 
+[![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
+
 Modern, high-performance Quality-of-Life Tampermonkey userscript for [AI Dungeon](https://play.aidungeon.com/).
 
 Rewritten from the ground up to support AI Dungeon's modern architecture (**React 19**, **Next.js 16**, **Tamagui v2**, and **Tailwind CSS**).

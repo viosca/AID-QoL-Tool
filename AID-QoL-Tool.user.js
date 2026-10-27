@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         AID-EQoL-Tool
+// @name         AID-QoL-Tool
 // @version      3.0.0
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modal Drag/Resize).
 // @author       viosca
@@ -1846,7 +1846,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-EQoL-Tool v3.0.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.0.0 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
