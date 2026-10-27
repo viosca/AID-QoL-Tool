@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.0.0
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modal Drag/Resize).
+// @version      3.1.0
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -1127,12 +1127,14 @@
   const GameMenuResizeModule = {
     name: 'Game Menu Resize',
     resizerId: 'aid-qol-game-menu-resizer',
+    currentRoot: null,
 
     init() {
       if (!CONFIG.get('gameMenuResizeEnabled', true)) return;
       Logger.info('Initializing GameMenuResizeModule...');
 
       this.injectStyles();
+      this.bindGlobalListeners();
       this.observeMenu();
     },
 
@@ -1141,41 +1143,61 @@
         /* 
          * Resizable Game Menu column styling.
          * Ensures inner Tamagui containers expand fluidly to fill 100% of the column.
+         * Explicitly excludes the #${this.resizerId} handle so it remains strictly an 8px strip.
          */
         .aid-qol-game-menu-resizable {
           position: relative !important;
           max-width: none !important;
         }
 
-        .aid-qol-game-menu-resizable > div {
+        .aid-qol-game-menu-resizable > div:not(#${this.resizerId}) {
           width: 100% !important;
           max-width: none !important;
         }
 
-        .aid-qol-game-menu-resizable > div > div {
+        .aid-qol-game-menu-resizable > div:not(#${this.resizerId}) > div {
           width: 100% !important;
           max-width: none !important;
         }
 
-        /* Draggable splitter on the left edge */
+        /* Draggable splitter strictly on the left 8px border */
         #${this.resizerId} {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          left: -4px;
-          width: 8px;
-          cursor: col-resize;
-          z-index: 99999;
-          user-select: none;
+          position: absolute !important;
+          top: 0 !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          width: 8px !important;
+          min-width: 8px !important;
+          max-width: 8px !important;
+          cursor: col-resize !important;
+          z-index: 10000 !important;
+          user-select: none !important;
+          background-color: transparent !important;
           transition: background-color 0.15s ease-in-out;
+          pointer-events: auto !important;
         }
 
         #${this.resizerId}:hover,
         #${this.resizerId}.resizing {
-          background-color: rgba(99, 102, 241, 0.5);
-          box-shadow: 0 0 8px rgba(99, 102, 241, 0.7);
+          background-color: rgba(99, 102, 241, 0.6) !important;
+          box-shadow: 0 0 6px rgba(99, 102, 241, 0.8) !important;
         }
       `);
+    },
+
+    /**
+     * Clamps and validates menu width to prevent viewport overflows.
+     * Default stock width is 424px.
+     */
+    getValidWidth(val) {
+      let num = parseInt(val, 10);
+      if (isNaN(num)) num = 424;
+      const minW = 320;
+      const maxW = Math.max(minW, Math.min(window.innerWidth - 250, Math.round(window.innerWidth * 0.85)));
+      if (num < minW || num > maxW) {
+        return 424;
+      }
+      return num;
     },
 
     /**
@@ -1187,47 +1209,83 @@
       if (!settingsRegion) return null;
       let current = settingsRegion;
       while (current && current.parentElement) {
-        if (current.parentElement.style && current.parentElement.style.flexDirection === 'row') {
+        const parent = current.parentElement;
+        if (parent.style && parent.style.flexDirection === 'row') {
           return current;
         }
-        current = current.parentElement;
+        current = parent;
       }
       return settingsRegion.closest('[style*="flex-shrink"]') || null;
     },
 
     /**
-     * Attaches the resize handle and restores custom width.
+     * Checks if the Game Menu is actively visible and expanded.
+     */
+    isMenuOpen(rootCol, settingsRegion) {
+      if (!rootCol || !settingsRegion) return false;
+      if (!rootCol.isConnected || !settingsRegion.isConnected) return false;
+
+      // Check if rootCol has width: 0 or display: none
+      if (rootCol.style.width === '0px' || rootCol.style.width === '0' || rootCol.style.display === 'none') {
+        return false;
+      }
+
+      // Check if rendered width is zero
+      if (rootCol.offsetWidth === 0 || settingsRegion.offsetWidth === 0) {
+        return false;
+      }
+
+      // Check aria-hidden on inner views
+      const innerView = rootCol.querySelector('[aria-hidden]');
+      if (innerView && innerView.getAttribute('aria-hidden') === 'true') {
+        return false;
+      }
+
+      return true;
+    },
+
+    /**
+     * Cleans up custom width and resizer state when the menu is closing.
+     */
+    closeMenu() {
+      if (this.currentRoot) {
+        this.currentRoot.classList.remove('aid-qol-game-menu-resizable');
+        const resizer = this.currentRoot.querySelector(`#${this.resizerId}`);
+        if (resizer) resizer.style.display = 'none';
+        this.currentRoot.style.removeProperty('width');
+      }
+    },
+
+    /**
+     * Attaches the resize handle and applies custom width when menu is open.
      * @param {HTMLElement} rootCol
      */
     setupMenu(rootCol) {
-      if (!rootCol || rootCol.dataset.aidQolResizer) return;
-      rootCol.dataset.aidQolResizer = 'true';
+      if (!rootCol) return;
+      this.currentRoot = rootCol;
 
-      Logger.log('Setting up resizable Game Menu:', rootCol);
       rootCol.classList.add('aid-qol-game-menu-resizable');
 
-      // Apply saved preferred width if previously customized
-      const savedWidth = CONFIG.get('gameMenuWidth', '424px');
-      if (savedWidth && savedWidth !== '424px') {
-        rootCol.style.setProperty('width', savedWidth, 'important');
+      // Apply saved preferred width if valid and different from stock default
+      const savedWidth = this.getValidWidth(CONFIG.get('gameMenuWidth', '424px'));
+      if (savedWidth !== 424) {
+        rootCol.style.width = `${savedWidth}px`;
       }
 
-      // Create and insert the draggable left splitter handle
+      // Create or show the draggable left splitter handle
       let resizer = rootCol.querySelector(`#${this.resizerId}`);
       if (!resizer) {
         resizer = document.createElement('div');
         resizer.id = this.resizerId;
-        resizer.title = 'Drag to resize menu (Double-click to reset)';
+        resizer.title = 'Drag left edge to resize menu (Double-click to reset to 424px)';
         rootCol.prepend(resizer);
+        this.bindDragEvents(resizer, rootCol);
       }
-
-      this.bindDragEvents(resizer, rootCol);
+      resizer.style.display = 'block';
     },
 
     /**
      * Binds mouse drag and double-click listeners to the resize handle.
-     * @param {HTMLElement} resizer
-     * @param {HTMLElement} rootCol
      */
     bindDragEvents(resizer, rootCol) {
       resizer.addEventListener('mousedown', (e) => {
@@ -1242,25 +1300,36 @@
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
 
+        // Transparent full-screen overlay during drag to prevent iframe / selection traps
+        let dragOverlay = document.getElementById('aid-qol-menu-drag-overlay');
+        if (!dragOverlay) {
+          dragOverlay = document.createElement('div');
+          dragOverlay.id = 'aid-qol-menu-drag-overlay';
+          dragOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;cursor:col-resize;user-select:none;';
+          document.body.appendChild(dragOverlay);
+        }
+        dragOverlay.style.display = 'block';
+
         const onMouseMove = (moveEvent) => {
-          // Moving left (smaller clientX) increases width
           const deltaX = startX - moveEvent.clientX;
           const minW = 320;
-          const maxW = Math.max(minW, Math.min(window.innerWidth - 300, Math.round(window.innerWidth * 0.85)));
+          const maxW = Math.max(minW, Math.min(window.innerWidth - 250, Math.round(window.innerWidth * 0.85)));
           const targetW = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
 
-          rootCol.style.setProperty('width', `${targetW}px`, 'important');
+          rootCol.style.width = `${targetW}px`;
         };
 
         const onMouseUp = () => {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
+          if (dragOverlay) dragOverlay.style.display = 'none';
+
           resizer.classList.remove('resizing');
           document.body.style.cursor = '';
           document.body.style.userSelect = '';
 
           const finalW = rootCol.offsetWidth;
-          if (finalW > 250) {
+          if (finalW >= 320) {
             CONFIG.set('gameMenuWidth', `${finalW}px`);
             Logger.log(`Saved Game Menu width: ${finalW}px`);
           }
@@ -1281,19 +1350,20 @@
         if (Math.abs(currentW - defaultW) > 10) {
           // Custom width -> Reset to default 424px
           rootCol._lastCustomWidth = `${currentW}px`;
-          rootCol.style.setProperty('width', `${defaultW}px`, 'important');
+          rootCol.style.width = `${defaultW}px`;
           CONFIG.set('gameMenuWidth', `${defaultW}px`);
           Logger.log('Reset Game Menu width to default 424px');
-        } else if (rootCol._lastCustomWidth) {
+        } else if (rootCol._lastCustomWidth && parseInt(rootCol._lastCustomWidth, 10) !== defaultW) {
           // Default width -> Restore previously used custom width
-          rootCol.style.setProperty('width', rootCol._lastCustomWidth, 'important');
-          CONFIG.set('gameMenuWidth', rootCol._lastCustomWidth);
-          Logger.log(`Restored Game Menu width to ${rootCol._lastCustomWidth}`);
+          const restoreW = this.getValidWidth(rootCol._lastCustomWidth);
+          rootCol.style.width = `${restoreW}px`;
+          CONFIG.set('gameMenuWidth', `${restoreW}px`);
+          Logger.log(`Restored Game Menu width to ${restoreW}px`);
         } else {
           // Default width -> Expand to 600px preview
           const expandedW = Math.min(650, Math.round(window.innerWidth * 0.5));
           rootCol._lastCustomWidth = `${expandedW}px`;
-          rootCol.style.setProperty('width', `${expandedW}px`, 'important');
+          rootCol.style.width = `${expandedW}px`;
           CONFIG.set('gameMenuWidth', `${expandedW}px`);
           Logger.log(`Expanded Game Menu width to ${expandedW}px`);
         }
@@ -1301,23 +1371,71 @@
     },
 
     /**
-     * Observes DOM to attach the splitter whenever the Game Menu mounts.
+     * Binds global listeners for menu close actions.
+     */
+    bindGlobalListeners() {
+      // Listen for click on "Close settings" button
+      document.addEventListener('click', (e) => {
+        const closeBtn = e.target.closest && e.target.closest('[aria-label="Close settings" i]');
+        if (closeBtn) {
+          this.closeMenu();
+        }
+      }, true);
+
+      // Listen for click on header Game Menu button if menu is already open
+      document.addEventListener('click', (e) => {
+        const menuBtn = e.target.closest && e.target.closest('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
+        if (menuBtn && this.currentRoot && this.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
+          this.closeMenu();
+        }
+      }, true);
+
+      // Listen for Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.currentRoot && this.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
+          this.closeMenu();
+        }
+      });
+    },
+
+    /**
+     * Observes DOM to attach or detach splitter based on Game Menu state.
      */
     observeMenu() {
-      const check = () => {
+      const sync = () => {
+        if (!CONFIG.get('gameMenuResizeEnabled', true)) {
+          this.closeMenu();
+          return;
+        }
+
         const settingsRegion = document.querySelector('[aria-label="Game settings" i]');
-        if (settingsRegion) {
-          const rootCol = this.findMenuRoot(settingsRegion);
-          if (rootCol && !rootCol.dataset.aidQolResizer) {
+        if (!settingsRegion) {
+          this.currentRoot = null;
+          return;
+        }
+
+        const rootCol = this.findMenuRoot(settingsRegion);
+        if (!rootCol) return;
+
+        const open = this.isMenuOpen(rootCol, settingsRegion);
+        if (open) {
+          if (!rootCol.classList.contains('aid-qol-game-menu-resizable')) {
             this.setupMenu(rootCol);
+          } else {
+            const resizer = rootCol.querySelector(`#${this.resizerId}`);
+            if (resizer && resizer.style.display === 'none') {
+              resizer.style.display = 'block';
+            }
           }
+        } else {
+          this.closeMenu();
         }
       };
 
-      const observer = new MutationObserver(() => check());
-      observer.observe(document.body, { childList: true, subtree: true });
+      const observer = new MutationObserver(() => sync());
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'aria-hidden', 'class'] });
 
-      setInterval(check, 120);
+      setInterval(sync, 150);
     }
   };
 
@@ -2022,7 +2140,14 @@
       const menuEnabled = document.getElementById('cfg-menu-enabled');
       const menuW = document.getElementById('cfg-gameMenuWidth');
       if (menuEnabled) CONFIG.set('gameMenuResizeEnabled', menuEnabled.checked);
-      if (menuW && menuW.value.trim()) CONFIG.set('gameMenuWidth', menuW.value.trim());
+      if (menuW && menuW.value.trim()) {
+        const val = menuW.value.trim();
+        const validW = GameMenuResizeModule.getValidWidth(val);
+        CONFIG.set('gameMenuWidth', `${validW}px`);
+        if (GameMenuResizeModule.currentRoot && GameMenuResizeModule.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
+          GameMenuResizeModule.currentRoot.style.width = `${validW}px`;
+        }
+      }
 
       // General options
       const genAutoQuote = document.getElementById('cfg-gen-autoquote');
