@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-EQoL-Tool
 // @version      3.0.0
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, UI Tweaks).
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Draggable/Resizable Modals).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -36,6 +36,7 @@
   if (CONFIG.get('autoFocusInput') === undefined) CONFIG.set('autoFocusInput', true);
   if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
   if (CONFIG.get('actionsVisible') === undefined) CONFIG.set('actionsVisible', true);
+  if (CONFIG.get('modalsDraggable') === undefined) CONFIG.set('modalsDraggable', true);
   if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
 
   // Register Tampermonkey menu commands
@@ -59,6 +60,14 @@
     `Action Visibility: ${CONFIG.get('actionsVisible') ? 'VISIBLE (A+)' : 'HIDDEN (A-)'} (Click to toggle)`,
     () => {
       ActionToggleModule.toggle();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Draggable Modals: ${CONFIG.get('modalsDraggable') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      CONFIG.set('modalsDraggable', !CONFIG.get('modalsDraggable'));
+      location.reload();
     }
   );
 
@@ -708,12 +717,229 @@
   };
 
   // =========================================================================
+  // Feature Module 4: Draggable & Resizable Modals
+  // =========================================================================
+  const ModalWindowModule = {
+    name: 'Draggable & Resizable Modals',
+
+    init() {
+      Logger.info('Initializing ModalWindowModule...');
+
+      if (!CONFIG.get('modalsDraggable')) return;
+
+      this.injectStyles();
+
+      // Observe for any dialogs or modal alerts appearing in the DOM
+      observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
+        this.setupModal(modalNode);
+      });
+    },
+
+    injectStyles() {
+      GM_addStyle(`
+        /* Allow modals to be freely resizable */
+        .aid-qol-resizable-modal {
+          resize: both !important;
+          overflow: auto !important;
+          min-width: 320px !important;
+          min-height: 180px !important;
+          max-width: 98vw !important;
+          max-height: 96vh !important;
+          box-sizing: border-box !important;
+          border-bottom-right-radius: 0px !important;
+        }
+
+        /* Ensure inner children stretch and scroll cleanly within resized modal */
+        .aid-qol-resizable-modal > div {
+          max-height: 100% !important;
+          max-width: 100% !important;
+          flex-grow: 1 !important;
+        }
+
+        /* Visual cue on the draggable header area */
+        .aid-qol-modal-handle {
+          cursor: grab !important;
+          user-select: none !important;
+        }
+        .aid-qol-modal-handle:active {
+          cursor: grabbing !important;
+        }
+
+        /* Maximized / Fullscreen modal state */
+        .aid-qol-modal-maximized {
+          left: 2vw !important;
+          top: 2vh !important;
+          width: 96vw !important;
+          height: 94vh !important;
+          max-width: 96vw !important;
+          max-height: 94vh !important;
+          transform: none !important;
+        }
+      `);
+    },
+
+    /**
+     * Enhances a modal node with drag and resize capabilities.
+     * @param {HTMLElement} modal
+     */
+    setupModal(modal) {
+      if (modal.dataset.aidQolModal) return;
+      modal.dataset.aidQolModal = 'true';
+
+      // Slight delay to allow Tamagui to finish initial layout calculation
+      setTimeout(() => {
+        // Filter out tiny popovers/tooltips (must be at least 200px wide or high)
+        const initialRect = modal.getBoundingClientRect();
+        if (initialRect.width < 180 && initialRect.height < 120) {
+          return;
+        }
+
+        Logger.log('Enhancing modal:', modal);
+
+        // 1. Enable CSS resizing
+        modal.classList.add('aid-qol-resizable-modal');
+
+        // 2. Locate or create the drag handle (header area)
+        const header = this.findModalHeader(modal);
+        if (!header) return;
+
+        header.classList.add('aid-qol-modal-handle');
+
+        // 3. Bind drag events
+        this.bindDragEvents(modal, header);
+
+        // 4. Double-click header to maximize / restore
+        header.addEventListener('dblclick', (e) => {
+          if (e.target.closest('button, [role="button"], input, textarea, select, a, [role="tab"]')) {
+            return;
+          }
+          this.toggleMaximize(modal);
+        });
+      }, 80);
+    },
+
+    /**
+     * Finds the modal's top header row to use as the drag handle.
+     * @param {HTMLElement} modal
+     * @returns {HTMLElement|null}
+     */
+    findModalHeader(modal) {
+      // Look for a close button or heading in the modal
+      const closeBtn = modal.querySelector('[aria-label*="close" i]');
+      if (closeBtn && closeBtn.parentElement) {
+        // The header row is usually the direct parent or grandparent of the close button
+        const row = closeBtn.parentElement.parentElement || closeBtn.parentElement;
+        if (row && row !== modal) return row;
+      }
+
+      const heading = modal.querySelector('[role="heading"], h1, h2, h3, h4, [aria-labelledby]');
+      if (heading && heading.parentElement && heading.parentElement !== modal) {
+        return heading.parentElement;
+      }
+
+      // Fallback: first element child of the modal
+      return modal.firstElementChild;
+    },
+
+    /**
+     * Binds mouse and touch drag listeners to the modal header.
+     * @param {HTMLElement} modal
+     * @param {HTMLElement} header
+     */
+    bindDragEvents(modal, header) {
+      const onMouseDown = (e) => {
+        // Only trigger on left-click
+        if (e.button !== 0) return;
+
+        // Skip dragging when clicking interactive elements in the header
+        if (e.target.closest('button, [role="button"], input, textarea, select, a, [role="tab"]')) {
+          return;
+        }
+
+        e.preventDefault();
+
+        // If maximized, restore size on drag
+        if (modal.classList.contains('aid-qol-modal-maximized')) {
+          modal.classList.remove('aid-qol-modal-maximized');
+        }
+
+        // Lock in current screen position before moving
+        const rect = modal.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.margin = '0';
+        modal.style.transform = 'none';
+        modal.style.left = `${rect.left}px`;
+        modal.style.top = `${rect.top}px`;
+        modal.style.zIndex = '999999';
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialLeft = rect.left;
+        const initialTop = rect.top;
+
+        const onMouseMove = (moveEvent) => {
+          const deltaX = moveEvent.clientX - startX;
+          const deltaY = moveEvent.clientY - startY;
+
+          // Clamp within viewport so the modal header remains reachable
+          const newLeft = Math.max(0, Math.min(window.innerWidth - 80, initialLeft + deltaX));
+          const newTop = Math.max(0, Math.min(window.innerHeight - 40, initialTop + deltaY));
+
+          modal.style.left = `${newLeft}px`;
+          modal.style.top = `${newTop}px`;
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      };
+
+      header.addEventListener('mousedown', onMouseDown);
+    },
+
+    /**
+     * Toggles modal between maximized (fullscreen) and restored size.
+     * @param {HTMLElement} modal
+     */
+    toggleMaximize(modal) {
+      if (modal.classList.contains('aid-qol-modal-maximized')) {
+        // Restore
+        modal.classList.remove('aid-qol-modal-maximized');
+        if (modal._preMaxStyle) {
+          modal.style.left = modal._preMaxStyle.left;
+          modal.style.top = modal._preMaxStyle.top;
+          modal.style.width = modal._preMaxStyle.width;
+          modal.style.height = modal._preMaxStyle.height;
+        }
+        Logger.log('Restored modal size');
+      } else {
+        // Maximize
+        modal._preMaxStyle = {
+          left: modal.style.left,
+          top: modal.style.top,
+          width: modal.style.width,
+          height: modal.style.height,
+        };
+        modal.style.position = 'fixed';
+        modal.style.margin = '0';
+        modal.classList.add('aid-qol-modal-maximized');
+        Logger.log('Maximized modal');
+      }
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
     StoryInputModule,
     HotkeysModule,
     ActionToggleModule,
+    ModalWindowModule,
   ];
 
   function bootstrap() {
