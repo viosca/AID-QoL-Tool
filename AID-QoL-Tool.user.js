@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.1.0
+// @version      3.1.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1127,14 +1127,12 @@
   const GameMenuResizeModule = {
     name: 'Game Menu Resize',
     resizerId: 'aid-qol-game-menu-resizer',
-    currentRoot: null,
 
     init() {
       if (!CONFIG.get('gameMenuResizeEnabled', true)) return;
       Logger.info('Initializing GameMenuResizeModule...');
 
       this.injectStyles();
-      this.bindGlobalListeners();
       this.observeMenu();
     },
 
@@ -1219,73 +1217,35 @@
     },
 
     /**
-     * Checks if the Game Menu is actively visible and expanded.
-     */
-    isMenuOpen(rootCol, settingsRegion) {
-      if (!rootCol || !settingsRegion) return false;
-      if (!rootCol.isConnected || !settingsRegion.isConnected) return false;
-
-      // Check if rootCol has width: 0 or display: none
-      if (rootCol.style.width === '0px' || rootCol.style.width === '0' || rootCol.style.display === 'none') {
-        return false;
-      }
-
-      // Check if rendered width is zero
-      if (rootCol.offsetWidth === 0 || settingsRegion.offsetWidth === 0) {
-        return false;
-      }
-
-      // Check aria-hidden on inner views
-      const innerView = rootCol.querySelector('[aria-hidden]');
-      if (innerView && innerView.getAttribute('aria-hidden') === 'true') {
-        return false;
-      }
-
-      return true;
-    },
-
-    /**
-     * Cleans up custom width and resizer state when the menu is closing.
-     */
-    closeMenu() {
-      if (this.currentRoot) {
-        this.currentRoot.classList.remove('aid-qol-game-menu-resizable');
-        const resizer = this.currentRoot.querySelector(`#${this.resizerId}`);
-        if (resizer) resizer.style.display = 'none';
-        this.currentRoot.style.removeProperty('width');
-      }
-    },
-
-    /**
-     * Attaches the resize handle and applies custom width when menu is open.
+     * Attaches the resize handle and applies custom width when menu is mounted.
      * @param {HTMLElement} rootCol
      */
     setupMenu(rootCol) {
-      if (!rootCol) return;
-      this.currentRoot = rootCol;
+      if (!rootCol || !rootCol.isConnected) return;
+      if (rootCol.querySelector(`#${this.resizerId}`)) return;
 
+      Logger.log('Setting up resizable Game Menu:', rootCol);
       rootCol.classList.add('aid-qol-game-menu-resizable');
 
-      // Apply saved preferred width if valid and different from stock default
+      // Apply saved preferred width if valid and different from stock default (424px)
       const savedWidth = this.getValidWidth(CONFIG.get('gameMenuWidth', '424px'));
       if (savedWidth !== 424) {
         rootCol.style.width = `${savedWidth}px`;
       }
 
-      // Create or show the draggable left splitter handle
-      let resizer = rootCol.querySelector(`#${this.resizerId}`);
-      if (!resizer) {
-        resizer = document.createElement('div');
-        resizer.id = this.resizerId;
-        resizer.title = 'Drag left edge to resize menu (Double-click to reset to 424px)';
-        rootCol.prepend(resizer);
-        this.bindDragEvents(resizer, rootCol);
-      }
-      resizer.style.display = 'block';
+      // Create and insert the draggable left splitter handle
+      const resizer = document.createElement('div');
+      resizer.id = this.resizerId;
+      resizer.title = 'Drag left edge to resize menu (Double-click to reset to 424px)';
+      rootCol.prepend(resizer);
+
+      this.bindDragEvents(resizer, rootCol);
     },
 
     /**
      * Binds mouse drag and double-click listeners to the resize handle.
+     * @param {HTMLElement} resizer
+     * @param {HTMLElement} rootCol
      */
     bindDragEvents(resizer, rootCol) {
       resizer.addEventListener('mousedown', (e) => {
@@ -1371,71 +1331,48 @@
     },
 
     /**
-     * Binds global listeners for menu close actions.
-     */
-    bindGlobalListeners() {
-      // Listen for click on "Close settings" button
-      document.addEventListener('click', (e) => {
-        const closeBtn = e.target.closest && e.target.closest('[aria-label="Close settings" i]');
-        if (closeBtn) {
-          this.closeMenu();
-        }
-      }, true);
-
-      // Listen for click on header Game Menu button if menu is already open
-      document.addEventListener('click', (e) => {
-        const menuBtn = e.target.closest && e.target.closest('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
-        if (menuBtn && this.currentRoot && this.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
-          this.closeMenu();
-        }
-      }, true);
-
-      // Listen for Escape key
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && this.currentRoot && this.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
-          this.closeMenu();
-        }
-      });
-    },
-
-    /**
-     * Observes DOM to attach or detach splitter based on Game Menu state.
+     * Observes DOM purely for Game Menu additions.
+     * Uses childList only to completely prevent infinite loops and freezes.
      */
     observeMenu() {
-      const sync = () => {
-        if (!CONFIG.get('gameMenuResizeEnabled', true)) {
-          this.closeMenu();
-          return;
-        }
+      const checkAndSetup = () => {
+        if (!CONFIG.get('gameMenuResizeEnabled', true)) return;
 
         const settingsRegion = document.querySelector('[aria-label="Game settings" i]');
-        if (!settingsRegion) {
-          this.currentRoot = null;
-          return;
-        }
+        if (!settingsRegion || !settingsRegion.isConnected) return;
 
         const rootCol = this.findMenuRoot(settingsRegion);
-        if (!rootCol) return;
+        if (!rootCol || !rootCol.isConnected) return;
 
-        const open = this.isMenuOpen(rootCol, settingsRegion);
-        if (open) {
-          if (!rootCol.classList.contains('aid-qol-game-menu-resizable')) {
-            this.setupMenu(rootCol);
-          } else {
-            const resizer = rootCol.querySelector(`#${this.resizerId}`);
-            if (resizer && resizer.style.display === 'none') {
-              resizer.style.display = 'block';
-            }
-          }
-        } else {
-          this.closeMenu();
-        }
+        if (rootCol.querySelector(`#${this.resizerId}`)) return;
+
+        this.setupMenu(rootCol);
       };
 
-      const observer = new MutationObserver(() => sync());
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'aria-hidden', 'class'] });
+      // Check on initial load
+      checkAndSetup();
 
-      setInterval(sync, 150);
+      // Observe childList additions ONLY
+      const observer = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (!m.addedNodes || m.addedNodes.length === 0) continue;
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            if (node.id === this.resizerId) continue;
+
+            if (node.matches && node.matches('[aria-label="Game settings" i]')) {
+              checkAndSetup();
+              return;
+            }
+            if (node.querySelector && node.querySelector('[aria-label="Game settings" i]')) {
+              checkAndSetup();
+              return;
+            }
+          }
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
     }
   };
 
@@ -2144,8 +2081,12 @@
         const val = menuW.value.trim();
         const validW = GameMenuResizeModule.getValidWidth(val);
         CONFIG.set('gameMenuWidth', `${validW}px`);
-        if (GameMenuResizeModule.currentRoot && GameMenuResizeModule.currentRoot.classList.contains('aid-qol-game-menu-resizable')) {
-          GameMenuResizeModule.currentRoot.style.width = `${validW}px`;
+        const settingsRegion = document.querySelector('[aria-label="Game settings" i]');
+        if (settingsRegion) {
+          const root = GameMenuResizeModule.findMenuRoot(settingsRegion);
+          if (root && root.classList.contains('aid-qol-game-menu-resizable')) {
+            root.style.width = `${validW}px`;
+          }
         }
       }
 
