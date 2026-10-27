@@ -67,9 +67,10 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 
 ```
 AID-QoL-Tool/
+├── .gitignore                   # Repository ignore rules
 ├── AID-QoL-Tool.user.js         # Active v3 production script
 ├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
-├── .gitignore                   # Repository ignore rules
+├── LICENSE.md                   # MIT License
 └── README.md                    # Project documentation
 ```
 
@@ -77,4 +78,4 @@ AID-QoL-Tool/
 
 ## License
 
-MIT License.
+This project is licensed under the terms of the [MIT License](LICENSE.md).
