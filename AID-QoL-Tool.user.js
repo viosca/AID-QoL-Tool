@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.2.1
+// @version      3.2.2
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1431,8 +1431,8 @@
         #aid-qol-config-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.82);
-          backdrop-filter: blur(4px);
+          background: rgba(0, 0, 0, 0.85);
+          backdrop-filter: blur(8px);
           z-index: 1000000;
           display: none;
           align-items: center;
@@ -1443,14 +1443,14 @@
         }
 
         .aid-qol-config-modal {
-          background: #141312;
-          color: #fbf6ee;
+          background: var(--aid-theme-bg, var(--background, #0c0c0e));
+          color: var(--color, #f4f4f5);
           width: 620px;
           max-width: 92vw;
           max-height: 88vh;
-          border: 1px solid var(--borderColor, #332d25);
+          border: 1px solid var(--borderColor, rgba(255, 255, 255, 0.12));
           border-radius: 14px;
-          box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9), 0 0 1px 1px rgba(249, 115, 22, 0.15);
+          box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.05);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1468,8 +1468,8 @@
           align-items: center;
           justify-content: space-between;
           padding: 16px 20px;
-          background: #1a1815;
-          border-bottom: 1px solid var(--borderColor, #332d25);
+          background: rgba(255, 255, 255, 0.03);
+          border-bottom: 1px solid var(--borderColor, rgba(255, 255, 255, 0.08));
         }
 
         .aid-qol-config-title {
@@ -1478,13 +1478,13 @@
           gap: 10px;
           font-size: 16px;
           font-weight: 600;
-          color: #fbf6ee;
+          color: var(--color, #ffffff);
         }
 
         .aid-qol-config-badge {
           font-size: 11px;
           font-weight: 600;
-          background: rgba(249, 115, 22, 0.16);
+          background: rgba(249, 115, 22, 0.15);
           color: var(--color-aid-primary, #fb923c);
           border: 1px solid rgba(249, 115, 22, 0.35);
           padding: 2px 7px;
@@ -1495,7 +1495,7 @@
         .aid-qol-config-close-btn {
           background: transparent;
           border: none;
-          color: #a89f91;
+          color: #a1a1aa;
           font-size: 18px;
           cursor: pointer;
           padding: 4px 8px;
@@ -1503,14 +1503,14 @@
           transition: all 0.15s;
         }
         .aid-qol-config-close-btn:hover {
-          background: #2a251e;
+          background: rgba(255, 255, 255, 0.08);
           color: #ffffff;
         }
 
         .aid-qol-config-tabs {
           display: flex;
-          background: #161412;
-          border-bottom: 1px solid var(--borderColor, #332d25);
+          background: rgba(0, 0, 0, 0.25);
+          border-bottom: 1px solid var(--borderColor, rgba(255, 255, 255, 0.08));
           padding: 0 16px;
           gap: 8px;
         }
@@ -1519,7 +1519,7 @@
           background: transparent;
           border: none;
           border-bottom: 2px solid transparent;
-          color: #a89f91;
+          color: #a1a1aa;
           font-size: 13px;
           font-weight: 500;
           padding: 12px 14px;
@@ -1527,7 +1527,7 @@
           transition: all 0.15s;
         }
         .aid-qol-tab-btn:hover {
-          color: #fbf6ee;
+          color: #ffffff;
         }
         .aid-qol-tab-btn.active {
           color: var(--color-aid-primary, #f97316);
@@ -1558,10 +1558,10 @@
           align-items: center;
           flex-wrap: wrap;
           gap: 16px;
-          background: #1b1916;
+          background: rgba(255, 255, 255, 0.025);
           padding: 12px 16px;
           border-radius: 8px;
-          border: 1px solid #2e2820;
+          border: 1px solid var(--borderColor, rgba(255, 255, 255, 0.08));
         }
 
         .aid-qol-checkbox-label {
@@ -1569,26 +1569,26 @@
           align-items: center;
           gap: 12px;
           font-size: 13px;
-          color: #d1c7b7;
+          color: #d4d4d8;
           cursor: pointer;
           user-select: none;
           padding: 10px 14px;
           border-radius: 8px;
-          background: #1b1916;
-          border: 1px solid #2e2820;
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
         }
 
         .aid-qol-checkbox-label:hover {
-          background: #24201a;
-          border-color: #443c30;
-          color: #fbf6ee;
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.18);
+          color: #ffffff;
         }
 
         /* Highlight the card when checked */
         .aid-qol-checkbox-label:has(input[type="checkbox"]:checked) {
           border-color: rgba(249, 115, 22, 0.45);
-          background: #221d17;
+          background: rgba(249, 115, 22, 0.08);
           color: #ffffff;
         }
 
@@ -1600,7 +1600,7 @@
         }
         .aid-qol-modifiers-row .aid-qol-checkbox-label:hover {
           background: rgba(255, 255, 255, 0.05);
-          border-color: #3d362b;
+          border-color: rgba(255, 255, 255, 0.12);
         }
         .aid-qol-modifiers-row .aid-qol-checkbox-label:has(input[type="checkbox"]:checked) {
           background: rgba(249, 115, 22, 0.14);
@@ -1616,8 +1616,8 @@
           min-width: 20px;
           min-height: 20px;
           border-radius: 5px;
-          border: 2px solid #5a5042;
-          background-color: #141312;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          background-color: rgba(0, 0, 0, 0.5);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
@@ -1632,7 +1632,7 @@
 
         .aid-qol-checkbox-label input[type="checkbox"]:hover {
           border-color: var(--color-aid-primary, #f97316);
-          background-color: #24201a;
+          background-color: rgba(0, 0, 0, 0.7);
         }
 
         .aid-qol-checkbox-label input[type="checkbox"]:checked {
@@ -1666,15 +1666,15 @@
           letter-spacing: 0.05em;
           padding: 2px 7px;
           border-radius: 10px;
-          background: #25211b;
-          color: #7d7365;
-          border: 1px solid #3d362b;
+          background: rgba(255, 255, 255, 0.05);
+          color: #71717a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
           transition: all 0.15s ease-in-out;
         }
 
         .aid-qol-checkbox-label:has(input[type="checkbox"]:checked)::after {
           content: "ON";
-          background: rgba(249, 115, 22, 0.2);
+          background: rgba(249, 115, 22, 0.18);
           color: var(--color-aid-primary, #fb923c);
           border-color: rgba(249, 115, 22, 0.45);
           box-shadow: 0 0 8px rgba(249, 115, 22, 0.25);
@@ -1688,12 +1688,12 @@
         .aid-qol-combo-preview {
           margin-left: auto;
           font-size: 12px;
-          color: #a89f91;
+          color: #a1a1aa;
         }
         .aid-qol-combo-preview code {
-          background: #28231b;
+          background: rgba(0, 0, 0, 0.45);
           color: var(--color-aid-primary, #fb923c);
-          border: 1px solid rgba(249, 115, 22, 0.25);
+          border: 1px solid rgba(249, 115, 22, 0.3);
           padding: 2px 6px;
           border-radius: 4px;
           font-family: ui-monospace, monospace;
@@ -1709,15 +1709,15 @@
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #1b1916;
+          background: rgba(255, 255, 255, 0.025);
           padding: 8px 12px;
           border-radius: 8px;
-          border: 1px solid #2e2820;
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .aid-qol-key-label {
           font-size: 13px;
-          color: #d1c7b7;
+          color: #d4d4d8;
         }
 
         .aid-qol-key-input {
@@ -1727,9 +1727,9 @@
           font-weight: 700;
           font-size: 14px;
           font-family: ui-monospace, monospace;
-          background: #24201a;
+          background: rgba(0, 0, 0, 0.45);
           color: var(--color-aid-primary, #fb923c);
-          border: 1px solid #3d362b;
+          border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 6px;
           outline: none;
           transition: all 0.15s;
@@ -1737,7 +1737,7 @@
         .aid-qol-key-input:focus {
           border-color: var(--color-aid-primary, #f97316);
           box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
-          background: #2c2720;
+          background: rgba(0, 0, 0, 0.65);
         }
 
         .aid-qol-field-group {
@@ -1754,17 +1754,17 @@
         .aid-qol-input-block label {
           display: block;
           font-size: 12px;
-          color: #a89f91;
+          color: #a1a1aa;
           margin-bottom: 6px;
         }
 
         .aid-qol-text-input {
           width: 100%;
           box-sizing: border-box;
-          background: #1b1916;
-          border: 1px solid var(--borderColor, #332d25);
+          background: rgba(0, 0, 0, 0.45);
+          border: 1px solid var(--borderColor, rgba(255, 255, 255, 0.15));
           border-radius: 6px;
-          color: #fbf6ee;
+          color: #ffffff;
           padding: 8px 12px;
           font-size: 13px;
           font-family: ui-monospace, monospace;
@@ -1774,6 +1774,7 @@
         .aid-qol-text-input:focus {
           border-color: var(--color-aid-primary, #f97316);
           box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
+          background: rgba(0, 0, 0, 0.65);
         }
 
         .aid-qol-config-footer {
@@ -1781,8 +1782,8 @@
           align-items: center;
           justify-content: space-between;
           padding: 14px 20px;
-          background: #1a1815;
-          border-top: 1px solid var(--borderColor, #332d25);
+          background: rgba(255, 255, 255, 0.02);
+          border-top: 1px solid var(--borderColor, rgba(255, 255, 255, 0.08));
         }
 
         .aid-qol-footer-right {
@@ -1811,12 +1812,12 @@
         }
 
         .aid-qol-btn-secondary {
-          background: #26221c;
-          color: #d1c7b7;
-          border: 1px solid #383228;
+          background: rgba(255, 255, 255, 0.07);
+          color: #e4e4e7;
+          border: 1px solid rgba(255, 255, 255, 0.12);
         }
         .aid-qol-btn-secondary:hover {
-          background: #312c24;
+          background: rgba(255, 255, 255, 0.12);
           color: #ffffff;
         }
 
@@ -1835,12 +1836,12 @@
           position: fixed;
           bottom: 24px;
           right: 24px;
-          background: #201c17;
+          background: var(--aid-theme-bg, var(--background, #0c0c0e));
           color: var(--color-aid-primary, #fb923c);
           border: 1px solid var(--color-aid-primary, #ea580c);
           padding: 10px 18px;
           border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
           font-size: 13px;
           font-weight: 500;
           z-index: 10000000;
@@ -1865,7 +1866,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.2.1</span>
+              <span class="aid-qol-config-badge">v3.2.2</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2166,8 +2167,53 @@
       if (genDebug) genDebug.checked = !!CONFIG.get('debugLogging', false);
     },
 
+    applyThemeStyles() {
+      if (!this.overlay) return;
+
+      let detectedBg = '';
+
+      // 1. Inspect CSS custom properties on documentElement and body
+      for (const el of [document.documentElement, document.body]) {
+        if (!el) continue;
+        const style = getComputedStyle(el);
+        const bgVar = style.getPropertyValue('--background')?.trim();
+        if (bgVar && bgVar !== 'transparent' && bgVar !== 'inherit') {
+          detectedBg = bgVar;
+          break;
+        }
+      }
+
+      // 2. If no variable is found or resolves to transparent, sample computed background-color from game containers
+      if (!detectedBg) {
+        const sampleTargets = [
+          document.body,
+          document.documentElement,
+          document.getElementById('gameplay-output'),
+          document.querySelector('.gameplay-viewport-root'),
+          document.querySelector('[role="main"]'),
+          document.querySelector('main')
+        ];
+        for (const el of sampleTargets) {
+          if (!el) continue;
+          const comp = getComputedStyle(el).backgroundColor;
+          if (comp && comp !== 'transparent' && comp !== 'rgba(0, 0, 0, 0)') {
+            detectedBg = comp;
+            break;
+          }
+        }
+      }
+
+      // 3. Fallback to clean, neutral true dark
+      if (!detectedBg) {
+        detectedBg = '#0c0c0e';
+      }
+
+      this.overlay.style.setProperty('--aid-theme-bg', detectedBg);
+    },
+
     open() {
       this.render();
+      this.applyThemeStyles();
       this.populateFields();
       if (this.overlay) {
         this.overlay.style.display = 'flex';
@@ -2291,7 +2337,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.0.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.2.2 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
