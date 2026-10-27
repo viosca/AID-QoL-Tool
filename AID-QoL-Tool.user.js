@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.2.0
+// @version      3.2.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1439,6 +1439,7 @@
           justify-content: center;
           font-family: var(--font-tamagui-gameplay-sans, var(--f-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
           box-sizing: border-box;
+          color-scheme: dark;
         }
 
         .aid-qol-config-modal {
@@ -1566,17 +1567,122 @@
         .aid-qol-checkbox-label {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
           font-size: 13px;
-          color: #e5dec9;
+          color: #d1c7b7;
           cursor: pointer;
           user-select: none;
+          padding: 10px 14px;
+          border-radius: 8px;
+          background: #1b1916;
+          border: 1px solid #2e2820;
+          transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
         }
+
+        .aid-qol-checkbox-label:hover {
+          background: #24201a;
+          border-color: #443c30;
+          color: #fbf6ee;
+        }
+
+        /* Highlight the card when checked */
+        .aid-qol-checkbox-label:has(input[type="checkbox"]:checked) {
+          border-color: rgba(249, 115, 22, 0.45);
+          background: #221d17;
+          color: #ffffff;
+        }
+
+        /* Modifier row has its own wrapper, so style labels inside lighter */
+        .aid-qol-modifiers-row .aid-qol-checkbox-label {
+          background: transparent;
+          border: 1px solid transparent;
+          padding: 6px 10px;
+        }
+        .aid-qol-modifiers-row .aid-qol-checkbox-label:hover {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: #3d362b;
+        }
+        .aid-qol-modifiers-row .aid-qol-checkbox-label:has(input[type="checkbox"]:checked) {
+          background: rgba(249, 115, 22, 0.14);
+          border-color: rgba(249, 115, 22, 0.35);
+        }
+
+        /* High-contrast custom checkbox box */
         .aid-qol-checkbox-label input[type="checkbox"] {
-          accent-color: var(--color-aid-primary, #f97316);
-          width: 16px;
-          height: 16px;
+          appearance: none;
+          -webkit-appearance: none;
+          width: 20px;
+          height: 20px;
+          min-width: 20px;
+          min-height: 20px;
+          border-radius: 5px;
+          border: 2px solid #5a5042;
+          background-color: #141312;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0;
+          padding: 0;
+          transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+          position: relative;
+          flex-shrink: 0;
+          box-sizing: border-box;
+        }
+
+        .aid-qol-checkbox-label input[type="checkbox"]:hover {
+          border-color: var(--color-aid-primary, #f97316);
+          background-color: #24201a;
+        }
+
+        .aid-qol-checkbox-label input[type="checkbox"]:checked {
+          background-color: var(--color-aid-primary, #ea580c) !important;
+          border-color: var(--color-aid-primary, #ea580c) !important;
+          box-shadow: 0 0 10px rgba(249, 115, 22, 0.55);
+        }
+
+        .aid-qol-checkbox-label input[type="checkbox"]:checked::after {
+          content: "";
+          width: 5px;
+          height: 10px;
+          border: solid #ffffff;
+          border-width: 0 2.5px 2.5px 0;
+          transform: rotate(45deg);
+          margin-bottom: 2px;
+          display: block;
+        }
+
+        .aid-qol-checkbox-label input[type="checkbox"]:focus-visible {
+          outline: 2px solid var(--color-aid-primary, #f97316);
+          outline-offset: 2px;
+        }
+
+        /* Dynamic ON / OFF badge on the right of option cards */
+        .aid-qol-checkbox-label::after {
+          content: "OFF";
+          margin-left: auto;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          padding: 2px 7px;
+          border-radius: 10px;
+          background: #25211b;
+          color: #7d7365;
+          border: 1px solid #3d362b;
+          transition: all 0.15s ease-in-out;
+        }
+
+        .aid-qol-checkbox-label:has(input[type="checkbox"]:checked)::after {
+          content: "ON";
+          background: rgba(249, 115, 22, 0.2);
+          color: var(--color-aid-primary, #fb923c);
+          border-color: rgba(249, 115, 22, 0.45);
+          box-shadow: 0 0 8px rgba(249, 115, 22, 0.25);
+        }
+
+        /* Modifiers row has its own dedicated combo preview, so hide the ON/OFF badge there */
+        .aid-qol-modifiers-row .aid-qol-checkbox-label::after {
+          display: none;
         }
 
         .aid-qol-combo-preview {
@@ -1759,7 +1865,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.2.0</span>
+              <span class="aid-qol-config-badge">v3.2.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
