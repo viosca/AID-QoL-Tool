@@ -1,0 +1,21 @@
+# Dependencies and environments
+node_modules/
+.npm
+
+# Editor and IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local edit history backups
+.history/
+
+# Scratch & temporary dumps
+*.tmp
+*.log
+scratch/
+
+# Operating system artifacts
+.DS_Store
+Thumbs.db

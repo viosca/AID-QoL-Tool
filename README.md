@@ -1,42 +1,80 @@
-# AID-QoL-Tool
+# AID-QoL-Tool (v3.0.0)
 
-Enhanced Tampermonkey Script for AI Dungeon.
-Warning, this TamperMonkey script may break at any time. AID may change their website without notice (as is their right.)
+Modern, high-performance Quality-of-Life Tampermonkey userscript for [AI Dungeon](https://play.aidungeon.com/).
 
-This script was originally based on AliH2K's script. It adds many features and enhancements and restructures their code a bit.
+Rewritten from the ground up to support AI Dungeon's modern architecture (**React 19**, **Next.js 16**, **Tamagui v2**, and **Tailwind CSS**).
 
-- Modal window: drag and resize, fullsize screen toggle, undim/unmask gameplay log.
-- Sitewide modal textarea and img drag resizing.
-- Model switcher tighter styling for desktop.
-- See action image resize and fullscreen.
-- Enhanced memory editing.
-- Hide Do/Say Actions Toggle.
-- Credits Being Used Indicator.
-- Additional hotkeys:
-  - Flame menu.
-  - beta/play toggle.
-  - change player name.
-  - goto user profile.
-  - continue adventure.
-- StoryCard Editor enhancements:
-  - Container Delimiter entry.
-  - Default notes entry.
-- Code editor modal window size fix.
-- Styling to make more efficient use of space by removing excess padding, margins, and gaps.
-- Print adventure from read mode keeping '>' (raw text mode). 
+---
 
-Future enhancements:
-- Gear Menu:
-  - Horizontal Resize/fullscreen.
-- Reduce image size on front page.
-- Create directory style listings for scenarios with their adventures (a heavy lift.)
-- Print/export story from gameplay screen so full story is available.
+## Features
 
-The way it works: React structures are parsed to add unique ids to the AIDs HTML elements. Then CSS for those elements is preloaded so when the IDs are added they get the appropriate styling.
-The current method exports a nested CSS tree (GM_addStyle) for the gearMenu that is used re-style the gearMenu components. The modal handling code is mostly done through individual styling blobs for each modal type. gearMenu handling is being changed over to be more localized like the way the modals are handled.
-In general, snippes of the html are parsed using JavaScript and key HTML elements are isolated and assigned unique tags. Methods such as waitForKeyElements and MutationObservers watching the react DOM are used to parse the HTML tree.
+### 1. Story Input Tweaks
+* **Auto-Quote "Do" Mode**:
+  * Automatically pre-fills empty "Do" actions with quotation marks (`""`) and places the cursor right between them.
+  * Quotes unquoted text automatically when sending a "Do" turn.
+  * Automatically removes dangling empty quotes if you switch away from "Do" mode.
+* **Auto-Focus**: Focuses the story prompt input (`#full-screen-text-input`) on page load and adventure start.
+* **React 19 Compatibility**: Directly interacts with React 19 synthetic event tracking for zero input desync.
 
-### BUGS:
-- Pretty much anything to do with Multiple Choice and Character Creator scenario editing doesn't work.
-- Note, drag and resize broken on multiple choice editing. Needs fix.
+### 2. Hotkeys & Fast Navigation (`Alt+Ctrl` / `Option+Cmd`)
+Configurable shortcuts for story flow and UI navigation without touching the mouse:
 
+| Category | Shortcut | Action |
+| :--- | :--- | :--- |
+| **Turns** | `Alt+Ctrl+C` | Take Turn |
+| | `Alt+Ctrl+A` | Continue Story |
+| | `Alt+Ctrl+S` | Retry (Regenerate) |
+| | `Alt+Ctrl+X` | Retry History |
+| | `Alt+Ctrl+D` | Erase / Undo |
+| **Modes** | `Alt+Ctrl+Q` | **Do** mode |
+| | `Alt+Ctrl+W` | **Say** mode |
+| | `Alt+Ctrl+E` | **Story** mode |
+| | `Alt+Ctrl+R` | **See** mode |
+| **Navigation** | `Alt+Ctrl+F` | Open Game / Gear Menu |
+| | `Alt+Ctrl+H` | Scroll to Top |
+| | `Alt+Ctrl+T` | Toggle site between `play` and `beta` |
+| | `Alt+Ctrl+G` | View User Profile |
+| | `Alt+Ctrl+V` | Continue Current Adventure |
+| | `Alt+Ctrl+Z` | Edit Character Name |
+| | `Alt+Ctrl+U` | Toggle Action Visibility |
+| **Dialogs** | `←` / `→` | Navigate dialog buttons |
+| | `Enter` | Confirm / Primary action |
+
+### 3. Action Visibility Toggle (`A+` / `A-`)
+* Adds an **`A+` / `A-`** toggle button directly into the story header bar (next to Undo).
+* Toggle with hotkey: `Alt+Ctrl+U`.
+* Hides `> You ...` action text rows to provide a clean, book-like reading experience without collapsing ancestor layouts or flickering.
+
+### 4. Story Card Modals (Drag, Top-Left Anchored Resize, Auto-Remember)
+* **Smooth Header Dragging**: Grab anywhere on the visible modal header row to reposition Story Cards.
+* **Anchored Resizing**: Resizes outward from the bottom-right corner without center-snapping, jumps, or Tailwind width capping.
+* **Double-Click Title**: Double-click the header bar to maximize / restore.
+* **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh`).
+* **Auto-Remember Dimensions**: Uses a debounced `ResizeObserver` to automatically remember any size you adjust the card to.
+* **Tampermonkey Config Menu**: Click the Tampermonkey script menu to set custom dimensions or toggle features.
+
+---
+
+## Installation
+
+1. Install a userscript manager such as [Tampermonkey](https://www.tampermonkey.net/).
+2. Install [`AID-QoL-Tool.user.js`](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js).
+3. Open or refresh [AI Dungeon](https://play.aidungeon.com/).
+
+---
+
+## Project Structure
+
+```
+AID-QoL-Tool/
+├── AID-QoL-Tool.user.js         # Active v3 production script
+├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
+├── .gitignore                   # Repository ignore rules
+└── README.md                    # Project documentation
+```
+
+---
+
+## License
+
+MIT License.
