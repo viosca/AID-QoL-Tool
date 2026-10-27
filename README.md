@@ -37,8 +37,11 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 | | `Alt+Ctrl+V` | Continue Current Adventure |
 | | `Alt+Ctrl+Z` | Edit Character Name |
 | | `Alt+Ctrl+U` | Toggle Action Visibility |
+| | `Alt+Ctrl+,` | **Open Settings Dialog** |
 | **Dialogs** | `←` / `→` | Navigate dialog buttons |
 | | `Enter` | Confirm / Primary action |
+
+*All hotkeys and modifier keys (Alt, Ctrl, Shift) can be customized to any key you prefer in the Settings Dialog.*
 
 ### 3. Action Visibility Toggle (`A+` / `A-`)
 * Adds an **`A+` / `A-`** toggle button directly into the story header bar (next to Undo).
@@ -51,7 +54,19 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Double-Click Title**: Double-click the header bar to maximize / restore.
 * **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh`).
 * **Auto-Remember Dimensions**: Uses a debounced `ResizeObserver` to automatically remember any size you adjust the card to.
-* **Tampermonkey Config Menu**: Click the Tampermonkey script menu to set custom dimensions or toggle features.
+
+### 5. Native In-Game Configuration Dialog
+* Modern, dark-themed Settings Dialog replacing legacy MonkeyConfig.
+* Easily accessed via:
+  * **Header Button**: Click the `⚙` button next to `A+` in the story navigation bar.
+  * **Keyboard Shortcut**: `Alt+Ctrl+,`.
+  * **Tampermonkey Menu**: `⚙️ Configure Settings (Hotkeys, Sizes, Toggles)`.
+* **Full Customization**:
+  * **Hotkeys**: Set custom keys for turn actions, mode switches, and navigation. Just click any key box and press your desired key.
+  * **Modifier Keys**: Choose any combination of `Alt`, `Ctrl`, and `Shift`.
+  * **Story Card Dimensions**: Set default width/height and toggle auto-remember.
+  * **General Options**: Toggle auto-quoting, auto-focus, action visibility, and debug logs.
+  * **Reset to Defaults**: One-click restore button.
 
 ---
 

@@ -22,37 +22,74 @@
   // =========================================================================
   // Configuration & State
   // =========================================================================
+  const DEFAULT_CONFIG = {
+    // Input Preferences
+    autoQuoteDo: true,
+    autoFocusInput: true,
+
+    // Action Row Visibility
+    actionsVisible: true,
+
+    // Story Card Modals
+    storyCardModalsEnabled: true,
+    scModalWidth: '680px',
+    scModalHeight: '82vh',
+    rememberSCSize: true,
+
+    // Hotkeys & Modifiers
+    hotkeysEnabled: true,
+    hotkeyModifierAlt: true,
+    hotkeyModifierCtrl: true,
+    hotkeyModifierShift: false,
+
+    // Hotkey Action Characters (Single uppercase characters)
+    keyTakeTurn: 'C',
+    keyContinue: 'A',
+    keyRetry: 'S',
+    keyRetryHistory: 'X',
+    keyErase: 'D',
+    keyModeDo: 'Q',
+    keyModeSay: 'W',
+    keyModeStory: 'E',
+    keyModeSee: 'R',
+    keyToggleActions: 'U',
+    keyGameMenu: 'F',
+    keyScrollTop: 'H',
+    keyToggleSite: 'T',
+    keyUserProfile: 'G',
+    keyContinueAdventure: 'V',
+    keyCharacterName: 'Z',
+    keyOpenSettings: ',',
+
+    // Diagnostics
+    debugLogging: false
+  };
+
   const CONFIG = {
     get(key, defaultValue) {
-      return GM_getValue(key, defaultValue);
+      const fallback = defaultValue !== undefined ? defaultValue : DEFAULT_CONFIG[key];
+      return GM_getValue(key, fallback);
     },
     set(key, value) {
       GM_setValue(key, value);
+    },
+    resetToDefaults() {
+      for (const [key, val] of Object.entries(DEFAULT_CONFIG)) {
+        GM_setValue(key, val);
+      }
     }
   };
 
-  // Default configuration values
-  if (CONFIG.get('autoQuoteDo') === undefined) CONFIG.set('autoQuoteDo', true);
-  if (CONFIG.get('autoFocusInput') === undefined) CONFIG.set('autoFocusInput', true);
-  if (CONFIG.get('hotkeysEnabled') === undefined) CONFIG.set('hotkeysEnabled', true);
-  if (CONFIG.get('actionsVisible') === undefined) CONFIG.set('actionsVisible', true);
-  if (CONFIG.get('storyCardModalsEnabled') === undefined) CONFIG.set('storyCardModalsEnabled', true);
-  if (CONFIG.get('scModalWidth') === undefined) CONFIG.set('scModalWidth', '680px');
-  if (CONFIG.get('scModalHeight') === undefined) CONFIG.set('scModalHeight', '82vh');
-  if (CONFIG.get('rememberSCSize') === undefined) CONFIG.set('rememberSCSize', true);
-  if (CONFIG.get('debugLogging') === undefined) CONFIG.set('debugLogging', false);
-
   // Register Tampermonkey menu commands
   GM_registerMenuCommand(
-    `Auto-Quote "Do": ${CONFIG.get('autoQuoteDo') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    '⚙️ Configure Settings (Hotkeys, Sizes, Toggles)',
     () => {
-      CONFIG.set('autoQuoteDo', !CONFIG.get('autoQuoteDo'));
-      location.reload();
+      ConfigUIModule.open();
     }
   );
 
   GM_registerMenuCommand(
-    `Hotkeys (Alt+Ctrl): ${CONFIG.get('hotkeysEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    `Hotkeys: ${CONFIG.get('hotkeysEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
       CONFIG.set('hotkeysEnabled', !CONFIG.get('hotkeysEnabled'));
       location.reload();
@@ -70,36 +107,6 @@
     `Story Card Modals: ${CONFIG.get('storyCardModalsEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
       CONFIG.set('storyCardModalsEnabled', !CONFIG.get('storyCardModalsEnabled'));
-      location.reload();
-    }
-  );
-
-  GM_registerMenuCommand(
-    `Configure SC Default Size (${CONFIG.get('scModalWidth')} × ${CONFIG.get('scModalHeight')})`,
-    () => {
-      const currentW = CONFIG.get('scModalWidth', '680px');
-      const currentH = CONFIG.get('scModalHeight', '82vh');
-      const input = prompt(
-        'Enter default Story Card Dimensions as "Width, Height":\n(Examples: "680px, 82vh", "750px, 850px", "50vw, 80vh")',
-        `${currentW}, ${currentH}`
-      );
-      if (input) {
-        const parts = input.split(',').map(s => s.trim());
-        if (parts.length >= 2 && parts[0] && parts[1]) {
-          CONFIG.set('scModalWidth', parts[0]);
-          CONFIG.set('scModalHeight', parts[1]);
-          alert(`Story Card default size saved: ${parts[0]} × ${parts[1]}`);
-        } else {
-          alert('Invalid format. Please use "Width, Height" (e.g. "680px, 82vh").');
-        }
-      }
-    }
-  );
-
-  GM_registerMenuCommand(
-    `Remember Resized SC Size: ${CONFIG.get('rememberSCSize') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
-    () => {
-      CONFIG.set('rememberSCSize', !CONFIG.get('rememberSCSize'));
       location.reload();
     }
   );
@@ -353,6 +360,12 @@
     isMac: navigator.userAgentData?.platform?.toLowerCase().includes('mac') ||
            navigator.platform?.toLowerCase().includes('mac'),
 
+    isTypingContext(target) {
+      if (!target) return false;
+      return target.isContentEditable ||
+             ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+    },
+
     init() {
       Logger.info('Initializing HotkeysModule...');
       document.addEventListener('keydown', (e) => this.handleKeyDown(e));
@@ -362,8 +375,17 @@
       if (!CONFIG.get('hotkeysEnabled') || e.repeat) return;
 
       const key = e.key.toUpperCase();
+
+      // Check configured modifier keys
+      const reqAlt = CONFIG.get('hotkeyModifierAlt', true);
+      const reqCtrl = CONFIG.get('hotkeyModifierCtrl', true);
+      const reqShift = CONFIG.get('hotkeyModifierShift', false);
+
       const ctrlOrCmd = this.isMac ? e.metaKey : e.ctrlKey;
-      const modifsActive = e.altKey && ctrlOrCmd && !e.shiftKey;
+      const modifsActive =
+        (e.altKey === reqAlt) &&
+        (ctrlOrCmd === reqCtrl) &&
+        (e.shiftKey === reqShift);
 
       // Dialog navigation (ArrowLeft / Enter / ArrowRight when modal dialog is active)
       const selectKeys = ['ARROWLEFT', 'ENTER', 'ARROWRIGHT'];
@@ -380,111 +402,59 @@
         }
       }
 
-      // Modifier-based Hotkeys (Alt + Ctrl / Option + Cmd)
+      // Settings dialog hotkey (Alt+Ctrl+,)
+      const settingsKey = String(CONFIG.get('keyOpenSettings', ',')).toUpperCase();
+      if (modifsActive && (key === settingsKey || e.key === settingsKey)) {
+        e.preventDefault();
+        ConfigUIModule.open();
+        return;
+      }
+
+      // If user is actively typing in a field and no modifiers are pressed, ignore
+      if (this.isTypingContext(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        return;
+      }
+
+      // Modifier-based Hotkeys
       if (!modifsActive) return;
 
       const fullURL = window.location.href;
       const isPlayPage = fullURL.includes('/play');
 
-      switch (key) {
-        // --- Gameplay Turn Commands ---
-        case 'C': // Take a Turn
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.triggerSelector('[aria-label="Command: take a turn" i], [data-fs-element="AID Take a turn" i]');
-          break;
+      // Configurable action mappings
+      const keyMap = [
+        // Gameplay Turn Commands
+        { key: CONFIG.get('keyTakeTurn'), isPlay: true, action: () => this.triggerSelector('[aria-label="Command: take a turn" i], [data-fs-element="AID Take a turn" i]') },
+        { key: CONFIG.get('keyContinue'), isPlay: true, action: () => this.triggerSelector('[aria-label="Command: continue" i], [data-fs-element="AID Continue" i]') },
+        { key: CONFIG.get('keyRetry'), isPlay: true, action: () => this.triggerSelector('[aria-label="Command: retry" i], [data-fs-element="AID Retry" i]') },
+        { key: CONFIG.get('keyRetryHistory'), isPlay: true, action: () => this.triggerSelector('[aria-label="Retry history" i]') },
+        { key: CONFIG.get('keyErase'), isPlay: true, action: () => this.triggerSelector('[aria-label="Command: erase" i], [aria-label="Undo change" i], [data-fs-element="AID Undo" i]') },
 
-        case 'A': // Continue
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.triggerSelector('[aria-label="Command: continue" i], [data-fs-element="AID Continue" i]');
-          break;
+        // Mode Switching
+        { key: CONFIG.get('keyModeDo'), isPlay: true, action: () => this.switchMode('Do') },
+        { key: CONFIG.get('keyModeSay'), isPlay: true, action: () => this.switchMode('Say') },
+        { key: CONFIG.get('keyModeStory'), isPlay: true, action: () => this.switchMode('Story') },
+        { key: CONFIG.get('keyModeSee'), isPlay: true, action: () => this.switchMode('See') },
 
-        case 'S': // Retry
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.triggerSelector('[aria-label="Command: retry" i], [data-fs-element="AID Retry" i]');
-          break;
+        // Action Visibility Toggle
+        { key: CONFIG.get('keyToggleActions'), isPlay: false, action: () => ActionToggleModule.toggle() },
 
-        case 'X': // Retry History
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.triggerSelector('[aria-label="Retry history" i]');
-          break;
+        // Menus & Navigation
+        { key: CONFIG.get('keyGameMenu'), isPlay: true, action: () => this.triggerSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]') },
+        { key: CONFIG.get('keyScrollTop'), isPlay: true, action: () => this.scrollToTop() },
+        { key: CONFIG.get('keyToggleSite'), isPlay: false, action: () => this.toggleSite() },
+        { key: CONFIG.get('keyUserProfile'), isPlay: false, action: () => this.openUserProfile(isPlayPage) },
+        { key: CONFIG.get('keyContinueAdventure'), isPlay: false, action: () => this.continueAdventure() },
+        { key: CONFIG.get('keyCharacterName'), isPlay: true, action: () => this.editCharacterName() },
+      ];
 
-        case 'D': // Erase / Undo
-          if (!isPlayPage) return;
+      for (const item of keyMap) {
+        if (key === String(item.key).toUpperCase()) {
+          if (item.isPlay && !isPlayPage) return;
           e.preventDefault();
-          this.triggerSelector('[aria-label="Command: erase" i], [aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
-          break;
-
-        // --- Mode Switching (Do / Say / Story / See) ---
-        case 'Q': // Do mode
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.switchMode('Do');
-          break;
-
-        case 'W': // Say mode
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.switchMode('Say');
-          break;
-
-        case 'E': // Story mode
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.switchMode('Story');
-          break;
-
-        case 'R': // See mode
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.switchMode('See');
-          break;
-
-        // --- Action Visibility Toggle ---
-        case 'U': // Toggle Actions (A+ / A-)
-          e.preventDefault();
-          ActionToggleModule.toggle();
-          break;
-
-        // --- Menus & Navigation ---
-        case 'F': // Game Menu / Flame
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.triggerSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
-          break;
-
-        case 'H': // Scroll to Top
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.scrollToTop();
-          break;
-
-        case 'T': // Toggle Site (play.aidungeon.com <-> beta.aidungeon.com)
-          e.preventDefault();
-          this.toggleSite();
-          break;
-
-        case 'G': // User Profile
-          e.preventDefault();
-          this.openUserProfile(isPlayPage);
-          break;
-
-        case 'V': // Continue Adventure
-          e.preventDefault();
-          this.continueAdventure();
-          break;
-
-        case 'Z': // Edit Character Name
-          if (!isPlayPage) return;
-          e.preventDefault();
-          this.editCharacterName();
-          break;
-
-        default:
-          break;
+          item.action();
+          return;
+        }
       }
     },
 
@@ -650,15 +620,16 @@
           display: none !important;
         }
 
-        /* QoL Toggle Button in Navigation Bar */
-        #${this.buttonId} {
+        /* QoL Buttons in Navigation Bar */
+        #${this.buttonId},
+        #aid-qol-settings-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
           height: 28px;
-          min-width: 36px;
+          min-width: 32px;
           padding: 0 8px;
-          margin: 0 4px;
+          margin: 0 2px;
           font-family: inherit;
           font-size: 13px;
           font-weight: 700;
@@ -674,7 +645,8 @@
           z-index: 1000;
         }
 
-        #${this.buttonId}:hover {
+        #${this.buttonId}:hover,
+        #aid-qol-settings-btn:hover {
           background-color: rgba(255, 255, 255, 0.18);
           border-color: rgba(255, 255, 255, 0.3);
           color: #ffffff;
@@ -735,17 +707,31 @@
         this.toggle();
       });
 
+      // Settings shortcut button
+      const settingsBtn = document.createElement('button');
+      settingsBtn.id = 'aid-qol-settings-btn';
+      settingsBtn.type = 'button';
+      settingsBtn.innerText = '⚙';
+      settingsBtn.title = 'AID-QoL Settings (Alt+Ctrl+,)';
+      settingsBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ConfigUIModule.open();
+      });
+
       // Prefer inserting near the Undo button container if available
       const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
       if (undoBtn && undoBtn.parentElement) {
-        undoBtn.parentElement.parentElement?.insertBefore(btn, undoBtn.parentElement.nextSibling) ||
-        undoBtn.parentElement.appendChild(btn);
+        const parent = undoBtn.parentElement.parentElement || undoBtn.parentElement;
+        parent.appendChild(btn);
+        parent.appendChild(settingsBtn);
       } else if (targetElement) {
         targetElement.appendChild(btn);
+        targetElement.appendChild(settingsBtn);
       }
 
       this.updateButtonDisplay();
-      Logger.log('Injected Action Toggle button into header');
+      Logger.log('Injected Action Toggle and Settings buttons into header');
     }
   };
 
@@ -1132,6 +1118,723 @@
   };
 
   // =========================================================================
+  // Feature Module 5: Configuration Dialog (Native In-Game Settings Modal)
+  // =========================================================================
+  const ConfigUIModule = {
+    name: 'Configuration Dialog',
+    overlayId: 'aid-qol-config-overlay',
+    overlay: null,
+
+    init() {
+      Logger.info('Initializing ConfigUIModule...');
+      this.injectStyles();
+    },
+
+    injectStyles() {
+      GM_addStyle(`
+        #aid-qol-config-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.78);
+          backdrop-filter: blur(4px);
+          z-index: 1000000;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          box-sizing: border-box;
+        }
+
+        .aid-qol-config-modal {
+          background: #141419;
+          color: #f1f1f4;
+          width: 620px;
+          max-width: 92vw;
+          max-height: 88vh;
+          border: 1px solid #2e2e3d;
+          border-radius: 14px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-sizing: border-box;
+          animation: aid-qol-modal-in 0.18s ease-out;
+        }
+
+        @keyframes aid-qol-modal-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        .aid-qol-config-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          background: #1a1a23;
+          border-bottom: 1px solid #2e2e3d;
+        }
+
+        .aid-qol-config-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 16px;
+          font-weight: 600;
+          color: #fff;
+        }
+
+        .aid-qol-config-badge {
+          font-size: 11px;
+          font-weight: 500;
+          background: #2e2e42;
+          color: #a5b4fc;
+          padding: 2px 7px;
+          border-radius: 10px;
+        }
+
+        .aid-qol-config-close-btn {
+          background: transparent;
+          border: none;
+          color: #8b8b9e;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 6px;
+          transition: all 0.15s;
+        }
+        .aid-qol-config-close-btn:hover {
+          background: #2e2e3d;
+          color: #fff;
+        }
+
+        .aid-qol-config-tabs {
+          display: flex;
+          background: #171720;
+          border-bottom: 1px solid #2e2e3d;
+          padding: 0 16px;
+          gap: 8px;
+        }
+
+        .aid-qol-tab-btn {
+          background: transparent;
+          border: none;
+          border-bottom: 2px solid transparent;
+          color: #8b8b9e;
+          font-size: 13px;
+          font-weight: 500;
+          padding: 12px 14px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .aid-qol-tab-btn:hover {
+          color: #e2e8f0;
+        }
+        .aid-qol-tab-btn.active {
+          color: #6366f1;
+          border-bottom-color: #6366f1;
+        }
+
+        .aid-qol-config-body {
+          padding: 20px;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .aid-qol-section-title {
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          font-weight: 700;
+          color: #818cf8;
+          margin: 18px 0 10px 0;
+        }
+        .aid-qol-section-title:first-child {
+          margin-top: 0;
+        }
+
+        .aid-qol-modifiers-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+          background: #1c1c26;
+          padding: 12px 16px;
+          border-radius: 8px;
+          border: 1px solid #282836;
+        }
+
+        .aid-qol-checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          color: #e2e8f0;
+          cursor: pointer;
+          user-select: none;
+        }
+        .aid-qol-checkbox-label input[type="checkbox"] {
+          accent-color: #6366f1;
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+
+        .aid-qol-combo-preview {
+          margin-left: auto;
+          font-size: 12px;
+          color: #94a3b8;
+        }
+        .aid-qol-combo-preview code {
+          background: #272738;
+          color: #38bdf8;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: ui-monospace, monospace;
+        }
+
+        .aid-qol-keys-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 10px 16px;
+        }
+
+        .aid-qol-key-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #1a1a23;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid #262635;
+        }
+
+        .aid-qol-key-label {
+          font-size: 13px;
+          color: #cbd5e1;
+        }
+
+        .aid-qol-key-input {
+          width: 38px;
+          height: 32px;
+          text-align: center;
+          font-weight: 700;
+          font-size: 14px;
+          font-family: ui-monospace, monospace;
+          background: #252535;
+          color: #38bdf8;
+          border: 1px solid #3c3c54;
+          border-radius: 6px;
+          outline: none;
+          transition: all 0.15s;
+        }
+        .aid-qol-key-input:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+          background: #2e2e42;
+        }
+
+        .aid-qol-field-group {
+          margin-bottom: 14px;
+        }
+
+        .aid-qol-inline-fields {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+          margin-top: 10px;
+        }
+
+        .aid-qol-input-block label {
+          display: block;
+          font-size: 12px;
+          color: #94a3b8;
+          margin-bottom: 6px;
+        }
+
+        .aid-qol-text-input {
+          width: 100%;
+          box-sizing: border-box;
+          background: #1c1c26;
+          border: 1px solid #2e2e3d;
+          border-radius: 6px;
+          color: #f1f1f4;
+          padding: 8px 12px;
+          font-size: 13px;
+          font-family: ui-monospace, monospace;
+          outline: none;
+          transition: all 0.15s;
+        }
+        .aid-qol-text-input:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+        }
+
+        .aid-qol-config-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 20px;
+          background: #1a1a23;
+          border-top: 1px solid #2e2e3d;
+        }
+
+        .aid-qol-footer-right {
+          display: flex;
+          gap: 10px;
+        }
+
+        .aid-qol-btn {
+          padding: 8px 16px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          border: none;
+          transition: all 0.15s;
+        }
+
+        .aid-qol-btn-primary {
+          background: #4f46e5;
+          color: #fff;
+        }
+        .aid-qol-btn-primary:hover {
+          background: #4338ca;
+        }
+
+        .aid-qol-btn-secondary {
+          background: #262635;
+          color: #cbd5e1;
+          border: 1px solid #36364a;
+        }
+        .aid-qol-btn-secondary:hover {
+          background: #323245;
+          color: #fff;
+        }
+
+        .aid-qol-btn-danger {
+          background: transparent;
+          color: #ef4444;
+          border: 1px solid #451a1a;
+        }
+        .aid-qol-btn-danger:hover {
+          background: #381212;
+          color: #fca5a5;
+        }
+
+        /* Toast notification */
+        .aid-qol-toast {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          background: #1e1e2d;
+          color: #a5b4fc;
+          border: 1px solid #4338ca;
+          padding: 10px 18px;
+          border-radius: 8px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          font-size: 13px;
+          font-weight: 500;
+          z-index: 10000000;
+          animation: aid-qol-toast-in 0.25s ease-out;
+        }
+        @keyframes aid-qol-toast-in {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `);
+    },
+
+    render() {
+      if (this.overlay) return;
+
+      const overlay = document.createElement('div');
+      overlay.id = this.overlayId;
+
+      overlay.innerHTML = `
+        <div class="aid-qol-config-modal">
+          <div class="aid-qol-config-header">
+            <div class="aid-qol-config-title">
+              <span>⚙️</span>
+              <span>AID-QoL Configuration</span>
+              <span class="aid-qol-config-badge">v3.0.0</span>
+            </div>
+            <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
+          </div>
+
+          <div class="aid-qol-config-tabs">
+            <button class="aid-qol-tab-btn active" data-tab="aid-tab-hotkeys">Hotkeys</button>
+            <button class="aid-qol-tab-btn" data-tab="aid-tab-storycards">Story Cards</button>
+            <button class="aid-qol-tab-btn" data-tab="aid-tab-general">General</button>
+          </div>
+
+          <div class="aid-qol-config-body">
+            <!-- Hotkeys Tab -->
+            <div class="aid-qol-tab-panel" id="aid-tab-hotkeys">
+              <div class="aid-qol-section-title">Modifier Keys</div>
+              <div class="aid-qol-modifiers-row">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-mod-alt"> Alt / Option
+                </label>
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-mod-ctrl"> Ctrl / Cmd
+                </label>
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-mod-shift"> Shift
+                </label>
+                <div class="aid-qol-combo-preview">Combo: <code id="cfg-combo-preview">Alt + Ctrl + [Key]</code></div>
+              </div>
+
+              <div class="aid-qol-section-title">Turn Commands</div>
+              <div class="aid-qol-keys-grid">
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Take a Turn</span>
+                  <input type="text" maxlength="1" id="cfg-keyTakeTurn" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Continue</span>
+                  <input type="text" maxlength="1" id="cfg-keyContinue" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Retry (Regenerate)</span>
+                  <input type="text" maxlength="1" id="cfg-keyRetry" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Retry History</span>
+                  <input type="text" maxlength="1" id="cfg-keyRetryHistory" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Erase / Undo</span>
+                  <input type="text" maxlength="1" id="cfg-keyErase" class="aid-qol-key-input">
+                </div>
+              </div>
+
+              <div class="aid-qol-section-title">Input Modes</div>
+              <div class="aid-qol-keys-grid">
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Do Mode</span>
+                  <input type="text" maxlength="1" id="cfg-keyModeDo" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Say Mode</span>
+                  <input type="text" maxlength="1" id="cfg-keyModeSay" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Story Mode</span>
+                  <input type="text" maxlength="1" id="cfg-keyModeStory" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">See Mode</span>
+                  <input type="text" maxlength="1" id="cfg-keyModeSee" class="aid-qol-key-input">
+                </div>
+              </div>
+
+              <div class="aid-qol-section-title">Navigation & Menus</div>
+              <div class="aid-qol-keys-grid">
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Toggle Actions (A+/A-)</span>
+                  <input type="text" maxlength="1" id="cfg-keyToggleActions" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Game Menu (Flame)</span>
+                  <input type="text" maxlength="1" id="cfg-keyGameMenu" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Scroll to Top</span>
+                  <input type="text" maxlength="1" id="cfg-keyScrollTop" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Toggle Play / Beta</span>
+                  <input type="text" maxlength="1" id="cfg-keyToggleSite" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">User Profile</span>
+                  <input type="text" maxlength="1" id="cfg-keyUserProfile" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Continue Adventure</span>
+                  <input type="text" maxlength="1" id="cfg-keyContinueAdventure" class="aid-qol-key-input">
+                </div>
+                <div class="aid-qol-key-item">
+                  <span class="aid-qol-key-label">Edit Character Name</span>
+                  <input type="text" maxlength="1" id="cfg-keyCharacterName" class="aid-qol-key-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- Story Cards Tab -->
+            <div class="aid-qol-tab-panel" id="aid-tab-storycards" style="display:none">
+              <div class="aid-qol-section-title">Modal Sizing & Behavior</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-sc-enabled"> Enable Story Card Drag & Resize
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-sc-remember"> Automatically remember resized dimensions
+                </label>
+              </div>
+              <div class="aid-qol-inline-fields">
+                <div class="aid-qol-input-block">
+                  <label for="cfg-scModalWidth">Default Width (e.g. 680px, 50vw):</label>
+                  <input type="text" id="cfg-scModalWidth" class="aid-qol-text-input">
+                </div>
+                <div class="aid-qol-input-block">
+                  <label for="cfg-scModalHeight">Default Height (e.g. 82vh, 850px):</label>
+                  <input type="text" id="cfg-scModalHeight" class="aid-qol-text-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- General Tab -->
+            <div class="aid-qol-tab-panel" id="aid-tab-general" style="display:none">
+              <div class="aid-qol-section-title">General Preferences</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-gen-autoquote"> Auto-quote empty "Do" actions with quotes ("")
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-gen-autofocus"> Auto-focus prompt input when entering gameplay
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-gen-hotkeys-enabled"> Enable Hotkeys & Keyboard Navigation
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-gen-debug"> Enable Debug Logging in Developer Console
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="aid-qol-config-footer">
+            <button class="aid-qol-btn aid-qol-btn-danger" id="cfg-btn-reset">Reset to Defaults</button>
+            <div class="aid-qol-footer-right">
+              <button class="aid-qol-btn aid-qol-btn-secondary" id="cfg-btn-cancel">Cancel</button>
+              <button class="aid-qol-btn aid-qol-btn-primary" id="cfg-btn-save">Save & Apply</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.overlay = overlay;
+
+      // Close on backdrop click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) this.close();
+      });
+
+      // Close button
+      document.getElementById('cfg-btn-x')?.addEventListener('click', () => this.close());
+      document.getElementById('cfg-btn-cancel')?.addEventListener('click', () => this.close());
+
+      // Save button
+      document.getElementById('cfg-btn-save')?.addEventListener('click', () => this.save());
+
+      // Reset button
+      document.getElementById('cfg-btn-reset')?.addEventListener('click', () => this.resetDefaults());
+
+      // Modifier change listeners
+      ['cfg-mod-alt', 'cfg-mod-ctrl', 'cfg-mod-shift'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => this.updateComboPreview());
+      });
+
+      // Quick key input event handling (press key to set)
+      overlay.querySelectorAll('.aid-qol-key-input').forEach(input => {
+        input.addEventListener('focus', () => input.select());
+        input.addEventListener('keydown', (e) => {
+          if (['Tab', 'Escape'].includes(e.key)) return;
+          e.preventDefault();
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            input.value = '';
+            return;
+          }
+          if (e.key.length === 1) {
+            input.value = e.key.toUpperCase();
+          }
+        });
+      });
+
+      // Tab switching
+      const tabs = overlay.querySelectorAll('.aid-qol-tab-btn');
+      const panels = overlay.querySelectorAll('.aid-qol-tab-panel');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const targetId = tab.dataset.tab;
+          tabs.forEach(t => t.classList.toggle('active', t === tab));
+          panels.forEach(p => {
+            p.style.display = p.id === targetId ? 'block' : 'none';
+          });
+        });
+      });
+    },
+
+    updateComboPreview() {
+      const isMac = navigator.userAgentData?.platform?.toLowerCase().includes('mac') ||
+                    navigator.platform?.toLowerCase().includes('mac');
+      const altName = isMac ? 'Option' : 'Alt';
+      const ctrlName = isMac ? 'Cmd' : 'Ctrl';
+
+      const parts = [];
+      if (document.getElementById('cfg-mod-ctrl')?.checked) parts.push(ctrlName);
+      if (document.getElementById('cfg-mod-alt')?.checked) parts.push(altName);
+      if (document.getElementById('cfg-mod-shift')?.checked) parts.push('Shift');
+      parts.push('[Key]');
+
+      const preview = document.getElementById('cfg-combo-preview');
+      if (preview) {
+        preview.innerText = parts.length > 1 ? parts.join(' + ') : '[Key] (No modifiers)';
+      }
+    },
+
+    populateFields() {
+      // Modifiers
+      const altEl = document.getElementById('cfg-mod-alt');
+      const ctrlEl = document.getElementById('cfg-mod-ctrl');
+      const shiftEl = document.getElementById('cfg-mod-shift');
+      if (altEl) altEl.checked = !!CONFIG.get('hotkeyModifierAlt', true);
+      if (ctrlEl) ctrlEl.checked = !!CONFIG.get('hotkeyModifierCtrl', true);
+      if (shiftEl) shiftEl.checked = !!CONFIG.get('hotkeyModifierShift', false);
+      this.updateComboPreview();
+
+      // Key Inputs
+      const keyFields = [
+        'keyTakeTurn', 'keyContinue', 'keyRetry', 'keyRetryHistory', 'keyErase',
+        'keyModeDo', 'keyModeSay', 'keyModeStory', 'keyModeSee', 'keyToggleActions',
+        'keyGameMenu', 'keyScrollTop', 'keyToggleSite', 'keyUserProfile',
+        'keyContinueAdventure', 'keyCharacterName'
+      ];
+      for (const fieldId of keyFields) {
+        const input = document.getElementById(`cfg-${fieldId}`);
+        if (input) {
+          input.value = String(CONFIG.get(fieldId, DEFAULT_CONFIG[fieldId])).toUpperCase();
+        }
+      }
+
+      // Story Card options
+      const scEnabled = document.getElementById('cfg-sc-enabled');
+      const scRemember = document.getElementById('cfg-sc-remember');
+      const scW = document.getElementById('cfg-scModalWidth');
+      const scH = document.getElementById('cfg-scModalHeight');
+      if (scEnabled) scEnabled.checked = !!CONFIG.get('storyCardModalsEnabled', true);
+      if (scRemember) scRemember.checked = !!CONFIG.get('rememberSCSize', true);
+      if (scW) scW.value = CONFIG.get('scModalWidth', '680px');
+      if (scH) scH.value = CONFIG.get('scModalHeight', '82vh');
+
+      // General options
+      const genAutoQuote = document.getElementById('cfg-gen-autoquote');
+      const genAutoFocus = document.getElementById('cfg-gen-autofocus');
+      const genHotkeys = document.getElementById('cfg-gen-hotkeys-enabled');
+      const genDebug = document.getElementById('cfg-gen-debug');
+      if (genAutoQuote) genAutoQuote.checked = !!CONFIG.get('autoQuoteDo', true);
+      if (genAutoFocus) genAutoFocus.checked = !!CONFIG.get('autoFocusInput', true);
+      if (genHotkeys) genHotkeys.checked = !!CONFIG.get('hotkeysEnabled', true);
+      if (genDebug) genDebug.checked = !!CONFIG.get('debugLogging', false);
+    },
+
+    open() {
+      this.render();
+      this.populateFields();
+      if (this.overlay) {
+        this.overlay.style.display = 'flex';
+      }
+
+      // Bind Escape key
+      this._escHandler = (e) => {
+        if (e.key === 'Escape') this.close();
+      };
+      document.addEventListener('keydown', this._escHandler);
+    },
+
+    close() {
+      if (this.overlay) {
+        this.overlay.style.display = 'none';
+      }
+      if (this._escHandler) {
+        document.removeEventListener('keydown', this._escHandler);
+        this._escHandler = null;
+      }
+    },
+
+    save() {
+      if (!this.overlay) return;
+
+      // Modifiers
+      CONFIG.set('hotkeyModifierAlt', document.getElementById('cfg-mod-alt')?.checked ?? true);
+      CONFIG.set('hotkeyModifierCtrl', document.getElementById('cfg-mod-ctrl')?.checked ?? true);
+      CONFIG.set('hotkeyModifierShift', document.getElementById('cfg-mod-shift')?.checked ?? false);
+
+      // Key inputs
+      const keyFields = [
+        'keyTakeTurn', 'keyContinue', 'keyRetry', 'keyRetryHistory', 'keyErase',
+        'keyModeDo', 'keyModeSay', 'keyModeStory', 'keyModeSee', 'keyToggleActions',
+        'keyGameMenu', 'keyScrollTop', 'keyToggleSite', 'keyUserProfile',
+        'keyContinueAdventure', 'keyCharacterName'
+      ];
+      for (const fieldId of keyFields) {
+        const input = document.getElementById(`cfg-${fieldId}`);
+        if (input && input.value.trim()) {
+          CONFIG.set(fieldId, input.value.trim().toUpperCase());
+        }
+      }
+
+      // Story Card options
+      const scEnabled = document.getElementById('cfg-sc-enabled');
+      const scRemember = document.getElementById('cfg-sc-remember');
+      const scW = document.getElementById('cfg-scModalWidth');
+      const scH = document.getElementById('cfg-scModalHeight');
+      if (scEnabled) CONFIG.set('storyCardModalsEnabled', scEnabled.checked);
+      if (scRemember) CONFIG.set('rememberSCSize', scRemember.checked);
+      if (scW && scW.value.trim()) CONFIG.set('scModalWidth', scW.value.trim());
+      if (scH && scH.value.trim()) CONFIG.set('scModalHeight', scH.value.trim());
+
+      // General options
+      const genAutoQuote = document.getElementById('cfg-gen-autoquote');
+      const genAutoFocus = document.getElementById('cfg-gen-autofocus');
+      const genHotkeys = document.getElementById('cfg-gen-hotkeys-enabled');
+      const genDebug = document.getElementById('cfg-gen-debug');
+      if (genAutoQuote) CONFIG.set('autoQuoteDo', genAutoQuote.checked);
+      if (genAutoFocus) CONFIG.set('autoFocusInput', genAutoFocus.checked);
+      if (genHotkeys) CONFIG.set('hotkeysEnabled', genHotkeys.checked);
+      if (genDebug) CONFIG.set('debugLogging', genDebug.checked);
+
+      Logger.info('Configuration updated via Settings dialog.');
+      this.showToast('✓ AID-QoL Settings saved successfully!');
+      this.close();
+    },
+
+    resetDefaults() {
+      if (!confirm('Are you sure you want to reset all AID-QoL settings to defaults?')) return;
+      CONFIG.resetToDefaults();
+      this.populateFields();
+      this.showToast('✓ Settings reset to defaults!');
+    },
+
+    showToast(msg) {
+      const existing = document.querySelector('.aid-qol-toast');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.className = 'aid-qol-toast';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s ease-out';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 2200);
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
@@ -1139,6 +1842,7 @@
     HotkeysModule,
     ActionToggleModule,
     StoryCardModalModule,
+    ConfigUIModule,
   ];
 
   function bootstrap() {
