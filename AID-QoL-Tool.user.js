@@ -10,9 +10,9 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
 // @license      MIT
-// @namespace    https://github.com/viosca/AID-QoL-Tool/tree/v3-rebuild
-// @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/v3-rebuild/AID-QoL-Tool.user.js
-// @updateURL    https://github.com/viosca/AID-QoL-Tool/raw/v3-rebuild/AID-QoL-Tool.user.js
+// @namespace    https://github.com/viosca/AID-QoL-Tool/tree/main
+// @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/main/AID-QoL-Tool.user.js
+// @updateURL    https://github.com/viosca/AID-QoL-Tool/raw/main/AID-QoL-Tool.user.js
 // @run-at       document-idle
 // ==/UserScript==
 
