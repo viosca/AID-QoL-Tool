@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.1.1
+// @version      3.2.0
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -652,7 +652,7 @@
         #${this.buttonId}:hover,
         #aid-qol-settings-btn:hover {
           background-color: rgba(255, 255, 255, 0.18);
-          border-color: rgba(255, 255, 255, 0.3);
+          border-color: var(--color-aid-primary, rgba(249, 115, 22, 0.5));
           color: #ffffff;
         }
 
@@ -1177,8 +1177,8 @@
 
         #${this.resizerId}:hover,
         #${this.resizerId}.resizing {
-          background-color: rgba(99, 102, 241, 0.6) !important;
-          box-shadow: 0 0 6px rgba(99, 102, 241, 0.8) !important;
+          background-color: var(--color-aid-primary, rgba(249, 115, 22, 0.75)) !important;
+          box-shadow: 0 0 8px var(--color-aid-primary, rgba(249, 115, 22, 0.9)) !important;
         }
       `);
     },
@@ -1248,50 +1248,79 @@
      * @param {HTMLElement} rootCol
      */
     bindDragEvents(resizer, rootCol) {
+      let lastMouseDownTime = 0;
+      let lastMouseDownX = 0;
+      let lastMouseDownY = 0;
+
       resizer.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
+
+        // Double-click detection via rapid successive clicks (within 350ms and 10px)
+        const now = Date.now();
+        const dist = Math.hypot(e.clientX - lastMouseDownX, e.clientY - lastMouseDownY);
+        if (now - lastMouseDownTime < 350 && dist < 10) {
+          lastMouseDownTime = 0;
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleToggleWidth(rootCol);
+          return;
+        }
+        lastMouseDownTime = now;
+        lastMouseDownX = e.clientX;
+        lastMouseDownY = e.clientY;
+
         e.preventDefault();
         e.stopPropagation();
 
         const startX = e.clientX;
         const startWidth = rootCol.offsetWidth;
-
-        resizer.classList.add('resizing');
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
+        let isDragging = false;
 
         // Transparent full-screen overlay during drag to prevent iframe / selection traps
         let dragOverlay = document.getElementById('aid-qol-menu-drag-overlay');
         if (!dragOverlay) {
           dragOverlay = document.createElement('div');
           dragOverlay.id = 'aid-qol-menu-drag-overlay';
-          dragOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;cursor:col-resize;user-select:none;';
+          dragOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;cursor:col-resize;user-select:none;display:none;';
           document.body.appendChild(dragOverlay);
         }
-        dragOverlay.style.display = 'block';
 
         const onMouseMove = (moveEvent) => {
           const deltaX = startX - moveEvent.clientX;
-          const minW = 320;
-          const maxW = Math.max(minW, Math.min(window.innerWidth - 250, Math.round(window.innerWidth * 0.85)));
-          const targetW = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
 
-          rootCol.style.width = `${targetW}px`;
+          // Only activate drag mode once mouse has actually moved > 3px
+          if (!isDragging && Math.abs(deltaX) > 3) {
+            isDragging = true;
+            resizer.classList.add('resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            dragOverlay.style.display = 'block';
+          }
+
+          if (isDragging) {
+            const minW = 320;
+            const maxW = Math.max(minW, Math.min(window.innerWidth - 250, Math.round(window.innerWidth * 0.85)));
+            const targetW = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
+
+            rootCol.style.width = `${targetW}px`;
+          }
         };
 
         const onMouseUp = () => {
           document.removeEventListener('mousemove', onMouseMove);
           document.removeEventListener('mouseup', onMouseUp);
-          if (dragOverlay) dragOverlay.style.display = 'none';
 
-          resizer.classList.remove('resizing');
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
+          if (isDragging) {
+            dragOverlay.style.display = 'none';
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
 
-          const finalW = rootCol.offsetWidth;
-          if (finalW >= 320) {
-            CONFIG.set('gameMenuWidth', `${finalW}px`);
-            Logger.log(`Saved Game Menu width: ${finalW}px`);
+            const finalW = rootCol.offsetWidth;
+            if (finalW >= 320) {
+              CONFIG.set('gameMenuWidth', `${finalW}px`);
+              Logger.log(`Saved Game Menu width: ${finalW}px`);
+            }
           }
         };
 
@@ -1299,35 +1328,43 @@
         document.addEventListener('mouseup', onMouseUp);
       });
 
-      // Double-click to toggle / reset to stock default width (424px)
+      // Also listen to native dblclick event as a backup
       resizer.addEventListener('dblclick', (e) => {
         e.preventDefault();
         e.stopPropagation();
-
-        const currentW = rootCol.offsetWidth;
-        const defaultW = 424;
-
-        if (Math.abs(currentW - defaultW) > 10) {
-          // Custom width -> Reset to default 424px
-          rootCol._lastCustomWidth = `${currentW}px`;
-          rootCol.style.width = `${defaultW}px`;
-          CONFIG.set('gameMenuWidth', `${defaultW}px`);
-          Logger.log('Reset Game Menu width to default 424px');
-        } else if (rootCol._lastCustomWidth && parseInt(rootCol._lastCustomWidth, 10) !== defaultW) {
-          // Default width -> Restore previously used custom width
-          const restoreW = this.getValidWidth(rootCol._lastCustomWidth);
-          rootCol.style.width = `${restoreW}px`;
-          CONFIG.set('gameMenuWidth', `${restoreW}px`);
-          Logger.log(`Restored Game Menu width to ${restoreW}px`);
-        } else {
-          // Default width -> Expand to 600px preview
-          const expandedW = Math.min(650, Math.round(window.innerWidth * 0.5));
-          rootCol._lastCustomWidth = `${expandedW}px`;
-          rootCol.style.width = `${expandedW}px`;
-          CONFIG.set('gameMenuWidth', `${expandedW}px`);
-          Logger.log(`Expanded Game Menu width to ${expandedW}px`);
-        }
+        this.handleToggleWidth(rootCol);
       });
+    },
+
+    /**
+     * Toggles Game Menu between custom width and default 424px.
+     * @param {HTMLElement} rootCol
+     */
+    handleToggleWidth(rootCol) {
+      if (!rootCol || !rootCol.isConnected) return;
+      const currentW = rootCol.offsetWidth;
+      const defaultW = 424;
+
+      if (Math.abs(currentW - defaultW) > 10) {
+        // Custom width -> Reset to default 424px
+        rootCol._lastCustomWidth = `${currentW}px`;
+        rootCol.style.width = `${defaultW}px`;
+        CONFIG.set('gameMenuWidth', `${defaultW}px`);
+        Logger.log('Reset Game Menu width to default 424px');
+      } else if (rootCol._lastCustomWidth && parseInt(rootCol._lastCustomWidth, 10) !== defaultW) {
+        // Default width -> Restore previously used custom width
+        const restoreW = this.getValidWidth(rootCol._lastCustomWidth);
+        rootCol.style.width = `${restoreW}px`;
+        CONFIG.set('gameMenuWidth', `${restoreW}px`);
+        Logger.log(`Restored Game Menu width to ${restoreW}px`);
+      } else {
+        // Default width -> Expand to 600px preview
+        const expandedW = Math.min(650, Math.round(window.innerWidth * 0.5));
+        rootCol._lastCustomWidth = `${expandedW}px`;
+        rootCol.style.width = `${expandedW}px`;
+        CONFIG.set('gameMenuWidth', `${expandedW}px`);
+        Logger.log(`Expanded Game Menu width to ${expandedW}px`);
+      }
     },
 
     /**
@@ -1394,25 +1431,25 @@
         #aid-qol-config-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.78);
+          background: rgba(0, 0, 0, 0.82);
           backdrop-filter: blur(4px);
           z-index: 1000000;
           display: none;
           align-items: center;
           justify-content: center;
-          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          font-family: var(--font-tamagui-gameplay-sans, var(--f-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif));
           box-sizing: border-box;
         }
 
         .aid-qol-config-modal {
-          background: #141419;
-          color: #f1f1f4;
+          background: #141312;
+          color: #fbf6ee;
           width: 620px;
           max-width: 92vw;
           max-height: 88vh;
-          border: 1px solid #2e2e3d;
+          border: 1px solid var(--borderColor, #332d25);
           border-radius: 14px;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+          box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9), 0 0 1px 1px rgba(249, 115, 22, 0.15);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1430,8 +1467,8 @@
           align-items: center;
           justify-content: space-between;
           padding: 16px 20px;
-          background: #1a1a23;
-          border-bottom: 1px solid #2e2e3d;
+          background: #1a1815;
+          border-bottom: 1px solid var(--borderColor, #332d25);
         }
 
         .aid-qol-config-title {
@@ -1440,22 +1477,24 @@
           gap: 10px;
           font-size: 16px;
           font-weight: 600;
-          color: #fff;
+          color: #fbf6ee;
         }
 
         .aid-qol-config-badge {
           font-size: 11px;
-          font-weight: 500;
-          background: #2e2e42;
-          color: #a5b4fc;
+          font-weight: 600;
+          background: rgba(249, 115, 22, 0.16);
+          color: var(--color-aid-primary, #fb923c);
+          border: 1px solid rgba(249, 115, 22, 0.35);
           padding: 2px 7px;
           border-radius: 10px;
+          letter-spacing: 0.3px;
         }
 
         .aid-qol-config-close-btn {
           background: transparent;
           border: none;
-          color: #8b8b9e;
+          color: #a89f91;
           font-size: 18px;
           cursor: pointer;
           padding: 4px 8px;
@@ -1463,14 +1502,14 @@
           transition: all 0.15s;
         }
         .aid-qol-config-close-btn:hover {
-          background: #2e2e3d;
-          color: #fff;
+          background: #2a251e;
+          color: #ffffff;
         }
 
         .aid-qol-config-tabs {
           display: flex;
-          background: #171720;
-          border-bottom: 1px solid #2e2e3d;
+          background: #161412;
+          border-bottom: 1px solid var(--borderColor, #332d25);
           padding: 0 16px;
           gap: 8px;
         }
@@ -1479,7 +1518,7 @@
           background: transparent;
           border: none;
           border-bottom: 2px solid transparent;
-          color: #8b8b9e;
+          color: #a89f91;
           font-size: 13px;
           font-weight: 500;
           padding: 12px 14px;
@@ -1487,11 +1526,12 @@
           transition: all 0.15s;
         }
         .aid-qol-tab-btn:hover {
-          color: #e2e8f0;
+          color: #fbf6ee;
         }
         .aid-qol-tab-btn.active {
-          color: #6366f1;
-          border-bottom-color: #6366f1;
+          color: var(--color-aid-primary, #f97316);
+          border-bottom-color: var(--color-aid-primary, #f97316);
+          font-weight: 600;
         }
 
         .aid-qol-config-body {
@@ -1503,9 +1543,9 @@
         .aid-qol-section-title {
           font-size: 11px;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
           font-weight: 700;
-          color: #818cf8;
+          color: var(--color-aid-primary, #fb923c);
           margin: 18px 0 10px 0;
         }
         .aid-qol-section-title:first-child {
@@ -1517,10 +1557,10 @@
           align-items: center;
           flex-wrap: wrap;
           gap: 16px;
-          background: #1c1c26;
+          background: #1b1916;
           padding: 12px 16px;
           border-radius: 8px;
-          border: 1px solid #282836;
+          border: 1px solid #2e2820;
         }
 
         .aid-qol-checkbox-label {
@@ -1528,12 +1568,12 @@
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          color: #e2e8f0;
+          color: #e5dec9;
           cursor: pointer;
           user-select: none;
         }
         .aid-qol-checkbox-label input[type="checkbox"] {
-          accent-color: #6366f1;
+          accent-color: var(--color-aid-primary, #f97316);
           width: 16px;
           height: 16px;
           cursor: pointer;
@@ -1542,11 +1582,12 @@
         .aid-qol-combo-preview {
           margin-left: auto;
           font-size: 12px;
-          color: #94a3b8;
+          color: #a89f91;
         }
         .aid-qol-combo-preview code {
-          background: #272738;
-          color: #38bdf8;
+          background: #28231b;
+          color: var(--color-aid-primary, #fb923c);
+          border: 1px solid rgba(249, 115, 22, 0.25);
           padding: 2px 6px;
           border-radius: 4px;
           font-family: ui-monospace, monospace;
@@ -1562,15 +1603,15 @@
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #1a1a23;
+          background: #1b1916;
           padding: 8px 12px;
           border-radius: 8px;
-          border: 1px solid #262635;
+          border: 1px solid #2e2820;
         }
 
         .aid-qol-key-label {
           font-size: 13px;
-          color: #cbd5e1;
+          color: #d1c7b7;
         }
 
         .aid-qol-key-input {
@@ -1580,17 +1621,17 @@
           font-weight: 700;
           font-size: 14px;
           font-family: ui-monospace, monospace;
-          background: #252535;
-          color: #38bdf8;
-          border: 1px solid #3c3c54;
+          background: #24201a;
+          color: var(--color-aid-primary, #fb923c);
+          border: 1px solid #3d362b;
           border-radius: 6px;
           outline: none;
           transition: all 0.15s;
         }
         .aid-qol-key-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
-          background: #2e2e42;
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
+          background: #2c2720;
         }
 
         .aid-qol-field-group {
@@ -1607,17 +1648,17 @@
         .aid-qol-input-block label {
           display: block;
           font-size: 12px;
-          color: #94a3b8;
+          color: #a89f91;
           margin-bottom: 6px;
         }
 
         .aid-qol-text-input {
           width: 100%;
           box-sizing: border-box;
-          background: #1c1c26;
-          border: 1px solid #2e2e3d;
+          background: #1b1916;
+          border: 1px solid var(--borderColor, #332d25);
           border-radius: 6px;
-          color: #f1f1f4;
+          color: #fbf6ee;
           padding: 8px 12px;
           font-size: 13px;
           font-family: ui-monospace, monospace;
@@ -1625,8 +1666,8 @@
           transition: all 0.15s;
         }
         .aid-qol-text-input:focus {
-          border-color: #6366f1;
-          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.35);
         }
 
         .aid-qol-config-footer {
@@ -1634,8 +1675,8 @@
           align-items: center;
           justify-content: space-between;
           padding: 14px 20px;
-          background: #1a1a23;
-          border-top: 1px solid #2e2e3d;
+          background: #1a1815;
+          border-top: 1px solid var(--borderColor, #332d25);
         }
 
         .aid-qol-footer-right {
@@ -1654,30 +1695,32 @@
         }
 
         .aid-qol-btn-primary {
-          background: #4f46e5;
-          color: #fff;
+          background: var(--color-aid-primary, #ea580c);
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
         }
         .aid-qol-btn-primary:hover {
-          background: #4338ca;
+          background: #d94e07;
+          box-shadow: 0 4px 12px rgba(234, 88, 12, 0.5);
         }
 
         .aid-qol-btn-secondary {
-          background: #262635;
-          color: #cbd5e1;
-          border: 1px solid #36364a;
+          background: #26221c;
+          color: #d1c7b7;
+          border: 1px solid #383228;
         }
         .aid-qol-btn-secondary:hover {
-          background: #323245;
-          color: #fff;
+          background: #312c24;
+          color: #ffffff;
         }
 
         .aid-qol-btn-danger {
           background: transparent;
-          color: #ef4444;
-          border: 1px solid #451a1a;
+          color: #f87171;
+          border: 1px solid rgba(239, 68, 68, 0.3);
         }
         .aid-qol-btn-danger:hover {
-          background: #381212;
+          background: rgba(239, 68, 68, 0.15);
           color: #fca5a5;
         }
 
@@ -1686,12 +1729,12 @@
           position: fixed;
           bottom: 24px;
           right: 24px;
-          background: #1e1e2d;
-          color: #a5b4fc;
-          border: 1px solid #4338ca;
+          background: #201c17;
+          color: var(--color-aid-primary, #fb923c);
+          border: 1px solid var(--color-aid-primary, #ea580c);
           padding: 10px 18px;
           border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
           font-size: 13px;
           font-weight: 500;
           z-index: 10000000;
@@ -1716,7 +1759,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.0.0</span>
+              <span class="aid-qol-config-badge">v3.2.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
