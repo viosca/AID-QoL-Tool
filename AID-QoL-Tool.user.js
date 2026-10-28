@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.3.4
+// @version      3.3.5
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -196,8 +196,9 @@
       element._valueTracker.setValue(value === '' ? ' ' : '');
     }
 
-    // Dispatch input and change events
-    element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    // Dispatch input and change events for synthetic React listeners
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   }
 
   /**
@@ -287,70 +288,154 @@
     },
 
     /**
-     * Binds quote management and observers to the story input textarea.
+     * Determines whether the game is currently in "Do" mode.
+     * Checks both the textarea placeholder and the mode switcher button.
+     * @param {HTMLTextAreaElement} textarea
+     * @returns {boolean}
+     */
+    isDoMode(textarea) {
+      const placeholder = (textarea?.getAttribute('placeholder') || '').toLowerCase();
+      if (placeholder.includes('what do you do') || placeholder.startsWith('do')) {
+        return true;
+      }
+      const modeBtn = document.querySelector('[aria-label="Change input mode" i]');
+      if (modeBtn) {
+        const text = modeBtn.textContent.trim().toLowerCase();
+        if (text === 'do' || text.startsWith('do')) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    /**
+     * Binds quote management, event listeners, and observers to the story input textarea.
      * @param {HTMLTextAreaElement} textarea
      */
     attachToGameplayInput(textarea) {
       const applyQuotesLogic = () => {
         if (!CONFIG.get('autoQuoteDo')) return;
 
-        const placeholder = textarea.getAttribute('placeholder') || '';
-        const trimmedVal = textarea.value.trim();
+        const inDoMode = this.isDoMode(textarea);
+        const val = textarea.value;
+        const trimmedVal = val.trim();
 
-        // Mode: "Do" ("What do you do?")
-        if (placeholder.startsWith('What do you do?')) {
+        if (inDoMode) {
           if (trimmedVal === '') {
-            // Empty input -> insert pair of quotes and place cursor inside
+            // Empty input in Do mode -> insert quotes and place cursor inside
             setNativeValue(textarea, '""');
             setTimeout(() => {
-              textarea.focus();
-              textarea.setSelectionRange(1, 1);
+              try {
+                textarea.focus();
+                textarea.setSelectionRange(1, 1);
+              } catch (_) {}
             }, 30);
             Logger.log('Auto-quoted empty Do action');
-          } else if (!textarea.value.includes('"')) {
-            // User typed text without quotes -> wrap in quotes
+          } else if (!val.includes('"')) {
+            // User typed text without quotes -> wrap in quotes preserving cursor
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            setNativeValue(textarea, `"${textarea.value}"`);
+            setNativeValue(textarea, `"${val}"`);
             setTimeout(() => {
-              textarea.focus();
-              // Preserve cursor position offset by leading quote
-              textarea.setSelectionRange(start + 1, end + 1);
+              try {
+                textarea.focus();
+                textarea.setSelectionRange(start + 1, end + 1);
+              } catch (_) {}
             }, 30);
             Logger.log('Wrapped text in quotes for Do action');
           }
-        } 
-        // Mode switched away from "Do" (e.g. Say, Story, Guide, See)
-        else {
-          // If the textarea only contains empty quotes left over from Do mode, remove them
+        } else {
+          // Switched away from "Do" mode -> remove empty quotes if left behind
           if (trimmedVal === '""') {
             setNativeValue(textarea, '');
             setTimeout(() => {
-              textarea.focus();
+              try {
+                textarea.focus();
+              } catch (_) {}
             }, 30);
             Logger.log('Cleaned leftover quotes on mode switch');
           }
         }
       };
 
-      // Run on initial discovery
-      setTimeout(applyQuotesLogic, 100);
+      // Periodic check after submitting turns to ensure the new empty turn is quoted
+      const checkPostSubmit = () => {
+        const checkDelays = [60, 150, 300, 600, 1000, 1600];
+        checkDelays.forEach(delay => {
+          setTimeout(() => {
+            if (this.isDoMode(textarea) && textarea.value.trim() === '') {
+              applyQuotesLogic();
+            }
+          }, delay);
+        });
+      };
 
-      // Watch for mode/placeholder changes (e.g. clicking Do -> Say -> Story)
+      // 1. Initial check (staggered to catch slow React hydration)
+      [50, 150, 350, 700].forEach(delay => setTimeout(applyQuotesLogic, delay));
+
+      // 2. Watch for mode, placeholder, class, or disabled attribute changes
       const attrObserver = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-          if (mutation.attributeName === 'placeholder') {
-            Logger.log('Placeholder changed to:', textarea.getAttribute('placeholder'));
-            setTimeout(applyQuotesLogic, 50);
+          if (['placeholder', 'disabled', 'class', 'style'].includes(mutation.attributeName)) {
+            applyQuotesLogic();
           }
         }
       });
+      attrObserver.observe(textarea, {
+        attributes: true,
+        attributeFilter: ['placeholder', 'disabled', 'class', 'style']
+      });
 
-      attrObserver.observe(textarea, { attributes: true, attributeFilter: ['placeholder'] });
+      // 3. User interaction events: Focus & Click
+      textarea.addEventListener('focus', () => {
+        if (this.isDoMode(textarea) && textarea.value.trim() === '') {
+          applyQuotesLogic();
+        }
+      });
 
-      // Auto-focus input when returning to the gameplay view
+      textarea.addEventListener('click', () => {
+        if (this.isDoMode(textarea) && textarea.value.trim() === '') {
+          applyQuotesLogic();
+        }
+      });
+
+      // 4. Turn submission via Enter key
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+          // If in Do mode and text lacks quotes, wrap it before submit sends it
+          if (this.isDoMode(textarea)) {
+            const val = textarea.value.trim();
+            if (val && !textarea.value.includes('"')) {
+              setNativeValue(textarea, `"${val}"`);
+            }
+          }
+          checkPostSubmit();
+        }
+      });
+
+      // 5. Global clicks on Submit / Take Turn / Mode switch buttons
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target) return;
+
+        // Mode switch buttons or dropdown options
+        if (target.closest('[aria-label="Change input mode" i], [aria-label*="mode" i]')) {
+          [60, 150, 300].forEach(delay => setTimeout(applyQuotesLogic, delay));
+        }
+
+        // Submit action button / Paper plane / Take a turn
+        if (target.closest('[data-fs-element="AID Submit" i], [aria-label="Submit action" i], [aria-label="Command: take a turn" i]')) {
+          checkPostSubmit();
+        }
+      }, { passive: true });
+
+      // 6. Auto-focus input when returning to the gameplay view
       if (CONFIG.get('autoFocusInput')) {
-        setTimeout(() => textarea.focus(), 150);
+        setTimeout(() => {
+          try {
+            textarea.focus();
+          } catch (_) {}
+        }, 150);
       }
     }
   };
@@ -510,9 +595,15 @@
           }
         },
         () => {
-          // Refocus input
+          // Refocus input and ensure quotes if in Do mode
           const input = document.getElementById('game-text-input');
-          if (input) input.focus();
+          if (input) {
+            input.focus();
+            if (modeName.toLowerCase() === 'do' && input.value.trim() === '') {
+              setNativeValue(input, '""');
+              try { input.setSelectionRange(1, 1); } catch (_) {}
+            }
+          }
         }
       ], 60);
     },
@@ -2060,7 +2151,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.3.4</span>
+              <span class="aid-qol-config-badge">v3.3.5</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2531,7 +2622,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.4 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.5 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
