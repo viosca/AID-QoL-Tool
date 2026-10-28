@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.0.0)
+# AID-QoL-Tool (v3.3.4)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -47,9 +47,10 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 *All hotkeys and modifier keys (Alt, Ctrl, Shift) can be customized to any key you prefer in the Settings Dialog.*
 
 ### 3. Action Visibility Toggle (`A+` / `A-`)
-* Adds an **`A+` / `A-`** toggle button directly into the story header bar (next to Undo).
-* Toggle with hotkey: `Alt+Ctrl+U`.
-* Hides `> You ...` action text rows to provide a clean, book-like reading experience without collapsing ancestor layouts or flickering.
+* **Header Bar Integration**: Adds native-styled `A+` / `A-` and `⚙` (Settings) buttons directly into the navigation toolbar next to Undo/Redo.
+* **Dynamic Theme Color Sync**: Cloned directly from native toolbar elements to match AI Dungeon's squircle shape, sizing, and spacing. Dynamically inherits colors from active game themes (Default, Atlantis, Cyber, S'mores, Orcish, etc.).
+* **Preserves Story Paragraph Spacing**: Collapsing actions doesn't abruptly smash paragraphs together; actions collapse to an invisible `1.5em` blank line spacer, preserving natural book-like paragraph breaks.
+* **Toggle Shortcut**: Press `Alt+Ctrl+U` to toggle action visibility anytime without using the mouse.
 
 ### 4. Story Card Modals (Drag, Top-Left Anchored Resize, Auto-Remember)
 * **Smooth Header Dragging**: Grab anywhere on the visible modal header row to reposition Story Cards.
@@ -65,15 +66,16 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Auto-Remember Width**: Automatically saves your preferred sidebar width so it stays that size next time you open the menu.
 
 ### 6. Native In-Game Configuration Dialog
-* Modern, dark-themed Settings Dialog replacing legacy MonkeyConfig.
+* Modern, AID-themed Settings Dialog replacing legacy config tools.
+* **Seamless AID Aesthetic**: Styled with AID-native dark colors, subtle borders, and distinct toggle switch check indicators.
 * Easily accessed via:
-  * **Header Button**: Click the `⚙` button next to `A+` in the story navigation bar.
+  * **Header Button**: Click the `⚙` squircle button in the story navigation bar.
   * **Keyboard Shortcut**: `Alt+Ctrl+,`.
   * **Tampermonkey Menu**: `⚙️ Configure Settings (Hotkeys, Sizes, Toggles)`.
 * **Full Customization**:
-  * **Hotkeys**: Set custom keys for turn actions, mode switches, and navigation. Just click any key box and press your desired key.
+  * **Hotkeys**: Interactive hotkey binder for turns, story modes, and navigation.
   * **Modifier Keys**: Choose any combination of `Alt`, `Ctrl`, and `Shift`.
-  * **Story Card & Menu Dimensions**: Set default width/height and toggle auto-remember.
+  * **Story Card & Menu Dimensions**: Set default modal width/height and Game Menu sidebar width with live width updates and auto-remember toggles.
   * **General Options**: Toggle auto-quoting, auto-focus, action visibility, and debug logs.
   * **Reset to Defaults**: One-click restore button.
 
