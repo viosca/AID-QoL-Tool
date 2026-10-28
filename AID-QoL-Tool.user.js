@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.3.3
+// @version      3.3.4
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -629,25 +629,60 @@
     injectStyles() {
       GM_addStyle(`
         /* 
-         * Hide ONLY the specific story action segment containing #action-icon.
-         * We specifically target .gameplay-story-edit-dim-target with a child #action-icon
-         * so we NEVER match parent containers like #gameplay-story-scrollview or #__next!
+         * Collapse story actions to a blank line (paragraph separator).
+         * Replaces full removal (display: none) with an invisible 1.5em spacer block
+         * so paragraphs separated by actions maintain natural story paragraph separation.
          */
-        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(> #action-icon),
-        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(> [id="action-icon"]) {
-          display: none !important;
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-icon),
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-text) {
+          display: block !important;
           visibility: hidden !important;
-          height: 0 !important;
-          min-height: 0 !important;
+          height: 1.5em !important;
+          min-height: 1.5em !important;
+          max-height: 1.5em !important;
           margin-top: 0 !important;
           margin-bottom: 0 !important;
           padding-top: 0 !important;
           padding-bottom: 0 !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
+          user-select: none !important;
         }
 
-        /* Read page blockquote support */
-        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote {
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-icon) *,
+        body.aid-actions-hidden .gameplay-story-edit-dim-target:has(#action-text) * {
           display: none !important;
+          visibility: hidden !important;
+        }
+
+        /* Read page blockquote support - collapse to blank line */
+        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote {
+          display: block !important;
+          visibility: hidden !important;
+          height: 1.5em !important;
+          min-height: 1.5em !important;
+          max-height: 1.5em !important;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding: 0 !important;
+          border: none !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
+          user-select: none !important;
+        }
+
+        body.aid-actions-hidden [aria-label="Adventure content" i] blockquote * {
+          display: none !important;
+          visibility: hidden !important;
         }
 
         /* Native-cloned QoL Buttons in Navigation Bar */
@@ -2025,7 +2060,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.3.3</span>
+              <span class="aid-qol-config-badge">v3.3.4</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2496,7 +2531,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.3 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.4 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
