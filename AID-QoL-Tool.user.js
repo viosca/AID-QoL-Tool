@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.3.0
+// @version      3.3.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -588,14 +588,14 @@
     init() {
       Logger.info('Initializing ActionToggleModule...');
 
-      // Inject CSS rules for hiding actions and styling the header button
+      // Inject CSS rules for hiding actions and toggle styling
       this.injectStyles();
 
       // Apply initial saved visibility state to the document
       this.applyVisibility();
 
-      // Watch for the header / navigation bar to inject the toggle button
-      observeSelector('[aria-label="Undo change" i], [aria-label="Navigation bar" i]', (target) => {
+      // Watch for the Undo button in the navigation bar to inject native button clones
+      observeSelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]', (target) => {
         this.injectButton(target);
       });
 
@@ -650,58 +650,31 @@
           display: none !important;
         }
 
-        /* QoL Buttons in Navigation Bar - 100% Theme Matched in Alignment, Colors & Squircle Shape */
+        /* Native-cloned QoL Buttons */
         #${this.buttonId},
         #aid-qol-settings-btn {
-          display: inline-flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          box-sizing: border-box !important;
-          height: var(--t-size-5, 32px) !important;
-          min-height: var(--t-size-5, 32px) !important;
-          max-height: var(--t-size-5, 32px) !important;
-          width: var(--t-size-5, 32px) !important;
-          min-width: var(--t-size-5, 32px) !important;
-          max-width: var(--t-size-5, 32px) !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          border-radius: var(--btn-theme-radius, var(--t-radius-10, 10px)) !important;
-          border: 1px solid var(--btn-theme-border, var(--borderColor, rgba(255, 255, 255, 0.2))) !important;
-          background-color: var(--btn-theme-bg, var(--blackA7, var(--background, rgba(0, 0, 0, 0.45)))) !important;
-          color: var(--btn-theme-color, var(--color, var(--core9, #e2e8f0))) !important;
-          font-family: var(--f-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
-          font-size: 12px !important;
-          font-weight: 700 !important;
-          letter-spacing: 0 !important;
-          line-height: 1 !important;
           cursor: pointer !important;
+          pointer-events: auto !important;
           user-select: none !important;
-          position: relative !important;
-          overflow: hidden !important;
-          vertical-align: middle !important;
-          box-shadow: 0 0 0 var(--shadowColor, transparent) !important;
-          transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, transform 0.1s ease !important;
         }
 
-        #aid-qol-settings-btn {
-          font-size: 15px !important;
+        #${this.buttonId} > span,
+        #aid-qol-settings-btn > span {
+          pointer-events: none !important;
+          user-select: none !important;
         }
 
         #${this.buttonId}:active,
         #aid-qol-settings-btn:active {
-          transform: scale(0.94) !important;
+          transform: scale(0.94);
         }
 
-        #${this.buttonId}:hover,
-        #aid-qol-settings-btn:hover {
-          background-color: var(--backgroundHover, var(--hover-background, rgba(255, 255, 255, 0.12))) !important;
-          border-color: var(--borderColorHover, var(--hover-borderColor, var(--btn-theme-border, var(--color-aid-primary, #f97316)))) !important;
-          color: var(--colorHover, var(--color, #ffffff)) !important;
-        }
-
+        /* Action toggle OFF indicator */
         #${this.buttonId}.actions-off {
-          background-color: rgba(239, 68, 68, 0.2) !important;
+          background-color: rgba(239, 68, 68, 0.25) !important;
           border-color: rgba(239, 68, 68, 0.6) !important;
+        }
+        #${this.buttonId}.actions-off > span {
           color: #fca5a5 !important;
         }
       `);
@@ -730,10 +703,18 @@
       if (!btn) return;
 
       const isVisible = CONFIG.get('actionsVisible', true);
-      btn.innerText = isVisible ? 'A+' : 'A-';
-      btn.title = isVisible 
+      const textSpan = btn.firstElementChild;
+      if (textSpan) {
+        textSpan.innerText = isVisible ? 'A+' : 'A-';
+      } else {
+        btn.innerText = isVisible ? 'A+' : 'A-';
+      }
+
+      const titleText = isVisible 
         ? 'Actions: Visible (Click or Alt+Ctrl+U to hide)' 
         : 'Actions: Hidden (Click or Alt+Ctrl+U to show)';
+      btn.title = titleText;
+      btn.setAttribute('aria-label', titleText);
 
       if (isVisible) {
         btn.classList.remove('actions-off');
@@ -746,130 +727,163 @@
       const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
       const btn = document.getElementById(this.buttonId);
       const settingsBtn = document.getElementById('aid-qol-settings-btn');
-      if (!btn || !settingsBtn) return;
+      if (!undoBtn || !btn || !settingsBtn) return;
 
-      if (undoBtn) {
-        // Sync class list from undoBtn if it changed
-        if (undoBtn.className && (!btn.className || btn.className !== undoBtn.className)) {
-          const off = btn.classList.contains('actions-off');
-          btn.className = undoBtn.className;
-          settingsBtn.className = undoBtn.className;
-          if (off) btn.classList.add('actions-off');
+      const undoParent = undoBtn.parentElement;
+      const actionWrapper = document.getElementById('aid-qol-action-toggle-wrapper');
+      const settingsWrapper = document.getElementById('aid-qol-settings-wrapper');
+
+      if (undoParent && actionWrapper && settingsWrapper) {
+        if (actionWrapper.className !== undoParent.className) {
+          actionWrapper.className = undoParent.className;
         }
+        if (settingsWrapper.className !== undoParent.className) {
+          settingsWrapper.className = undoParent.className;
+        }
+      }
 
-        const computed = getComputedStyle(undoBtn);
-        const borderColor = computed.borderTopColor || computed.borderColor;
-        const bgColor = computed.backgroundColor;
-        const color = computed.color;
-        const radius = computed.borderTopLeftRadius || computed.borderRadius;
+      // Sync button classes (stripping disabled attributes)
+      if (undoBtn.className) {
+        const isOff = btn.classList.contains('actions-off');
+        const cleanClasses = undoBtn.className
+          .replace(/\b_pe-none\b/g, '')
+          .replace(/\b_o-0--5\b/g, '')
+          .replace(/\b_o-0\b/g, '')
+          .replace(/\b_o-0--4\b/g, '')
+          .trim();
 
-        [btn, settingsBtn].forEach(el => {
-          if (borderColor && borderColor !== 'rgba(0, 0, 0, 0)' && borderColor !== 'transparent') {
-            el.style.setProperty('--btn-theme-border', borderColor);
-          }
-          if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
-            el.style.setProperty('--btn-theme-bg', bgColor);
-          }
-          if (color && color !== 'rgba(0, 0, 0, 0)' && color !== 'transparent') {
-            el.style.setProperty('--btn-theme-color', color);
-          }
-          if (radius) {
-            el.style.setProperty('--btn-theme-radius', radius);
-          }
-        });
+        btn.className = cleanClasses + (isOff ? ' actions-off' : '');
+        settingsBtn.className = cleanClasses;
+      }
 
-        // Ensure wrappers have the latest theme classes matching undo's parent
-        const undoParent = undoBtn.parentElement;
-        if (undoParent && undoParent.classList.contains('t_sub_theme')) {
-          const actionWrapper = document.getElementById('aid-qol-action-toggle-wrapper');
-          const settingsWrapper = document.getElementById('aid-qol-settings-wrapper');
-          if (actionWrapper && actionWrapper.className !== undoParent.className) {
-            actionWrapper.className = undoParent.className;
-          }
-          if (settingsWrapper && settingsWrapper.className !== undoParent.className) {
-            settingsWrapper.className = undoParent.className;
-          }
+      // Sync inner span classes for icon and text theme colors
+      const undoSpan = undoBtn.firstElementChild;
+      const actionSpan = btn.firstElementChild;
+      const settingsSpan = settingsBtn.firstElementChild;
+      if (undoSpan && actionSpan && settingsSpan) {
+        if (actionSpan.className !== undoSpan.className) {
+          actionSpan.className = undoSpan.className;
+        }
+        if (settingsSpan.className !== undoSpan.className) {
+          settingsSpan.className = undoSpan.className;
         }
       }
     },
 
     injectButton(targetElement) {
-      let btn = document.getElementById(this.buttonId);
-      let settingsBtn = document.getElementById('aid-qol-settings-btn');
+      const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
+      if (!undoBtn || !undoBtn.parentElement) return;
 
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.id = this.buttonId;
-        btn.type = 'button';
-        btn.addEventListener('click', (e) => {
+      const buttonRow = undoBtn.parentElement.parentElement || undoBtn.parentElement;
+      if (!buttonRow) return;
+
+      let actionWrapper = document.getElementById('aid-qol-action-toggle-wrapper');
+      let settingsWrapper = document.getElementById('aid-qol-settings-wrapper');
+
+      // If both elements already exist and are seated inside the buttonRow, just sync and return
+      if (actionWrapper && settingsWrapper && buttonRow.contains(actionWrapper) && buttonRow.contains(settingsWrapper)) {
+        this.syncWithNativeButton();
+        return;
+      }
+
+      // Remove any stale elements before recreating
+      actionWrapper?.remove();
+      settingsWrapper?.remove();
+
+      // Create action toggle by cloning undo button's parent theme wrapper and button structure
+      actionWrapper = undoBtn.parentElement.cloneNode(true);
+      actionWrapper.id = 'aid-qol-action-toggle-wrapper';
+      const actionBtn = actionWrapper.firstElementChild;
+      if (actionBtn) {
+        actionBtn.id = this.buttonId;
+        actionBtn.removeAttribute('data-fs-element');
+        actionBtn.removeAttribute('aria-disabled');
+        actionBtn.classList.remove('_pe-none', '_o-0--5', '_o-0', '_o-0--4');
+        actionBtn.style.pointerEvents = 'auto';
+        actionBtn.style.opacity = '1';
+        actionBtn.style.cursor = 'pointer';
+
+        const actionSpan = actionBtn.firstElementChild;
+        if (actionSpan) {
+          actionSpan.innerText = CONFIG.get('actionsVisible', true) ? 'A+' : 'A-';
+          actionSpan.classList.remove('_o-0--5', '_o-0', '_o-0--4');
+          actionSpan.style.opacity = '1';
+          actionSpan.style.fontFamily = 'var(--f-family, ui-sans-serif, system-ui, sans-serif)';
+          actionSpan.style.fontWeight = '700';
+          actionSpan.style.fontSize = '12px';
+          actionSpan.style.letterSpacing = '0';
+          actionSpan.style.display = 'inline-flex';
+          actionSpan.style.alignItems = 'center';
+          actionSpan.style.justifyContent = 'center';
+          actionSpan.style.width = '100%';
+          actionSpan.style.height = '100%';
+          actionSpan.style.pointerEvents = 'none';
+        }
+
+        actionBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           this.toggle();
         });
+        actionBtn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            this.toggle();
+          }
+        });
       }
 
-      if (!settingsBtn) {
-        settingsBtn = document.createElement('button');
+      // Create settings shortcut button by cloning undo button's parent theme wrapper and button structure
+      settingsWrapper = undoBtn.parentElement.cloneNode(true);
+      settingsWrapper.id = 'aid-qol-settings-wrapper';
+      const settingsBtn = settingsWrapper.firstElementChild;
+      if (settingsBtn) {
         settingsBtn.id = 'aid-qol-settings-btn';
-        settingsBtn.type = 'button';
-        settingsBtn.innerText = '⚙';
-        settingsBtn.title = 'AID-QoL Settings (Alt+Ctrl+,)';
+        settingsBtn.setAttribute('title', 'AID-QoL Settings (Alt+Ctrl+,)');
+        settingsBtn.setAttribute('aria-label', 'AID-QoL Settings');
+        settingsBtn.removeAttribute('data-fs-element');
+        settingsBtn.removeAttribute('aria-disabled');
+        settingsBtn.classList.remove('_pe-none', '_o-0--5', '_o-0', '_o-0--4');
+        settingsBtn.style.pointerEvents = 'auto';
+        settingsBtn.style.opacity = '1';
+        settingsBtn.style.cursor = 'pointer';
+
+        const settingsSpan = settingsBtn.firstElementChild;
+        if (settingsSpan) {
+          settingsSpan.innerText = '⚙';
+          settingsSpan.classList.remove('_o-0--5', '_o-0', '_o-0--4');
+          settingsSpan.style.opacity = '1';
+          settingsSpan.style.fontFamily = 'var(--f-family, ui-sans-serif, system-ui, sans-serif)';
+          settingsSpan.style.fontSize = '14px';
+          settingsSpan.style.lineHeight = '1';
+          settingsSpan.style.display = 'inline-flex';
+          settingsSpan.style.alignItems = 'center';
+          settingsSpan.style.justifyContent = 'center';
+          settingsSpan.style.width = '100%';
+          settingsSpan.style.height = '100%';
+          settingsSpan.style.pointerEvents = 'none';
+        }
+
         settingsBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           ConfigUIModule.open();
         });
+        settingsBtn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            ConfigUIModule.open();
+          }
+        });
       }
 
-      const undoBtn = document.querySelector('[aria-label="Undo change" i], [data-fs-element="AID Undo" i]');
-
-      // Apply native classes from undoBtn if available
-      if (undoBtn && undoBtn.className) {
-        btn.className = undoBtn.className;
-        settingsBtn.className = undoBtn.className;
-      }
-
-      // Wrap each button in a themed span matching undoBtn's parent
-      const getOrCreateWrapper = (wrapperId, child) => {
-        let wrapper = document.getElementById(wrapperId);
-        if (!wrapper) {
-          wrapper = document.createElement('span');
-          wrapper.id = wrapperId;
-          wrapper.className = (undoBtn && undoBtn.parentElement && undoBtn.parentElement.classList.contains('t_sub_theme'))
-            ? undoBtn.parentElement.className
-            : 't_sub_theme t_gameplayTopButton is_Theme';
-          wrapper.style.cssText = 'color: var(--color); display: contents;';
-          wrapper.appendChild(child);
-        } else if (!wrapper.contains(child)) {
-          wrapper.appendChild(child);
-        }
-        return wrapper;
-      };
-
-      const actionWrapper = getOrCreateWrapper('aid-qol-action-toggle-wrapper', btn);
-      const settingsWrapper = getOrCreateWrapper('aid-qol-settings-wrapper', settingsBtn);
-
-      // Prefer inserting into the button row container next to Undo and Redo
-      if (undoBtn && undoBtn.parentElement) {
-        const buttonRow = undoBtn.parentElement.parentElement || undoBtn.parentElement;
-        if (!buttonRow.contains(actionWrapper)) {
-          buttonRow.appendChild(actionWrapper);
-        }
-        if (!buttonRow.contains(settingsWrapper)) {
-          buttonRow.appendChild(settingsWrapper);
-        }
-      } else if (targetElement) {
-        if (!targetElement.contains(actionWrapper)) {
-          targetElement.appendChild(actionWrapper);
-        }
-        if (!targetElement.contains(settingsWrapper)) {
-          targetElement.appendChild(settingsWrapper);
-        }
-      }
-
+      buttonRow.appendChild(actionWrapper);
+      buttonRow.appendChild(settingsWrapper);
       this.updateButtonDisplay();
       this.syncWithNativeButton();
-      Logger.log('Injected Action Toggle and Settings buttons with theme alignment');
+      Logger.log('Injected Action Toggle and Settings buttons via native clone');
     }
   };
 
@@ -2000,7 +2014,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.3.0</span>
+              <span class="aid-qol-config-badge">v3.3.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2471,7 +2485,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.1 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
