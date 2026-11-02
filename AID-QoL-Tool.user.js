@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.4.0
+// @version      3.4.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1820,32 +1820,44 @@
           scrollbar-width: thin !important;
         }
 
-        /* Visible scrollbar on resizable textareas */
+        /* Also ensure any immediate wrapper div has a square bottom-right corner */
+        div:has(> textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+          border-bottom-right-radius: 0px !important;
+        }
+
+        /* Thinned, sleek scrollbar on resizable textareas */
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar {
-          width: 10px !important;
+          width: 7px !important;
+          height: 7px !important;
           display: block !important;
         }
 
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-track {
-          background-color: rgba(0, 0, 0, 0.2) !important;
-          border-radius: 4px !important;
+          background-color: rgba(0, 0, 0, 0.15) !important;
+          border-radius: 0px !important;
+          border-bottom-right-radius: 0px !important;
         }
 
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb {
-          background-color: var(--borderColor, rgba(255, 255, 255, 0.25)) !important;
-          border-radius: 4px !important;
+          background-color: var(--borderColor, rgba(255, 255, 255, 0.22)) !important;
+          border-radius: 3px !important;
         }
 
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb:hover {
           background-color: var(--color, rgba(255, 255, 255, 0.45)) !important;
         }
 
-        /* Small box at the bottom of the scroller with diagonal grip lines */
+        /* 
+         * Square bottom-right corner and thinned resizer handle.
+         * Rendered flush at the bottom of the scroller with clean diagonal grip lines.
+         */
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-resizer {
           display: block !important;
-          background-color: rgba(255, 255, 255, 0.05) !important;
+          border-radius: 0px !important;
+          border-bottom-right-radius: 0px !important;
+          background-color: transparent !important;
           background-image: 
-            linear-gradient(135deg, transparent 0%, transparent 40%, rgba(255, 255, 255, 0.35) 40%, rgba(255, 255, 255, 0.35) 55%, transparent 55%, transparent 70%, rgba(255, 255, 255, 0.35) 70%, rgba(255, 255, 255, 0.35) 85%, transparent 85%) !important;
+            linear-gradient(135deg, transparent 0%, transparent 45%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0.35) 58%, transparent 58%, transparent 75%, rgba(255, 255, 255, 0.35) 75%, rgba(255, 255, 255, 0.35) 88%, transparent 88%) !important;
           background-repeat: no-repeat !important;
           background-position: bottom right !important;
           cursor: ns-resize !important;
@@ -2312,7 +2324,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.4.0</span>
+              <span class="aid-qol-config-badge">v3.4.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2805,7 +2817,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.1 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
