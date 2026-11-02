@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.4.1
+// @version      3.4.2
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1793,6 +1793,7 @@
     init() {
       Logger.info('Initializing TextareaResizeModule...');
       this.updateStyles();
+      this.observeTextareas();
     },
 
     updateStyles() {
@@ -1820,8 +1821,27 @@
           scrollbar-width: thin !important;
         }
 
-        /* Also ensure any immediate wrapper div has a square bottom-right corner */
-        div:has(> textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+        /* 
+         * Square bottom-right corner on any ancestor container wrapping the resizable textarea.
+         * Handles direct parents, grandparents, and outer card wrappers (e.g. Gear Menu -> Adventure -> Plot essentials / Author's Note).
+         */
+        *:has(> textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        *:has(> * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        *:has(> * > * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        *:has(> * > * > * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+          border-bottom-right-radius: 0px !important;
+        }
+
+        /* Target Tamagui and Tailwind radius classes on containers enclosing resizable textareas */
+        [class*="_bbrr-"]:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        [class*="rounded"]:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+          border-bottom-right-radius: 0px !important;
+        }
+
+        /* Specifically inside Game Menu / Settings drawer (Adventure -> Plot textarea items) */
+        .aid-qol-game-menu-resizable div:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        [aria-label="Game settings" i] div:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
+        [aria-label="Game settings" i] *:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
           border-bottom-right-radius: 0px !important;
         }
 
@@ -1868,6 +1888,41 @@
       style.id = this.styleId;
       style.textContent = css;
       (document.head || document.documentElement).appendChild(style);
+    },
+
+    /**
+     * Observes DOM to actively square corners on textarea wrappers and card containers.
+     * Ensures any dynamic or React Native Web / Tamagui elements in the Gear Menu
+     * have their bottom-right corners squared even with deeply nested wrapper markup.
+     */
+    observeTextareas() {
+      const squareCorners = (textarea) => {
+        if (!CONFIG.get('textareaResizeEnabled', true)) return;
+        if (!textarea || !textarea.isConnected) return;
+
+        textarea.style.setProperty('border-bottom-right-radius', '0px', 'important');
+
+        // Walk up parents (up to 4 levels) to square enclosing cards, input wrappers, and disclosure containers
+        let parent = textarea.parentElement;
+        let depth = 0;
+        while (parent && depth < 4) {
+          if (parent.matches && (
+            parent.matches('.aid-qol-game-menu-resizable, body, html, #__next')
+          )) {
+            break;
+          }
+          parent.style.setProperty('border-bottom-right-radius', '0px', 'important');
+          parent = parent.parentElement;
+          depth++;
+        }
+      };
+
+      observeSelector(
+        'textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)',
+        (textarea) => {
+          squareCorners(textarea);
+        }
+      );
     }
   };
 
@@ -2324,7 +2379,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.4.1</span>
+              <span class="aid-qol-config-badge">v3.4.2</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2817,7 +2872,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.1 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.2 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
