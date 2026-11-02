@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.3.6
+// @version      3.4.0
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -39,6 +39,9 @@
     // Game Menu (Right Sidebar) Resizing
     gameMenuResizeEnabled: true,
     gameMenuWidth: '424px',
+
+    // Textarea Vertical Resizing
+    textareaResizeEnabled: true,
 
     // Hotkeys & Modifiers
     hotkeysEnabled: true,
@@ -112,6 +115,16 @@
     () => {
       CONFIG.set('storyCardModalsEnabled', !CONFIG.get('storyCardModalsEnabled'));
       location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Textarea Resizing: ${CONFIG.get('textareaResizeEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      const next = !CONFIG.get('textareaResizeEnabled');
+      CONFIG.set('textareaResizeEnabled', next);
+      TextareaResizeModule.updateStyles();
+      ConfigUIModule.showToast(`Textarea Resizing: ${next ? 'ENABLED' : 'DISABLED'}`);
     }
   );
 
@@ -1771,7 +1784,83 @@
   };
 
   // =========================================================================
-  // Feature Module 6: Configuration Dialog (Native In-Game Settings Modal)
+  // Feature Module 6: Textarea Vertical Resizing
+  // =========================================================================
+  const TextareaResizeModule = {
+    name: 'Textarea Vertical Resizing',
+    styleId: 'aid-qol-textarea-resize-style',
+
+    init() {
+      Logger.info('Initializing TextareaResizeModule...');
+      this.updateStyles();
+    },
+
+    updateStyles() {
+      const existing = document.getElementById(this.styleId);
+      if (!CONFIG.get('textareaResizeEnabled', true)) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
+
+      const css = `
+        /* 
+         * Textarea Vertical Resizing.
+         * Adds vertical resize capability to textareas across Story Cards, Memory,
+         * Notes, and Scenarios by grabbing the small box at the bottom of the scrollbar.
+         * Excludes gameplay input dock (#game-text-input) to preserve dock layout.
+         */
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *) {
+          resize: vertical !important;
+          overflow-y: auto !important;
+          min-height: 48px !important;
+          max-height: unset !important;
+          border-bottom-right-radius: 0px !important;
+          scrollbar-gutter: stable !important;
+          scrollbar-width: thin !important;
+        }
+
+        /* Visible scrollbar on resizable textareas */
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar {
+          width: 10px !important;
+          display: block !important;
+        }
+
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-track {
+          background-color: rgba(0, 0, 0, 0.2) !important;
+          border-radius: 4px !important;
+        }
+
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb {
+          background-color: var(--borderColor, rgba(255, 255, 255, 0.25)) !important;
+          border-radius: 4px !important;
+        }
+
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb:hover {
+          background-color: var(--color, rgba(255, 255, 255, 0.45)) !important;
+        }
+
+        /* Small box at the bottom of the scroller with diagonal grip lines */
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-resizer {
+          display: block !important;
+          background-color: rgba(255, 255, 255, 0.05) !important;
+          background-image: 
+            linear-gradient(135deg, transparent 0%, transparent 40%, rgba(255, 255, 255, 0.35) 40%, rgba(255, 255, 255, 0.35) 55%, transparent 55%, transparent 70%, rgba(255, 255, 255, 0.35) 70%, rgba(255, 255, 255, 0.35) 85%, transparent 85%) !important;
+          background-repeat: no-repeat !important;
+          background-position: bottom right !important;
+          cursor: ns-resize !important;
+        }
+      `;
+
+      const style = document.createElement('style');
+      style.id = this.styleId;
+      style.textContent = css;
+      (document.head || document.documentElement).appendChild(style);
+    }
+  };
+
+  // =========================================================================
+  // Feature Module 7: Configuration Dialog (Native In-Game Settings Modal)
   // =========================================================================
   const ConfigUIModule = {
     name: 'Configuration Dialog',
@@ -2223,7 +2312,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.3.6</span>
+              <span class="aid-qol-config-badge">v3.4.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2362,6 +2451,16 @@
                 <div class="aid-qol-input-block" style="max-width: 280px;">
                   <label for="cfg-gameMenuWidth">Saved Menu Width (Default: 424px):</label>
                   <input type="text" id="cfg-gameMenuWidth" class="aid-qol-text-input">
+                </div>
+              </div>
+
+              <div class="aid-qol-section-title">Textareas & Editors</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-textarea-resize"> Enable Vertical Textarea Resizing
+                </label>
+                <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; padding-left: 28px;">
+                  Allows resizing any textarea vertically (Story Cards, Memory, Notes, Scenarios) by grabbing the small box at the bottom of the scrollbar.
                 </div>
               </div>
             </div>
@@ -2513,6 +2612,10 @@
       if (menuEnabled) menuEnabled.checked = !!CONFIG.get('gameMenuResizeEnabled', true);
       if (menuW) menuW.value = CONFIG.get('gameMenuWidth', '424px');
 
+      // Textarea Resizing
+      const textareaResize = document.getElementById('cfg-textarea-resize');
+      if (textareaResize) textareaResize.checked = !!CONFIG.get('textareaResizeEnabled', true);
+
       // General options
       const genAutoQuote = document.getElementById('cfg-gen-autoquote');
       const genAutoFocus = document.getElementById('cfg-gen-autofocus');
@@ -2642,6 +2745,13 @@
         }
       }
 
+      // Textarea Resizing
+      const textareaResize = document.getElementById('cfg-textarea-resize');
+      if (textareaResize) {
+        CONFIG.set('textareaResizeEnabled', textareaResize.checked);
+        TextareaResizeModule.updateStyles();
+      }
+
       // General options
       const genAutoQuote = document.getElementById('cfg-gen-autoquote');
       const genAutoFocus = document.getElementById('cfg-gen-autofocus');
@@ -2690,11 +2800,12 @@
     ActionToggleModule,
     StoryCardModalModule,
     GameMenuResizeModule,
+    TextareaResizeModule,
     ConfigUIModule,
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.3.6 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.0 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {

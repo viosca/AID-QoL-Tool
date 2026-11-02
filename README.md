@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.3.6)
+# AID-QoL-Tool (v3.4.0)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -65,7 +65,13 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Double-Click Reset**: Double-click the resize border to toggle/reset between custom width and default width (424px).
 * **Auto-Remember Width**: Automatically saves your preferred sidebar width so it stays that size next time you open the menu.
 
-### 6. Native In-Game Configuration Dialog
+### 6. Vertical Textarea Resizing
+* **Draggable Bottom-Right Resizer**: Resizes any textarea vertically across Story Cards, Memory, Notes, and Scenarios by grabbing the small box at the bottom of the scrollbar.
+* **Overrides Tailwind Limits**: Restores vertical resizing on fields that AI Dungeon hardcodes with `resize-none`.
+* **Visual Grip Indicator**: Stylized corner resizer with diagonal grab lines and vertical resize cursor (`↕`).
+* **Preserves Main Gameplay Dock**: Automatically excludes the docked action input bar (`#game-text-input`) to avoid dock clipping.
+
+### 7. Native In-Game Configuration Dialog
 * Modern, AID-themed Settings Dialog replacing legacy config tools.
 * **Seamless AID Aesthetic**: Styled with AID-native dark colors, subtle borders, and distinct toggle switch check indicators.
 * Easily accessed via:
