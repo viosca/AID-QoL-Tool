@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.4.2)
+# AID-QoL-Tool (v3.5.0)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -84,6 +84,12 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
   * **Story Card & Menu Dimensions**: Set default modal width/height and Game Menu sidebar width with live width updates and auto-remember toggles.
   * **General Options**: Toggle auto-quoting, auto-focus, action visibility, and debug logs.
   * **Reset to Defaults**: One-click restore button.
+
+### 8. Antigravity Dev Bridge & Token Sync
+* **Zero-Credential Token Extraction**: Automatically reads the active Firebase Auth session from `indexedDB` or intercepted GraphQL requests.
+* **One-Click Clipboard Copy**: Click `📋 Copy Token for .env` to format `AID_ACCESS_TOKEN=<token>` straight onto your clipboard.
+* **Direct Local Bridge Sync**: Click `🔄 Sync to Antigravity (Port 8765)` to push the active token and current scenario/adventure shortId directly into `AID-LLM-connector`'s `.env` file via `http://127.0.0.1:8765/sync`.
+* **Tampermonkey Menu Shortcuts**: Access sync and token copy directly from Tampermonkey's extension dropdown menu anytime.
 
 ---
 

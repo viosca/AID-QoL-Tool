@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.4.2
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing).
+// @version      3.5.0
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -9,6 +9,10 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_addStyle
+// @grant        GM_setClipboard
+// @grant        GM_xmlhttpRequest
+// @connect      127.0.0.1
+// @connect      localhost
 // @license      MIT
 // @namespace    https://github.com/viosca/AID-QoL-Tool/tree/main
 // @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/main/AID-QoL-Tool.user.js
@@ -2379,7 +2383,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.4.2</span>
+              <span class="aid-qol-config-badge">v3.5.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -2388,6 +2392,7 @@
             <button class="aid-qol-tab-btn active" data-tab="aid-tab-hotkeys">Hotkeys</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-storycards">Cards & Menus</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-general">General</button>
+            <button class="aid-qol-tab-btn" data-tab="aid-tab-bridge">Dev Bridge</button>
           </div>
 
           <div class="aid-qol-config-body">
@@ -2556,6 +2561,35 @@
                 </label>
               </div>
             </div>
+
+            <!-- Dev Bridge Tab -->
+            <div class="aid-qol-tab-panel" id="aid-tab-bridge" style="display:none">
+              <div class="aid-qol-section-title">Antigravity Dev Bridge & Token Sync</div>
+              <div style="font-size: 13px; color: #a1a1aa; margin-bottom: 16px; line-height: 1.5;">
+                Sync your active session token directly to <strong>AID-LLM-connector</strong> for automated testing and scenario deployments without typing passwords.
+              </div>
+
+              <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-size: 13px; color: #d4d4d8; font-weight: 500;">Auth Session Status:</span>
+                  <span id="aid-bridge-token-badge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3);">Checking...</span>
+                </div>
+                <div style="font-size: 12px; color: #71717a;" id="aid-bridge-context-info">Current context: Detecting...</div>
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                <button type="button" class="aid-qol-btn aid-qol-btn-primary" id="aid-bridge-sync-btn" style="flex: 1;">
+                  🔄 Sync to Antigravity (Port 8765)
+                </button>
+                <button type="button" class="aid-qol-btn aid-qol-btn-secondary" id="aid-bridge-copy-btn" style="flex: 1;">
+                  📋 Copy Token for .env
+                </button>
+              </div>
+
+              <div id="aid-bridge-result-msg" style="font-size: 12px; color: #a1a1aa; min-height: 18px;">
+                Bridge Server: <code>http://127.0.0.1:8765/sync</code> (run <code>npm run bridge</code> in AID-LLM-connector)
+              </div>
+            </div>
           </div>
 
           <div class="aid-qol-config-footer">
@@ -2617,7 +2651,18 @@
           panels.forEach(p => {
             p.style.display = p.id === targetId ? 'block' : 'none';
           });
+          if (targetId === 'aid-tab-bridge') {
+            DevBridgeModule.updateUI();
+          }
         });
+      });
+
+      // Dev Bridge buttons
+      document.getElementById('aid-bridge-sync-btn')?.addEventListener('click', () => {
+        DevBridgeModule.syncToBridge();
+      });
+      document.getElementById('aid-bridge-copy-btn')?.addEventListener('click', () => {
+        DevBridgeModule.copyToken();
       });
     },
 
@@ -2742,6 +2787,9 @@
       this.render();
       this.applyThemeStyles();
       this.populateFields();
+      if (typeof DevBridgeModule !== 'undefined') {
+        DevBridgeModule.updateUI();
+      }
       if (this.overlay) {
         this.overlay.style.display = 'flex';
       }
@@ -2859,6 +2907,201 @@
   };
 
   // =========================================================================
+  // Feature Module 8: Antigravity Dev Bridge & API Token Sync
+  // =========================================================================
+  const DevBridgeModule = {
+    name: 'Antigravity Dev Bridge',
+    activeToken: null,
+
+    init() {
+      Logger.info('Initializing DevBridgeModule...');
+      this.hookFetch();
+      this.retrieveTokenFromIndexedDB();
+
+      GM_registerMenuCommand(
+        '🔄 Sync Token to Antigravity (Local Bridge)',
+        () => this.syncToBridge()
+      );
+      GM_registerMenuCommand(
+        '📋 Copy Auth Token for .env',
+        () => this.copyToken()
+      );
+    },
+
+    hookFetch() {
+      const origFetch = window.fetch;
+      const self = this;
+      window.fetch = async function (...args) {
+        try {
+          const [res, init] = args;
+          if (init && init.headers) {
+            let auth = null;
+            if (typeof init.headers.get === 'function') {
+              auth = init.headers.get('Authorization') || init.headers.get('authorization');
+            } else if (typeof init.headers === 'object') {
+              auth = init.headers['Authorization'] || init.headers['authorization'];
+            }
+            if (auth && typeof auth === 'string') {
+              const clean = auth.replace(/^firebase\s+/i, '').trim();
+              if (clean.length > 20) {
+                self.activeToken = clean;
+                GM_setValue('aid_last_auth_token', clean);
+                self.updateUI();
+              }
+            }
+          }
+        } catch (_) {}
+        return origFetch.apply(this, args);
+      };
+    },
+
+    async retrieveTokenFromIndexedDB() {
+      if (this.activeToken) return this.activeToken;
+      const saved = GM_getValue('aid_last_auth_token', null);
+      if (saved) {
+        this.activeToken = saved;
+      }
+      try {
+        const token = await new Promise((resolve) => {
+          const req = indexedDB.open('firebaseLocalStorageDb');
+          req.onsuccess = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('firebaseLocalStorage')) return resolve(null);
+            const tx = db.transaction('firebaseLocalStorage', 'readonly');
+            const store = tx.objectStore('firebaseLocalStorage');
+            const getAll = store.getAll();
+            getAll.onsuccess = () => {
+              const items = getAll.result || [];
+              for (const item of items) {
+                const tok = item?.value?.stsTokenManager?.accessToken;
+                if (tok) return resolve(tok);
+              }
+              resolve(null);
+            };
+            getAll.onerror = () => resolve(null);
+          };
+          req.onerror = () => resolve(null);
+        });
+        if (token) {
+          this.activeToken = token;
+          GM_setValue('aid_last_auth_token', token);
+        }
+      } catch (_) {}
+      return this.activeToken;
+    },
+
+    getContextInfo() {
+      const path = window.location.pathname || '';
+      let adventureId = null;
+      let scenarioId = null;
+      const advMatch = path.match(/\/(?:adventure|play)\/([a-zA-Z0-9_-]+)/);
+      if (advMatch) adventureId = advMatch[1];
+      const scnMatch = path.match(/\/scenario\/([a-zA-Z0-9_-]+)/);
+      if (scnMatch) scenarioId = scnMatch[1];
+      return { adventureId, scenarioId, pathname: path };
+    },
+
+    updateUI() {
+      const badge = document.getElementById('aid-bridge-token-badge');
+      const ctxInfo = document.getElementById('aid-bridge-context-info');
+      const ctx = this.getContextInfo();
+
+      if (badge) {
+        if (this.activeToken) {
+          badge.textContent = '✓ Ready (Active Session)';
+          badge.style.background = 'rgba(34, 197, 94, 0.15)';
+          badge.style.color = '#4ade80';
+          badge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+        } else {
+          badge.textContent = '⚠️ Not Detected';
+          badge.style.background = 'rgba(239, 68, 68, 0.15)';
+          badge.style.color = '#f87171';
+          badge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        }
+      }
+
+      if (ctxInfo) {
+        const parts = [];
+        if (ctx.adventureId) parts.push(`Adventure: ${ctx.adventureId}`);
+        if (ctx.scenarioId) parts.push(`Scenario: ${ctx.scenarioId}`);
+        ctxInfo.textContent = parts.length > 0 ? `Current context: ${parts.join(' | ')}` : `Current context: Global (${ctx.pathname || '/'})`;
+      }
+    },
+
+    async copyToken() {
+      const token = await this.retrieveTokenFromIndexedDB();
+      if (!token) {
+        ConfigUIModule.showToast('⚠️ No active auth token found. Please take a turn or sign in first.');
+        return false;
+      }
+      const textToCopy = `AID_ACCESS_TOKEN=${token}`;
+      if (typeof GM_setClipboard === 'function') {
+        GM_setClipboard(textToCopy, 'text');
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      }
+      ConfigUIModule.showToast('✓ Copied AID_ACCESS_TOKEN to clipboard!');
+      return true;
+    },
+
+    async syncToBridge() {
+      const token = await this.retrieveTokenFromIndexedDB();
+      if (!token) {
+        ConfigUIModule.showToast('⚠️ No auth token detected. Please take a turn or sign in.');
+        return;
+      }
+      const ctx = this.getContextInfo();
+      const payload = {
+        token,
+        adventureId: ctx.adventureId,
+        scenarioId: ctx.scenarioId
+      };
+
+      const bridgeUrl = 'http://127.0.0.1:8765/sync';
+
+      if (typeof GM_xmlhttpRequest === 'function') {
+        GM_xmlhttpRequest({
+          method: 'POST',
+          url: bridgeUrl,
+          headers: { 'Content-Type': 'application/json' },
+          data: JSON.stringify(payload),
+          onload: (res) => {
+            if (res.status === 200) {
+              try {
+                const data = JSON.parse(res.responseText);
+                const user = data.user?.username ? ` (${data.user.username})` : '';
+                ConfigUIModule.showToast(`✓ Synced with Antigravity!${user}`);
+              } catch (_) {
+                ConfigUIModule.showToast('✓ Synced with Antigravity Dev Bridge!');
+              }
+            } else {
+              ConfigUIModule.showToast(`⚠️ Sync failed: HTTP ${res.status}`);
+            }
+          },
+          onerror: () => {
+            ConfigUIModule.showToast('⚠️ Bridge offline. Run \'npm run bridge\' in AID-LLM-connector!');
+          }
+        });
+      } else {
+        try {
+          const res = await fetch(bridgeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            ConfigUIModule.showToast('✓ Synced with Antigravity Dev Bridge!');
+          } else {
+            ConfigUIModule.showToast(`⚠️ Sync failed: HTTP ${res.status}`);
+          }
+        } catch (_) {
+          ConfigUIModule.showToast('⚠️ Bridge offline. Run \'npm run bridge\' in AID-LLM-connector!');
+        }
+      }
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
@@ -2869,10 +3112,11 @@
     GameMenuResizeModule,
     TextareaResizeModule,
     ConfigUIModule,
+    DevBridgeModule,
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.4.2 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.0 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
