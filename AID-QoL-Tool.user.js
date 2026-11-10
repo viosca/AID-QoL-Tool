@@ -2916,7 +2916,7 @@
     init() {
       Logger.info('Initializing DevBridgeModule...');
       this.hookFetch();
-      this.retrieveTokenFromIndexedDB();
+      this.retrieveToken();
 
       GM_registerMenuCommand(
         '🔄 Sync Token to Antigravity (Local Bridge)',
@@ -2955,14 +2955,60 @@
       };
     },
 
-    async retrieveTokenFromIndexedDB() {
+    getTokenFromStorage() {
+      const storages = [];
+      try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow.localStorage) storages.push(unsafeWindow.localStorage); } catch (_) {}
+      try { if (typeof window !== 'undefined' && window.localStorage) storages.push(window.localStorage); } catch (_) {}
+      try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow.sessionStorage) storages.push(unsafeWindow.sessionStorage); } catch (_) {}
+      try { if (typeof window !== 'undefined' && window.sessionStorage) storages.push(window.sessionStorage); } catch (_) {}
+
+      for (const st of storages) {
+        try {
+          for (let i = 0; i < st.length; i++) {
+            const key = st.key(i);
+            if (key && (key.startsWith('firebase:authUser:') || key.includes('authUser') || key === 'sessionTransferToken')) {
+              const raw = st.getItem(key);
+              if (raw) {
+                try {
+                  const data = JSON.parse(raw);
+                  const tok = data?.stsTokenManager?.accessToken || data?.accessToken || data?.token;
+                  if (tok && typeof tok === 'string' && tok.length > 20) {
+                    return tok;
+                  }
+                } catch (_) {
+                  if (typeof raw === 'string' && raw.length > 30 && raw.startsWith('eyJ')) {
+                    return raw;
+                  }
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+      return null;
+    },
+
+    async retrieveToken() {
       if (this.activeToken) return this.activeToken;
+
+      // 1. Direct from window/unsafeWindow localStorage or sessionStorage
+      const stToken = this.getTokenFromStorage();
+      if (stToken) {
+        this.activeToken = stToken;
+        GM_setValue('aid_last_auth_token', stToken);
+        return this.activeToken;
+      }
+
+      // 2. Cached in GM_getValue from a previous turn
       const saved = GM_getValue('aid_last_auth_token', null);
       if (saved) {
         this.activeToken = saved;
+        return this.activeToken;
       }
+
+      // 3. Fallback: IndexedDB
       try {
-        const token = await new Promise((resolve) => {
+        const idbToken = await new Promise((resolve) => {
           const req = indexedDB.open('firebaseLocalStorageDb');
           req.onsuccess = () => {
             const db = req.result;
@@ -2982,11 +3028,13 @@
           };
           req.onerror = () => resolve(null);
         });
-        if (token) {
-          this.activeToken = token;
-          GM_setValue('aid_last_auth_token', token);
+        if (idbToken) {
+          this.activeToken = idbToken;
+          GM_setValue('aid_last_auth_token', idbToken);
+          return this.activeToken;
         }
       } catch (_) {}
+
       return this.activeToken;
     },
 
@@ -3001,14 +3049,16 @@
       return { adventureId, scenarioId, pathname: path };
     },
 
-    updateUI() {
+    async updateUI() {
+      await this.retrieveToken();
       const badge = document.getElementById('aid-bridge-token-badge');
       const ctxInfo = document.getElementById('aid-bridge-context-info');
       const ctx = this.getContextInfo();
 
       if (badge) {
         if (this.activeToken) {
-          badge.textContent = '✓ Ready (Active Session)';
+          const preview = this.activeToken.slice(-6);
+          badge.textContent = `✓ Ready (...${preview})`;
           badge.style.background = 'rgba(34, 197, 94, 0.15)';
           badge.style.color = '#4ade80';
           badge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
@@ -3029,7 +3079,7 @@
     },
 
     async copyToken() {
-      const token = await this.retrieveTokenFromIndexedDB();
+      const token = await this.retrieveToken();
       if (!token) {
         ConfigUIModule.showToast('⚠️ No active auth token found. Please take a turn or sign in first.');
         return false;
@@ -3045,7 +3095,7 @@
     },
 
     async syncToBridge() {
-      const token = await this.retrieveTokenFromIndexedDB();
+      const token = await this.retrieveToken();
       if (!token) {
         ConfigUIModule.showToast('⚠️ No auth token detected. Please take a turn or sign in.');
         return;
