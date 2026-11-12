@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.5.0)
+# AID-QoL-Tool (v3.5.1)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -12,9 +12,11 @@ Rewritten from the ground up to support AI Dungeon's modern architecture (**Reac
 ## Features
 
 ### 1. Story Input Tweaks
-* **Auto-Quote "Do" Mode**:
+* **Auto-Quote "Do" Mode (with WYSIWYG & Toggle)**:
   * Automatically pre-fills empty "Do" actions with quotation marks (`""`) and places the cursor right between them.
-  * Quotes unquoted text automatically when sending a "Do" turn.
+  * **`Ctrl+U` Quote Toggle**: Press `Ctrl+U` (or `Cmd+U` on macOS) inside the action input to seamlessly strip or re-wrap quotes anytime without viewing page source.
+  * **Smart Backspace**: Pressing `Backspace` inside empty prefilled quotes (`""`) cleanly deletes both quotes and opts out of quoting for that turn without fighting you.
+  * **Pure WYSIWYG**: Never silently modifies or wraps text on submission—what you see in the input box is exactly what is submitted to the model.
   * Automatically removes dangling empty quotes if you switch away from "Do" mode.
 * **Auto-Focus**: Focuses the story prompt input (`#full-screen-text-input`) on page load and adventure start.
 * **React 19 Compatibility**: Directly interacts with React 19 synthetic event tracking for zero input desync.

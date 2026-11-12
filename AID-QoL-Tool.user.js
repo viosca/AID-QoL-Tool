@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.5.0
+// @version      3.5.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -284,6 +284,8 @@
   // =========================================================================
   const StoryInputModule = {
     name: 'Story Input Tweaks',
+    optedOutQuotes: false,
+    lastSeenMode: null,
 
     init() {
       Logger.info('Initializing StoryInputModule...');
@@ -370,6 +372,72 @@
     },
 
     /**
+     * Toggles quotation marks on or off for the given textarea.
+     * If quotes are present (empty "" or wrapped around text), strips them.
+     * If quotes are absent, wraps text in quotes (or inserts "" if empty).
+     *
+     * @param {HTMLTextAreaElement} textarea
+     */
+    toggleQuotes(textarea) {
+      if (!textarea) return;
+
+      const val = textarea.value;
+      const cleanVal = val.replace(/\s+/g, '');
+
+      // 1. Empty quotes ("") -> strip completely to empty string
+      if (cleanVal === '""') {
+        setNativeValue(textarea, '');
+        this.optedOutQuotes = true;
+        textarea.focus();
+        Logger.log('Ctrl+U: Cleared empty quotes (opted out of quotes for turn)');
+        return;
+      }
+
+      // 2. Already wrapped in outer quotes -> strip outer quotes
+      const trimmed = val.trim();
+      if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+        // Strip the outermost matching quote pair
+        const firstQuote = val.indexOf('"');
+        const lastQuote = val.lastIndexOf('"');
+        const unquoted = val.substring(0, firstQuote) + val.substring(firstQuote + 1, lastQuote) + val.substring(lastQuote + 1);
+        const start = Math.max(0, textarea.selectionStart - 1);
+        const end = Math.max(0, textarea.selectionEnd - 1);
+        setNativeValue(textarea, unquoted);
+        this.optedOutQuotes = true;
+        setTimeout(() => {
+          try {
+            textarea.focus();
+            textarea.setSelectionRange(start, end);
+          } catch (_) {}
+        }, 20);
+        Logger.log('Ctrl+U: Stripped outer quotes (opted out of quotes for turn)');
+        return;
+      }
+
+      // 3. Completely empty input -> add empty quotes and place caret between them
+      if (cleanVal === '') {
+        setNativeValue(textarea, '""');
+        this.optedOutQuotes = false;
+        this.setCaretBetweenQuotes(textarea, true);
+        Logger.log('Ctrl+U: Added empty quotes (opted in for turn)');
+        return;
+      }
+
+      // 4. Has unquoted text -> wrap in quotes
+      const start = textarea.selectionStart + 1;
+      const end = textarea.selectionEnd + 1;
+      setNativeValue(textarea, `"${val}"`);
+      this.optedOutQuotes = false;
+      setTimeout(() => {
+        try {
+          textarea.focus();
+          textarea.setSelectionRange(start, end);
+        } catch (_) {}
+      }, 20);
+      Logger.log('Ctrl+U: Wrapped text in quotes (opted in for turn)');
+    },
+
+    /**
      * Binds quote management, event listeners, and observers to the story input textarea.
      * @param {HTMLTextAreaElement} textarea
      */
@@ -378,10 +446,21 @@
         if (!CONFIG.get('autoQuoteDo')) return;
 
         const inDoMode = this.isDoMode(textarea);
+        const currentMode = inDoMode ? 'do' : 'other';
+
+        // Reset opt-out state when changing modes
+        if (this.lastSeenMode !== null && this.lastSeenMode !== currentMode) {
+          this.optedOutQuotes = false;
+        }
+        this.lastSeenMode = currentMode;
+
         const val = textarea.value;
         const cleanVal = val.replace(/\s+/g, '');
 
         if (inDoMode) {
+          // If user has opted out of quotes on this turn, do not re-insert or wrap
+          if (this.optedOutQuotes) return;
+
           if (cleanVal === '') {
             // Completely empty input in Do mode -> insert quotes and place cursor inside
             setNativeValue(textarea, '""');
@@ -393,19 +472,9 @@
               setNativeValue(textarea, '""');
             }
             this.setCaretBetweenQuotes(textarea, false);
-          } else if (!val.includes('"')) {
-            // User typed text without quotes -> wrap in quotes preserving cursor
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            setNativeValue(textarea, `"${val}"`);
-            setTimeout(() => {
-              try {
-                textarea.focus();
-                textarea.setSelectionRange(start + 1, end + 1);
-              } catch (_) {}
-            }, 30);
-            Logger.log('Wrapped text in quotes for Do action');
           }
+          // Note: If user has entered text, we never forcibly auto-wrap.
+          // Pure WYSIWYG: what is in the box is what gets sent.
         } else {
           // Switched away from "Do" mode -> remove empty quotes if left behind
           if (cleanVal === '""') {
@@ -422,6 +491,7 @@
 
       // Periodic check after submitting turns to ensure the new empty turn is quoted and cursor positioned
       const checkPostSubmit = () => {
+        this.optedOutQuotes = false;
         const checkDelays = [100, 250, 500, 800, 1200, 1800, 2600, 3600, 5000];
         checkDelays.forEach(delay => {
           setTimeout(() => {
@@ -457,6 +527,7 @@
       const handleUserFocusOrClick = () => {
         if (!CONFIG.get('autoQuoteDo')) return;
         if (!this.isDoMode(textarea)) return;
+        if (this.optedOutQuotes) return;
 
         const cleanVal = textarea.value.replace(/\s+/g, '');
         if (cleanVal === '' || cleanVal === '""') {
@@ -472,16 +543,35 @@
       textarea.addEventListener('mouseup', handleUserFocusOrClick);
       textarea.addEventListener('pointerup', handleUserFocusOrClick);
 
-      // 4. Turn submission via Enter key
+      // 4. Keyboard shortcuts & Turn submission
       textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
-          // If in Do mode and text lacks quotes, wrap it before submit sends it
+        // Ctrl+U / Cmd+U: Toggle quotes on/off (intercepts browser "View Source")
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'u') {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleQuotes(textarea);
+          return;
+        }
+
+        // Backspace on empty quotes: delete quotes and opt out of quotes for this turn
+        if (e.key === 'Backspace' && !e.ctrlKey && !e.altKey && !e.metaKey) {
           if (this.isDoMode(textarea)) {
-            const val = textarea.value.trim();
-            if (val && !textarea.value.includes('"')) {
-              setNativeValue(textarea, `"${val}"`);
+            const cleanVal = textarea.value.replace(/\s+/g, '');
+            if (cleanVal === '""') {
+              e.preventDefault();
+              setNativeValue(textarea, '');
+              this.optedOutQuotes = true;
+              textarea.focus();
+              Logger.log('Backspace on empty quotes: Cleared quotes and opted out for turn');
+              return;
             }
           }
+        }
+
+        // Turn submission via Enter key
+        if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+          // Pure WYSIWYG: never modify or wrap user input on submission!
+          this.optedOutQuotes = false;
           checkPostSubmit();
         }
       });
@@ -493,17 +583,14 @@
 
         // Mode switch buttons or dropdown options
         if (target.closest('[aria-label="Change input mode" i], [aria-label*="mode" i]')) {
+          this.optedOutQuotes = false;
           [60, 150, 300].forEach(delay => setTimeout(applyQuotesLogic, delay));
         }
 
         // Submit action button / Paper plane / Take a turn
         if (target.closest('[data-fs-element="AID Submit" i], [aria-label="Submit action" i], [aria-label="Command: take a turn" i]')) {
-          if (this.isDoMode(textarea)) {
-            const val = textarea.value.trim();
-            if (val && !textarea.value.includes('"')) {
-              setNativeValue(textarea, `"${val}"`);
-            }
-          }
+          // Pure WYSIWYG: never modify or wrap user input on submission!
+          this.optedOutQuotes = false;
           checkPostSubmit();
         }
       }, { passive: true });
@@ -512,7 +599,7 @@
       if (CONFIG.get('autoFocusInput')) {
         setTimeout(() => {
           try {
-            if (this.isDoMode(textarea) && textarea.value.replace(/\s+/g, '') === '""') {
+            if (this.isDoMode(textarea) && !this.optedOutQuotes && textarea.value.replace(/\s+/g, '') === '""') {
               this.setCaretBetweenQuotes(textarea, true);
             } else {
               textarea.focus();
@@ -2383,7 +2470,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.5.0</span>
+              <span class="aid-qol-config-badge">v3.5.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -3166,7 +3253,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.1 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
