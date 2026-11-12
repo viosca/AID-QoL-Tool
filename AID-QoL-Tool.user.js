@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.5.1
+// @version      3.5.2
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1961,17 +1961,30 @@
         /* 
          * Square bottom-right corner and thinned resizer handle.
          * Rendered flush at the bottom of the scroller with clean diagonal grip lines.
+         * Explicitly locks background-size and dimension limits to 7px x 7px so the handle
+         * never inflates when content fits and the vertical scrollbar track is unneeded.
          */
         textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-resizer {
           display: block !important;
+          width: 7px !important;
+          height: 7px !important;
+          max-width: 7px !important;
+          max-height: 7px !important;
           border-radius: 0px !important;
           border-bottom-right-radius: 0px !important;
           background-color: transparent !important;
-          background-image: 
-            linear-gradient(135deg, transparent 0%, transparent 45%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0.35) 58%, transparent 58%, transparent 75%, rgba(255, 255, 255, 0.35) 75%, rgba(255, 255, 255, 0.35) 88%, transparent 88%) !important;
+          background-size: 7px 7px !important;
           background-repeat: no-repeat !important;
           background-position: bottom right !important;
+          background-image: 
+            linear-gradient(135deg, transparent 0%, transparent 45%, rgba(255, 255, 255, 0.35) 45%, rgba(255, 255, 255, 0.35) 58%, transparent 58%, transparent 75%, rgba(255, 255, 255, 0.35) 75%, rgba(255, 255, 255, 0.35) 88%, transparent 88%) !important;
           cursor: ns-resize !important;
+        }
+
+        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-corner {
+          background-color: transparent !important;
+          width: 7px !important;
+          height: 7px !important;
         }
       `;
 
@@ -2470,7 +2483,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.5.1</span>
+              <span class="aid-qol-config-badge">v3.5.2</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -3253,7 +3266,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.1 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.2 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
