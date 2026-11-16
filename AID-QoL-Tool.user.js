@@ -38,6 +38,9 @@
     themeBgColor: '',   // empty = native AID background color
     themeActionStyle: 'default', // 'default', 'dimmed', 'italic', 'accent', 'italic-accent', 'underlined'
     themeActionColor: '#fb923c',
+    themeUiDensity: 'default', // 'default', 'compact', 'ultra', 'custom'
+    themeCardHeight: '64px',
+    themeMenuSpacing: '12px',
 
     // Input Preferences
     autoQuoteDo: true,
@@ -2676,7 +2679,9 @@
         themeTextColor: '',
         themeBgColor: '',
         themeActionStyle: 'default',
-        themeActionColor: '#fb923c'
+        themeActionColor: '#fb923c',
+        themeCardHeight: '64px',
+        themeMenuSpacing: '12px'
       },
       compact: {
         themeFontSize: '15px',
@@ -2687,7 +2692,9 @@
         themeTextColor: '',
         themeBgColor: '',
         themeActionStyle: 'dimmed',
-        themeActionColor: '#fb923c'
+        themeActionColor: '#fb923c',
+        themeCardHeight: '44px',
+        themeMenuSpacing: '4px'
       },
       large: {
         themeFontSize: '21px',
@@ -2698,7 +2705,9 @@
         themeTextColor: '#f4efe6',
         themeBgColor: '',
         themeActionStyle: 'italic',
-        themeActionColor: '#fb923c'
+        themeActionColor: '#fb923c',
+        themeCardHeight: '64px',
+        themeMenuSpacing: '12px'
       },
       oled: {
         themeFontSize: '18px',
@@ -2709,7 +2718,9 @@
         themeTextColor: '#e4e4e7',
         themeBgColor: '#000000',
         themeActionStyle: 'accent',
-        themeActionColor: '#38bdf8'
+        themeActionColor: '#38bdf8',
+        themeCardHeight: '46px',
+        themeMenuSpacing: '6px'
       }
     },
 
@@ -2746,7 +2757,9 @@
         themeTextColor: CONFIG.get('themeTextColor', ''),
         themeBgColor: CONFIG.get('themeBgColor', ''),
         themeActionStyle: CONFIG.get('themeActionStyle', 'default'),
-        themeActionColor: CONFIG.get('themeActionColor', '#fb923c')
+        themeActionColor: CONFIG.get('themeActionColor', '#fb923c'),
+        themeCardHeight: CONFIG.get('themeCardHeight', '64px'),
+        themeMenuSpacing: CONFIG.get('themeMenuSpacing', '12px')
       };
     },
 
@@ -2761,14 +2774,20 @@
         themeTextColor,
         themeBgColor,
         themeActionStyle,
-        themeActionColor
+        themeActionColor,
+        themeCardHeight,
+        themeMenuSpacing
       } = settings;
+
+      const cardHeightNum = parseInt(themeCardHeight) || 64;
+      const menuSpacingNum = parseInt(themeMenuSpacing) || 12;
 
       // When preset is default and no custom styling is requested, produce no overriding CSS
       if (themePreset === 'default' && !themeTextColor && !themeBgColor &&
           themeFontSize === '18px' && themeFontWeight === '400' &&
           themeLineHeight === '1.7' && themeParagraphSpacing === '1.25em' &&
-          themeStoryWidth === '900px' && themeActionStyle === 'default') {
+          themeStoryWidth === '900px' && themeActionStyle === 'default' &&
+          cardHeightNum === 64 && menuSpacingNum === 12) {
         return '';
       }
 
@@ -2892,6 +2911,62 @@
         `;
       }
 
+
+      // 6. Interface & Menu Density Overrides (Story Cards, Sidebar & Gear Menu)
+      if (cardHeightNum < 64 || menuSpacingNum < 12) {
+        const cardPaddingV = Math.max(2, Math.round((cardHeightNum - 26) / 2));
+        const cardFontSize = cardHeightNum <= 38 ? '13px' : cardHeightNum <= 48 ? '14px' : '15px';
+        const catHeight = Math.max(28, Math.round(cardHeightNum * 0.72));
+        const itemGap = Math.max(2, Math.round(menuSpacingNum * 0.4));
+        const catGapTop = Math.max(4, Math.round(menuSpacingNum * 0.7));
+        const catGapBottom = Math.max(1, Math.round(menuSpacingNum * 0.25));
+
+        css += `
+          /* AID-QoL Compact Interface & Story Card Overrides */
+          [data-slot="platform-story-card"] {
+            height: ${cardHeightNum}px !important;
+            max-height: ${cardHeightNum}px !important;
+            min-height: ${cardHeightNum}px !important;
+            padding-top: ${cardPaddingV}px !important;
+            padding-bottom: ${cardPaddingV}px !important;
+          }
+
+          [data-slot="platform-story-card"] h2[data-slot="platform-heading"] {
+            font-size: ${cardFontSize} !important;
+            line-height: 1.25 !important;
+          }
+
+          /* Tighten category headers in Story Cards list */
+          [aria-label="Story cards"] button[aria-label$="story cards section" i] {
+            height: ${catHeight}px !important;
+            min-height: ${catHeight}px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+            margin-top: ${catGapTop}px !important;
+            margin-bottom: ${catGapBottom}px !important;
+          }
+
+          /* Reduce separation between category header and story cards */
+          [aria-label="Story cards"] [data-slot="platform-box"].pb-tamagui-1 {
+            padding-bottom: ${catGapBottom}px !important;
+          }
+
+          [aria-label="Story cards"] [data-slot="platform-xstack"].pb-tamagui-1 {
+            padding-bottom: ${itemGap}px !important;
+          }
+
+          /* Compact spacing for gear menu tabs and controls */
+          .aid-qol-game-menu-resizable [data-slot="platform-row"].gap-tamagui-2 {
+            gap: ${itemGap}px !important;
+          }
+
+          .aid-qol-game-menu-resizable [data-slot="platform-button"].py-tamagui-2 {
+            padding-top: ${cardPaddingV}px !important;
+            padding-bottom: ${cardPaddingV}px !important;
+          }
+        `;
+      }
+
       return css;
     },
 
@@ -2933,12 +3008,64 @@
     currentPreset: 'default',
     initialThemeSettings: null,
 
+    bindSliderWithDirectInput(sliderId, inputId, resetBtnId, defaultVal, unit, decimals = null) {
+      const slider = document.getElementById(sliderId);
+      const input = document.getElementById(inputId);
+      const resetBtn = document.getElementById(resetBtnId);
+      if (!slider || !input) return;
+
+      const format = (v) => {
+        const num = Number(v);
+        if (isNaN(num)) return v;
+        const formatted = decimals !== null ? num.toFixed(decimals) : String(num);
+        return unit ? `${formatted}${unit}` : formatted;
+      };
+
+      slider.addEventListener('input', () => {
+        input.value = format(slider.value);
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+
+      const onDirectType = () => {
+        const raw = input.value.trim();
+        const num = parseFloat(raw);
+        if (!isNaN(num)) {
+          slider.value = num;
+          this.markCustomPreset();
+          this.updateThemeLivePreview();
+        }
+      };
+
+      input.addEventListener('input', onDirectType);
+      input.addEventListener('change', () => {
+        onDirectType();
+        input.value = format(slider.value);
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          input.blur();
+        }
+      });
+
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          slider.value = defaultVal;
+          input.value = format(defaultVal);
+          this.markCustomPreset();
+          this.updateThemeLivePreview();
+        });
+      }
+    },
+
     gatherCurrentThemeUI() {
       const fontSize = document.getElementById('cfg-theme-font-size')?.value || '18';
       const fontWeight = document.getElementById('cfg-theme-font-weight')?.value || '400';
       const lineHeight = document.getElementById('cfg-theme-line-height')?.value || '1.7';
       const paragraphSpacing = document.getElementById('cfg-theme-paragraph-spacing')?.value || '1.25';
       const storyWidth = document.getElementById('cfg-theme-story-width')?.value || '900';
+      const cardHeight = document.getElementById('cfg-theme-card-height')?.value || '64';
+      const menuSpacing = document.getElementById('cfg-theme-menu-spacing')?.value || '12';
       const textColor = document.getElementById('cfg-theme-text-color-hex')?.value.trim() || '';
       const bgColor = document.getElementById('cfg-theme-bg-color-hex')?.value.trim() || '';
       const actionStyle = document.getElementById('cfg-theme-action-style')?.value || 'default';
@@ -2951,6 +3078,8 @@
         themeLineHeight: lineHeight,
         themeParagraphSpacing: `${paragraphSpacing}em`,
         themeStoryWidth: `${storyWidth}px`,
+        themeCardHeight: `${cardHeight}px`,
+        themeMenuSpacing: `${menuSpacing}px`,
         themeTextColor: textColor,
         themeBgColor: bgColor,
         themeActionStyle: actionStyle,
@@ -2961,18 +3090,20 @@
     updateThemeLivePreview() {
       const settings = this.gatherCurrentThemeUI();
 
-      // Readout badges
-      const fsVal = document.getElementById('cfg-theme-font-size-val');
-      if (fsVal) fsVal.textContent = settings.themeFontSize;
+      // Readout inputs (only update if not currently being typed into)
+      const updateIfNotActive = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && document.activeElement !== el) {
+          el.value = val;
+        }
+      };
 
-      const lhVal = document.getElementById('cfg-theme-line-height-val');
-      if (lhVal) lhVal.textContent = Number(settings.themeLineHeight).toFixed(2);
-
-      const psVal = document.getElementById('cfg-theme-paragraph-spacing-val');
-      if (psVal) psVal.textContent = settings.themeParagraphSpacing;
-
-      const swVal = document.getElementById('cfg-theme-story-width-val');
-      if (swVal) swVal.textContent = settings.themeStoryWidth;
+      updateIfNotActive('cfg-theme-font-size-val', settings.themeFontSize);
+      updateIfNotActive('cfg-theme-line-height-val', Number(settings.themeLineHeight).toFixed(2));
+      updateIfNotActive('cfg-theme-paragraph-spacing-val', settings.themeParagraphSpacing);
+      updateIfNotActive('cfg-theme-story-width-val', settings.themeStoryWidth);
+      updateIfNotActive('cfg-theme-card-height-val', settings.themeCardHeight);
+      updateIfNotActive('cfg-theme-menu-spacing-val', settings.themeMenuSpacing);
 
       // In-dialog Story Preview Box
       const previewCard = document.getElementById('aid-theme-preview-card');
@@ -3056,6 +3187,14 @@
 
       const swEl = document.getElementById('cfg-theme-story-width');
       if (swEl) swEl.value = storyWidthNum;
+
+      const cardHeightNum = parseInt(presetValues.themeCardHeight) || 64;
+      const chEl = document.getElementById('cfg-theme-card-height');
+      if (chEl) chEl.value = cardHeightNum;
+
+      const menuSpacingNum = parseInt(presetValues.themeMenuSpacing) || 12;
+      const msEl = document.getElementById('cfg-theme-menu-spacing');
+      if (msEl) msEl.value = menuSpacingNum;
 
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -3611,15 +3750,61 @@
           margin-bottom: 8px;
         }
 
-        .aid-qol-value-badge {
+
+        .aid-qol-slider-controls {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .aid-qol-value-input {
+          width: 65px;
+          height: 24px;
+          text-align: center;
           font-size: 12px;
           font-family: ui-monospace, monospace;
-          background: rgba(249, 115, 22, 0.15);
+          background: rgba(249, 115, 22, 0.12);
           color: var(--color-aid-primary, #fb923c);
-          border: 1px solid rgba(249, 115, 22, 0.3);
-          padding: 2px 7px;
+          border: 1px solid rgba(249, 115, 22, 0.35);
           border-radius: 5px;
+          padding: 0 4px;
+          box-sizing: border-box;
+          outline: none;
+          transition: all 0.15s ease;
         }
+
+        .aid-qol-value-input:hover,
+        .aid-qol-value-input:focus {
+          background: rgba(0, 0, 0, 0.7);
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+          color: #ffffff;
+        }
+
+        .aid-qol-btn-reset-field {
+          width: 24px;
+          height: 24px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 5px;
+          color: #a1a1aa;
+          font-size: 13px;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0;
+          transition: all 0.15s ease;
+        }
+
+        .aid-qol-btn-reset-field:hover {
+          background: rgba(249, 115, 22, 0.2);
+          border-color: var(--color-aid-primary, #f97316);
+          color: #ffffff;
+          transform: rotate(-45deg);
+        }
+
 
         .aid-qol-range-slider {
           -webkit-appearance: none;
@@ -3927,14 +4112,20 @@
               <div class="aid-qol-slider-row">
                 <div class="aid-qol-slider-header">
                   <label for="cfg-theme-font-size">Font Size</label>
-                  <span class="aid-qol-value-badge" id="cfg-theme-font-size-val">18px</span>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-font-size-val" class="aid-qol-value-input" value="18px" title="Click to type exact value (e.g. 18px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-font-size-reset" title="Reset to default (18px)">↺</button>
+                  </div>
                 </div>
                 <input type="range" id="cfg-theme-font-size" class="aid-qol-range-slider" min="13" max="26" step="1" value="18">
               </div>
 
               <div class="aid-qol-inline-fields" style="margin-top: 10px;">
                 <div class="aid-qol-input-block" style="flex: 1;">
-                  <label for="cfg-theme-font-weight">Font Boldness / Weight:</label>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <label for="cfg-theme-font-weight">Font Boldness / Weight:</label>
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-font-weight-reset" title="Reset to default (400 Regular)">↺</button>
+                  </div>
                   <select id="cfg-theme-font-weight" class="aid-qol-select-input">
                     <option value="300">300 (Light)</option>
                     <option value="400">400 (Regular)</option>
@@ -3944,7 +4135,10 @@
                   </select>
                 </div>
                 <div class="aid-qol-input-block" style="flex: 1;">
-                  <label for="cfg-theme-action-style">Action Text Style:</label>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <label for="cfg-theme-action-style">Action Text Style:</label>
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-action-style-reset" title="Reset to default (Default)">↺</button>
+                  </div>
                   <select id="cfg-theme-action-style" class="aid-qol-select-input">
                     <option value="default">Default (Native)</option>
                     <option value="dimmed">Dimmed / Subdued</option>
@@ -3959,7 +4153,10 @@
               <div class="aid-qol-slider-row" style="margin-top: 10px;">
                 <div class="aid-qol-slider-header">
                   <label for="cfg-theme-line-height">Line Height</label>
-                  <span class="aid-qol-value-badge" id="cfg-theme-line-height-val">1.70</span>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-line-height-val" class="aid-qol-value-input" value="1.70" title="Click to type exact value (e.g. 1.70)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-line-height-reset" title="Reset to default (1.70)">↺</button>
+                  </div>
                 </div>
                 <input type="range" id="cfg-theme-line-height" class="aid-qol-range-slider" min="1.20" max="2.40" step="0.05" value="1.70">
               </div>
@@ -3969,7 +4166,10 @@
               <div class="aid-qol-slider-row">
                 <div class="aid-qol-slider-header">
                   <label for="cfg-theme-paragraph-spacing">Paragraph & Action Spacing</label>
-                  <span class="aid-qol-value-badge" id="cfg-theme-paragraph-spacing-val">1.25em</span>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-paragraph-spacing-val" class="aid-qol-value-input" value="1.25em" title="Click to type exact value (e.g. 1.25em)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-paragraph-spacing-reset" title="Reset to default (1.25em)">↺</button>
+                  </div>
                 </div>
                 <input type="range" id="cfg-theme-paragraph-spacing" class="aid-qol-range-slider" min="0.40" max="2.40" step="0.05" value="1.25">
               </div>
@@ -3977,9 +4177,36 @@
               <div class="aid-qol-slider-row" style="margin-top: 10px;">
                 <div class="aid-qol-slider-header">
                   <label for="cfg-theme-story-width">Story Max Width</label>
-                  <span class="aid-qol-value-badge" id="cfg-theme-story-width-val">900px</span>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-story-width-val" class="aid-qol-value-input" value="900px" title="Click to type exact value (e.g. 900px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-story-width-reset" title="Reset to default (900px)">↺</button>
+                  </div>
                 </div>
                 <input type="range" id="cfg-theme-story-width" class="aid-qol-range-slider" min="600" max="1400" step="20" value="900">
+              </div>
+
+              <!-- Interface & Menu Density Section -->
+              <div class="aid-qol-section-title" style="margin-top: 18px;">Interface & Menu Density (Story Cards & Gear Menu)</div>
+              <div class="aid-qol-slider-row">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-card-height">Story Card Item Height</label>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-card-height-val" class="aid-qol-value-input" value="64px" title="Click to type exact value (e.g. 44px, 64px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-card-height-reset" title="Reset to default (64px)">↺</button>
+                  </div>
+                </div>
+                <input type="range" id="cfg-theme-card-height" class="aid-qol-range-slider" min="32" max="64" step="2" value="64">
+              </div>
+
+              <div class="aid-qol-slider-row" style="margin-top: 10px;">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-menu-spacing">Category & Item Separation</label>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-menu-spacing-val" class="aid-qol-value-input" value="12px" title="Click to type exact value (e.g. 4px, 12px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-menu-spacing-reset" title="Reset to default (12px)">↺</button>
+                  </div>
+                </div>
+                <input type="range" id="cfg-theme-menu-spacing" class="aid-qol-range-slider" min="2" max="16" step="1" value="12">
               </div>
 
               <!-- Colors & Background Section -->
@@ -4033,6 +4260,7 @@
                   <div class="aid-qol-color-inputs">
                     <input type="color" id="cfg-theme-action-color-picker" class="aid-qol-color-picker" value="#fb923c">
                     <input type="text" id="cfg-theme-action-color-hex" class="aid-qol-hex-input" placeholder="#fb923c">
+                    <button type="button" class="aid-qol-btn-clear" id="cfg-theme-action-color-clear" title="Reset to default action color">Reset</button>
                   </div>
                 </div>
                 <div class="aid-qol-swatches-row" id="cfg-theme-action-swatches">
@@ -4300,15 +4528,34 @@
         });
       });
 
-      // Theme Sliders
-      ['cfg-theme-font-size', 'cfg-theme-line-height', 'cfg-theme-paragraph-spacing', 'cfg-theme-story-width'].forEach(id => {
-        const slider = document.getElementById(id);
-        if (slider) {
-          slider.addEventListener('input', () => {
-            this.markCustomPreset();
-            this.updateThemeLivePreview();
-          });
-        }
+      // Theme Sliders & Direct Typed Inputs
+      this.bindSliderWithDirectInput('cfg-theme-font-size', 'cfg-theme-font-size-val', 'cfg-theme-font-size-reset', 18, 'px');
+      this.bindSliderWithDirectInput('cfg-theme-line-height', 'cfg-theme-line-height-val', 'cfg-theme-line-height-reset', 1.7, '', 2);
+      this.bindSliderWithDirectInput('cfg-theme-paragraph-spacing', 'cfg-theme-paragraph-spacing-val', 'cfg-theme-paragraph-spacing-reset', 1.25, 'em');
+      this.bindSliderWithDirectInput('cfg-theme-story-width', 'cfg-theme-story-width-val', 'cfg-theme-story-width-reset', 900, 'px');
+      this.bindSliderWithDirectInput('cfg-theme-card-height', 'cfg-theme-card-height-val', 'cfg-theme-card-height-reset', 64, 'px');
+      this.bindSliderWithDirectInput('cfg-theme-menu-spacing', 'cfg-theme-menu-spacing-val', 'cfg-theme-menu-spacing-reset', 12, 'px');
+
+      // Dropdown Reset Buttons
+      document.getElementById('cfg-theme-font-weight-reset')?.addEventListener('click', () => {
+        const el = document.getElementById('cfg-theme-font-weight');
+        if (el) el.value = '400';
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      document.getElementById('cfg-theme-action-style-reset')?.addEventListener('click', () => {
+        const el = document.getElementById('cfg-theme-action-style');
+        if (el) el.value = 'default';
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      document.getElementById('cfg-theme-action-color-clear')?.addEventListener('click', () => {
+        const hex = document.getElementById('cfg-theme-action-color-hex');
+        const picker = document.getElementById('cfg-theme-action-color-picker');
+        if (hex) hex.value = '#fb923c';
+        if (picker) picker.value = '#fb923c';
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
       });
 
       // Theme Selects
@@ -4540,6 +4787,14 @@
       const swEl = document.getElementById('cfg-theme-story-width');
       if (swEl) swEl.value = parseInt(storyWidth) || 900;
 
+      const cardHeight = CONFIG.get('themeCardHeight', '64px');
+      const chEl = document.getElementById('cfg-theme-card-height');
+      if (chEl) chEl.value = parseInt(cardHeight) || 64;
+
+      const menuSpacing = CONFIG.get('themeMenuSpacing', '12px');
+      const msEl = document.getElementById('cfg-theme-menu-spacing');
+      if (msEl) msEl.value = parseInt(menuSpacing) || 12;
+
       const textColor = CONFIG.get('themeTextColor', '');
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -4731,6 +4986,8 @@
       CONFIG.set('themeLineHeight', themeSettings.themeLineHeight);
       CONFIG.set('themeParagraphSpacing', themeSettings.themeParagraphSpacing);
       CONFIG.set('themeStoryWidth', themeSettings.themeStoryWidth);
+      CONFIG.set('themeCardHeight', themeSettings.themeCardHeight);
+      CONFIG.set('themeMenuSpacing', themeSettings.themeMenuSpacing);
       CONFIG.set('themeTextColor', themeSettings.themeTextColor);
       CONFIG.set('themeBgColor', themeSettings.themeBgColor);
       CONFIG.set('themeActionStyle', themeSettings.themeActionStyle);
