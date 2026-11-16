@@ -1273,6 +1273,18 @@
     injectStyles() {
       GM_addStyle(`
         /* 
+         * Gentle zero-transform fade animation to replace Radix UI translate keyframes
+         */
+        @keyframes aid-qol-modal-fade {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        /* 
          * Resizable Story Card modal styling (native resize & zero-blink positioning).
          * Explicit right: auto !important and bottom: auto !important prevents Tailwind's
          * inset-0 and w-full from stretching the modal across the entire viewport!
@@ -1294,15 +1306,40 @@
           border-bottom-right-radius: 0px !important;
           box-sizing: border-box !important;
           transform: none !important;
+          transition: none !important;
+          animation: aid-qol-modal-fade 0.08s ease-out !important;
           --tw-translate-x: 0px !important;
           --tw-translate-y: 0px !important;
+          --tw-enter-translate-x: 0px !important;
+          --tw-enter-translate-y: 0px !important;
+          --tw-enter-scale: 1 !important;
+          --tw-scale-x: 1 !important;
+          --tw-scale-y: 1 !important;
+        }
+
+        /* Pre-paint fallback centering for Story Card modals before inline styles execute */
+        [data-block-gameplay-undo-redo="story-card"]:not(.aid-qol-story-card-modal),
+        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]):not(.aid-qol-story-card-modal),
+        [role="dialog"]:has(#scTitleLabel):not(.aid-qol-story-card-modal),
+        [role="dialog"]:has(#scEntryLabel):not(.aid-qol-story-card-modal) {
+          left: calc(50vw - 340px) !important;
+          top: calc(50vh - 41vh) !important;
+          width: 680px !important;
+          height: 82vh !important;
+          transform: none !important;
+          transition: none !important;
         }
 
         /* 
          * Resizable Context Viewer modal styling (zero-blink positioning).
+         * Disables Radix slide-in / translate keyframes and Tailwind transitions so the dialog
+         * and all its subdialogs (Adventure, Memories, AI Instructions, Plot Essentials, etc.)
+         * open cleanly at their deterministic position without animation artifacts or jumping.
          * Outer modal uses overflow: hidden !important so the header is pinned and NEVER scrolls!
          * Resizing is handled smoothly by the dedicated .aid-qol-modal-corner-resizer handle.
          */
+        [role="dialog"][data-slot="aid-dialog-content"],
+        [role="dialog"][data-slot="platform-dialog-content"],
         [role="dialog"]:has([data-slot="aid-dialog-title"]),
         [role="dialog"]:has([data-memory-action-id]),
         [role="dialog"]:has([aria-label*="close context" i]),
@@ -1320,8 +1357,38 @@
           border-bottom-right-radius: 0px !important;
           box-sizing: border-box !important;
           transform: none !important;
+          transition: none !important;
+          animation: aid-qol-modal-fade 0.08s ease-out !important;
           --tw-translate-x: 0px !important;
           --tw-translate-y: 0px !important;
+          --tw-enter-translate-x: 0px !important;
+          --tw-enter-translate-y: 0px !important;
+          --tw-enter-scale: 1 !important;
+          --tw-scale-x: 1 !important;
+          --tw-scale-y: 1 !important;
+        }
+
+        /* Pre-paint fallback centering for Context Overview dialog (max-w-[420px]) before inline styles execute */
+        [role="dialog"][data-slot="aid-dialog-content"].max-w-\[420px\]:not(.aid-qol-context-modal),
+        [role="dialog"].max-w-\[420px\]:has([data-slot="aid-dialog-title"]):not(.aid-qol-context-modal) {
+          left: calc(50vw - 210px) !important;
+          top: calc(50vh - 160px) !important;
+          width: 420px !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        /* Pre-paint fallback centering for Context Subdialogs (Adventure, Memories, AI Instructions, etc.) */
+        [role="dialog"][data-slot="aid-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"][data-slot="platform-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"]:has([data-slot="aid-dialog-title"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"]:has([data-memory-action-id]):not(.max-w-\[420px\]):not(.aid-qol-context-modal) {
+          left: calc(50vw - 240px) !important;
+          top: calc(50vh - 256px) !important;
+          width: 480px !important;
+          height: 512px !important;
+          transform: none !important;
+          transition: none !important;
         }
 
         /* 
@@ -1329,9 +1396,13 @@
          * Explicitly targets only dialog overlay slots so the main app (#__next) is never touched!
          */
         body:has([role="dialog"].aid-qol-context-modal) [data-slot="aid-dialog-overlay"],
+        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot="aid-dialog-overlay"],
+        body:has([role="dialog"]:has([data-slot="aid-dialog-title"])) [data-slot="aid-dialog-overlay"],
         body:has([role="dialog"].aid-qol-context-modal) [data-slot="platform-dialog-overlay"],
         body:has([role="dialog"].aid-qol-context-modal) [data-slot*="dialog-overlay"],
-        body:has([role="dialog"].aid-qol-context-modal) [data-radix-dialog-overlay] {
+        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot*="dialog-overlay"],
+        body:has([role="dialog"].aid-qol-context-modal) [data-radix-dialog-overlay],
+        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-radix-dialog-overlay] {
           background-color: transparent !important;
           background: transparent !important;
           backdrop-filter: none !important;
@@ -1587,26 +1658,36 @@
 
     /**
      * Determines whether a given modal element represents the Context Viewer dialog or any of its subdialogs
-     * (e.g. Adventure, Explore Memories, AI Instructions, Complete Text, etc.).
+     * (e.g. Adventure, Explore Memories, AI Instructions, Plot Essentials, Author's Note, Complete Text, token breakdown, etc.).
      * @param {HTMLElement} modal
      * @returns {boolean}
      */
     isContextViewerModal(modal) {
       if (!modal || modal.nodeType !== Node.ELEMENT_NODE) return false;
 
-      // Never treat Story Card modals as Context Viewer
+      // 1. Ignore alert / confirm dialogs
+      if (modal.getAttribute('role') === 'alertdialog') return false;
+
+      // 2. Ignore our own QoL config dialog
+      if (modal.id && modal.id.startsWith('aid-qol-')) return false;
+
+      // 3. Never treat Story Card modals as Context Viewer
       if (this.isStoryCardModal(modal)) return false;
 
-      // 1. Explicit title check (screen-reader or visible)
-      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2');
+      // 4. Standard AID Radix dialog content or close button signatures
+      if (modal.getAttribute('data-slot') === 'aid-dialog-content') return true;
+      if (modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="aid-dialog-close"]')) return true;
+
+      // 5. Explicit title check (screen-reader or visible)
+      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3');
       if (title) {
         const titleText = title.textContent.trim().toLowerCase();
-        if (/context\s*viewer|view\s*context|explore\s*memories|ai\s*instructions|plot\s*essentials|author'?s\s*note|complete\s*text/i.test(titleText)) {
+        if (/context|memories|adventure|instruction|plot|author'?s\s*note|complete\s*text|token|action/i.test(titleText)) {
           return true;
         }
       }
 
-      // 2. Close button aria-label checks
+      // 6. Close button aria-label checks
       const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
       if (closeBtn) {
         const ariaLabel = (closeBtn.getAttribute('aria-label') || '').toLowerCase();
@@ -1615,7 +1696,7 @@
         }
       }
 
-      // 3. Characteristic Context Viewer or Subdialog UI signatures
+      // 7. Characteristic Context Viewer or Subdialog UI signatures
       if (
         modal.querySelector('[aria-label="Section tabs" i], [aria-label="Copy context text" i], [data-memory-action-id], [data-slot="memory-action-item"]') ||
         modal.querySelector('[aria-label*="Close context viewer" i], [aria-label*="Close memories" i]')
@@ -1623,7 +1704,7 @@
         return true;
       }
 
-      // 4. Visible text content fallback
+      // 8. Visible text content fallback
       const text = modal.textContent || '';
       if (text.includes('Context used for this action') || /view\s*context|context\s*viewer/i.test(text)) {
         return true;
@@ -1667,15 +1748,16 @@
       const topPx = Math.max(10, Math.round((window.innerHeight - heightPx) / 2));
 
       // 3. Anchor top-left with fixed pixel coordinates
-      modal.style.position = 'fixed';
-      modal.style.left = `${leftPx}px`;
-      modal.style.top = `${topPx}px`;
-      modal.style.width = `${widthPx}px`;
-      modal.style.height = `${heightPx}px`;
-      modal.style.right = 'auto';
-      modal.style.bottom = 'auto';
-      modal.style.margin = '0px';
-      modal.style.transform = 'none';
+      modal.style.setProperty('position', 'fixed', 'important');
+      modal.style.setProperty('left', `${leftPx}px`, 'important');
+      modal.style.setProperty('top', `${topPx}px`, 'important');
+      modal.style.setProperty('width', `${widthPx}px`, 'important');
+      modal.style.setProperty('height', `${heightPx}px`, 'important');
+      modal.style.setProperty('right', 'auto', 'important');
+      modal.style.setProperty('bottom', 'auto', 'important');
+      modal.style.setProperty('margin', '0px', 'important');
+      modal.style.setProperty('transform', 'none', 'important');
+      modal.style.setProperty('transition', 'none', 'important');
 
       // Bring newly opened modal immediately to front
       StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
@@ -1732,65 +1814,78 @@
 
       Logger.log('Setting up Context Viewer modal:', modal);
 
-      // 1. Strip Tailwind classes that lock width or center via transform:
-      modal.classList.remove(
-        'inset-0',
-        'w-full',
-        'w-[calc(100vw-var(--spacing-overlay-viewport-total))]',
-        '-translate-x-1/2', 
-        '-translate-y-1/2', 
-        'translate-x-1/2', 
-        'translate-y-1/2', 
-        'm-auto',
-        'max-w-[480px]',
-        'max-w-[420px]',
-        'max-w-md',
-        'max-w-lg',
-        'h-[512px]',
-        'overflow-hidden'
-      );
+      // Check classes and title BEFORE stripping classes
+      const hasH512 = modal.classList.contains('h-[512px]');
+      const hasMaxW420 = modal.classList.contains('max-w-[420px]');
+      const titleEl = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3');
+      const titleText = (titleEl?.textContent || '').trim().toLowerCase();
+      const isOverview = hasMaxW420 || titleText === 'view context' || titleText === 'context viewer';
 
-      // 2. Measure current DOM rect to anchor top-left coordinates seamlessly
-      const initialRect = modal.getBoundingClientRect();
+      // 1. Strip Tailwind classes that lock width or center via transform/transitions:
+      const stripClasses = () => {
+        modal.classList.remove(
+          'left-1/2',
+          'top-1/2',
+          'inset-0',
+          'w-full',
+          'w-[calc(100vw-var(--spacing-overlay-viewport-total))]',
+          '-translate-x-1/2', 
+          '-translate-y-1/2', 
+          'translate-x-1/2', 
+          'translate-y-1/2', 
+          'm-auto',
+          'max-w-[480px]',
+          'max-w-[420px]',
+          'max-w-md',
+          'max-w-lg',
+          'h-[512px]',
+          'duration-200',
+          'overflow-hidden'
+        );
+      };
+      stripClasses();
 
-      // 3. Calculate initial dimensions from configured defaults or saved preferences
+      // 2. Calculate initial dimensions from configured defaults or saved preferences
       const configuredWidth = CONFIG.get('contextModalWidth', '480px');
       const configuredHeight = CONFIG.get('contextModalHeight', 'auto');
 
-      const isOverview = !modal.classList.contains('h-[512px]') && 
-        (modal.querySelector('[data-slot="aid-dialog-title"]')?.textContent.trim().toLowerCase() === 'view context' ||
-         modal.classList.contains('max-w-[420px]'));
-
-      let widthPx = initialRect.width || (isOverview ? 420 : 480);
-      if (configuredWidth && configuredWidth !== 'auto') {
+      const defaultWidth = isOverview ? 420 : 480;
+      let widthPx = defaultWidth;
+      if (configuredWidth && configuredWidth !== 'auto' && configuredWidth !== '480px') {
         widthPx = Math.min(window.innerWidth - 30, Math.round(this.parseDimension(configuredWidth, window.innerWidth)));
+      } else if (configuredWidth === '480px' && !isOverview) {
+        widthPx = Math.min(window.innerWidth - 30, 480);
+      } else if (configuredWidth === '480px' && isOverview) {
+        widthPx = Math.min(window.innerWidth - 30, 420);
       }
 
       let heightPx = null;
       if (configuredHeight && configuredHeight !== 'auto') {
         heightPx = Math.min(window.innerHeight - 40, Math.round(this.parseDimension(configuredHeight, window.innerHeight)));
-      } else if (!isOverview && initialRect.height > 100) {
-        heightPx = Math.min(window.innerHeight - 40, Math.round(initialRect.height));
+      } else if (!isOverview || hasH512) {
+        heightPx = Math.min(window.innerHeight - 40, 512);
       }
 
       // Symmetrically center horizontally and vertically
       const leftPx = Math.max(10, Math.round((window.innerWidth - widthPx) / 2));
-      const topPx = heightPx
-        ? Math.max(10, Math.round((window.innerHeight - heightPx) / 2))
-        : (initialRect.top > 0 ? Math.round(initialRect.top) : Math.max(20, Math.round((window.innerHeight - (initialRect.height || 420)) / 2)));
+      const expectedHeight = heightPx || (isOverview ? 320 : 512);
+      const topPx = Math.max(20, Math.round((window.innerHeight - expectedHeight) / 2));
 
-      // 4. Anchor top-left with fixed pixel coordinates
-      modal.style.position = 'fixed';
-      modal.style.left = `${leftPx}px`;
-      modal.style.top = `${topPx}px`;
-      modal.style.width = `${widthPx}px`;
+      // 3. Anchor top-left with fixed pixel coordinates
+      modal.style.setProperty('position', 'fixed', 'important');
+      modal.style.setProperty('left', `${leftPx}px`, 'important');
+      modal.style.setProperty('top', `${topPx}px`, 'important');
+      modal.style.setProperty('width', `${widthPx}px`, 'important');
       if (heightPx) {
-        modal.style.height = `${heightPx}px`;
+        modal.style.setProperty('height', `${heightPx}px`, 'important');
+      } else {
+        modal.style.removeProperty('height');
       }
-      modal.style.right = 'auto';
-      modal.style.bottom = 'auto';
-      modal.style.margin = '0px';
-      modal.style.transform = 'none';
+      modal.style.setProperty('right', 'auto', 'important');
+      modal.style.setProperty('bottom', 'auto', 'important');
+      modal.style.setProperty('margin', '0px', 'important');
+      modal.style.setProperty('transform', 'none', 'important');
+      modal.style.setProperty('transition', 'none', 'important');
 
       // Bring newly opened modal immediately to front
       StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
@@ -1808,10 +1903,10 @@
         modal.parentElement.style.alignItems = 'unset';
       }
 
-      // 5. Enable Context Viewer styling (with pinned header and overflow: hidden)
+      // 4. Enable Context Viewer styling (with pinned header and overflow: hidden)
       modal.classList.add('aid-qol-context-modal');
 
-      // 6. Append dedicated corner resize handle to outer dialog and bind drag resize
+      // 5. Append dedicated corner resize handle to outer dialog and bind drag resize
       const ensureResizer = () => {
         if (!modal.isConnected) return;
         let resizer = modal.querySelector(':scope > .aid-qol-modal-corner-resizer');
@@ -1825,19 +1920,23 @@
       };
       ensureResizer();
 
-      // Ensure resizer remains attached to outer dialog if React re-renders modal children
+      // Ensure resizer remains attached to outer dialog and classes stay stripped if React re-renders modal
       const resizerObserver = new MutationObserver(() => {
         if (!modal.isConnected) {
           resizerObserver.disconnect();
           return;
         }
+        stripClasses();
+        if (!modal.classList.contains('aid-qol-context-modal')) {
+          modal.classList.add('aid-qol-context-modal');
+        }
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
         }
       });
-      resizerObserver.observe(modal, { childList: true });
+      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
 
-      // 7. Locate the visible header row to use as the drag handle
+      // 6. Locate the visible header row to use as the drag handle
       const tryAttachHeader = (retries = 6) => {
         if (!modal.isConnected) return;
         const header = this.findContextModalHeader(modal);
@@ -1962,8 +2061,8 @@
             const newW = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
             const newH = Math.max(minH, Math.min(maxH, Math.round(startHeight + deltaY)));
 
-            modal.style.width = `${newW}px`;
-            modal.style.height = `${newH}px`;
+            modal.style.setProperty('width', `${newW}px`, 'important');
+            modal.style.setProperty('height', `${newH}px`, 'important');
           }
         };
 
@@ -2043,16 +2142,20 @@
      * @returns {HTMLElement|null}
      */
     findContextModalHeader(modal) {
-      // 1. Look for the top row containing the close button (present in submenus: Adventure, Memories, AI Instructions, Complete Text, etc.)
+      // 1. Look for explicit aid-dialog-header container
+      const dialogHeader = modal.querySelector('[data-slot="aid-dialog-header"], [data-slot="platform-dialog-header"]');
+      if (dialogHeader) return dialogHeader;
+
+      // 2. Look for the top row containing the close button (present in submenus: Adventure, Memories, AI Instructions, Complete Text, etc.)
       const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
       if (closeBtn) {
-        const row = closeBtn.closest('._jc-space-betwe3241') || closeBtn.closest('._fd-row');
+        const row = closeBtn.closest('._jc-space-betwe3241') || closeBtn.closest('._fd-row') || closeBtn.closest('[data-slot="aid-dialog-header"]') || closeBtn.parentElement;
         if (row && row !== modal) {
           return row;
         }
       }
 
-      // 2. Look for visible h1 heading row
+      // 3. Look for visible h1 heading row
       const h1 = modal.querySelector('h1');
       if (h1 && !h1.classList.contains('sr-only')) {
         const row = h1.closest('._jc-space-betwe3241') || h1.closest('._fd-row') || h1.parentElement;
@@ -2061,7 +2164,7 @@
         }
       }
 
-      // 3. Look for visible element with "View Context", "Context viewer", or "Memories"
+      // 4. Look for visible element with "View Context", "Context viewer", or "Memories"
       const candidates = modal.querySelectorAll('span, div, h2, h3');
       for (const el of candidates) {
         if (!el.classList.contains('sr-only')) {
@@ -2075,7 +2178,7 @@
         }
       }
 
-      // 4. Look for the first row containing the w_search icon
+      // 5. Look for the first row containing the w_search icon
       const icon = modal.querySelector('span.font_icons');
       if (icon && icon.textContent.includes('w_search')) {
         const row = icon.closest('._jc-space-betwe3241') || icon.closest('._fd-row');
@@ -2084,11 +2187,11 @@
         }
       }
 
-      // 5. Fallback to first visible row in the modal
+      // 6. Fallback to first visible row in the modal
       const firstRow = modal.querySelector('._fd-row');
       if (firstRow && firstRow !== modal) return firstRow;
 
-      // 6. Fallback to standard modal header finder
+      // 7. Fallback to standard modal header finder
       return this.findModalHeader(modal);
     },
 
@@ -2116,13 +2219,14 @@
 
         // Lock in current screen position before moving
         const rect = modal.getBoundingClientRect();
-        modal.style.position = 'fixed';
-        modal.style.margin = '0';
-        modal.style.transform = 'none';
-        modal.style.right = 'auto';
-        modal.style.bottom = 'auto';
-        modal.style.left = `${rect.left}px`;
-        modal.style.top = `${rect.top}px`;
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('margin', '0px', 'important');
+        modal.style.setProperty('transform', 'none', 'important');
+        modal.style.setProperty('transition', 'none', 'important');
+        modal.style.setProperty('right', 'auto', 'important');
+        modal.style.setProperty('bottom', 'auto', 'important');
+        modal.style.setProperty('left', `${rect.left}px`, 'important');
+        modal.style.setProperty('top', `${rect.top}px`, 'important');
         StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 999999, 999999) + 1;
         modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
 
@@ -2139,8 +2243,8 @@
           const newLeft = Math.max(0, Math.min(window.innerWidth - 80, initialLeft + deltaX));
           const newTop = Math.max(0, Math.min(window.innerHeight - 40, initialTop + deltaY));
 
-          modal.style.left = `${newLeft}px`;
-          modal.style.top = `${newTop}px`;
+          modal.style.setProperty('left', `${newLeft}px`, 'important');
+          modal.style.setProperty('top', `${newTop}px`, 'important');
         };
 
         const onMouseUp = () => {
@@ -2164,10 +2268,10 @@
         // Restore
         modal.classList.remove('aid-qol-modal-maximized');
         if (modal._preMaxStyle) {
-          modal.style.left = modal._preMaxStyle.left;
-          modal.style.top = modal._preMaxStyle.top;
-          modal.style.width = modal._preMaxStyle.width;
-          modal.style.height = modal._preMaxStyle.height;
+          modal.style.setProperty('left', modal._preMaxStyle.left, 'important');
+          modal.style.setProperty('top', modal._preMaxStyle.top, 'important');
+          modal.style.setProperty('width', modal._preMaxStyle.width, 'important');
+          modal.style.setProperty('height', modal._preMaxStyle.height, 'important');
         }
         Logger.log('Restored modal size');
       } else {
@@ -2178,8 +2282,8 @@
           width: modal.style.width,
           height: modal.style.height,
         };
-        modal.style.position = 'fixed';
-        modal.style.margin = '0';
+        modal.style.setProperty('position', 'fixed', 'important');
+        modal.style.setProperty('margin', '0px', 'important');
         modal.classList.add('aid-qol-modal-maximized');
         Logger.log('Maximized modal');
       }
