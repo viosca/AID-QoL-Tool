@@ -1448,13 +1448,7 @@
         body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-radix-dialog-overlay],
         body.aid-qol-no-modal-dimming:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
         body.aid-qol-no-modal-dimming:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-context-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"]:has([data-slot="aid-dialog-title"])) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot="platform-dialog-overlay"],
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-radix-dialog-overlay] {
+        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay) {
           background-color: transparent !important;
           background: transparent !important;
           backdrop-filter: none !important;
@@ -1669,6 +1663,16 @@
       if (document.documentElement) document.documentElement.classList.toggle('aid-qol-no-modal-dimming', disabled);
       if (disabled) {
         this.neutralizeModalOverlays();
+      } else {
+        document.querySelectorAll('[data-slot*="overlay"], [data-radix-dialog-overlay]').forEach((el) => {
+          if (el.id === 'aid-qol-config-overlay') return;
+          el.style.removeProperty('background');
+          el.style.removeProperty('background-color');
+          el.style.removeProperty('backdrop-filter');
+          el.style.removeProperty('-webkit-backdrop-filter');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('pointer-events');
+        });
       }
     },
 
