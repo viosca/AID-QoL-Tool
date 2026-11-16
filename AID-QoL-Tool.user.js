@@ -1299,6 +1299,49 @@
           overlayNode.style.setProperty('pointer-events', 'none', 'important');
         }
       });
+
+      // Capture close button clicks and backdrop clicks to ensure instant cleanup
+      document.addEventListener('click', (e) => {
+        const isClose = e.target.closest?.(
+          'button[data-slot="aid-dialog-close"], button[data-slot="platform-dialog-close"], button[aria-label*="close" i], button[aria-label*="exit" i], [data-dialog-close], [data-slot*="overlay"], [data-radix-dialog-overlay]'
+        );
+        if (isClose) {
+          requestAnimationFrame(() => this.cleanupClosedModals());
+          setTimeout(() => this.cleanupClosedModals(), 50);
+          setTimeout(() => this.cleanupClosedModals(), 180);
+        }
+      }, { capture: true });
+
+      // Capture Escape key to trigger cleanup
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          requestAnimationFrame(() => this.cleanupClosedModals());
+          setTimeout(() => this.cleanupClosedModals(), 50);
+          setTimeout(() => this.cleanupClosedModals(), 180);
+        }
+      }, { capture: true });
+
+      // Observe node removals to clean up any orphaned overlays or locked body pointers
+      if (typeof MutationObserver !== 'undefined' && (document.body || document.documentElement)) {
+        const removalObserver = new MutationObserver((mutations) => {
+          let hasDialogChange = false;
+          for (const m of mutations) {
+            for (const node of m.removedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.getAttribute?.('role') === 'dialog' || node.querySelector?.('[role="dialog"]')) {
+                  hasDialogChange = true;
+                  break;
+                }
+              }
+            }
+            if (hasDialogChange) break;
+          }
+          if (hasDialogChange) {
+            this.cleanupClosedModals();
+          }
+        });
+        removalObserver.observe(document.body || document.documentElement, { childList: true, subtree: true });
+      }
     },
 
     injectStyles() {
@@ -1315,16 +1358,25 @@
           }
         }
 
+        @keyframes aid-qol-modal-fade-out {
+          from {
+            opacity: 1;
+          }
+          to {
+            opacity: 0;
+          }
+        }
+
         /* 
          * Resizable Story Card modal styling (native resize & zero-blink positioning).
          * Explicit right: auto !important and bottom: auto !important prevents Tailwind's
          * inset-0 and w-full from stretching the modal across the entire viewport!
          */
-        [data-block-gameplay-undo-redo="story-card"],
-        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]),
-        [role="dialog"]:has(#scTitleLabel),
-        [role="dialog"]:has(#scEntryLabel),
-        .aid-qol-story-card-modal {
+        [data-block-gameplay-undo-redo="story-card"]:not([data-state="closed"]),
+        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]):not([data-state="closed"]),
+        [role="dialog"]:has(#scTitleLabel):not([data-state="closed"]),
+        [role="dialog"]:has(#scEntryLabel):not([data-state="closed"]),
+        .aid-qol-story-card-modal:not([data-state="closed"]) {
           resize: both !important;
           overflow: auto !important;
           right: auto !important;
@@ -1349,10 +1401,10 @@
         }
 
         /* Pre-paint fallback centering for Story Card modals before inline styles execute */
-        [data-block-gameplay-undo-redo="story-card"]:not(.aid-qol-story-card-modal),
-        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]):not(.aid-qol-story-card-modal),
-        [role="dialog"]:has(#scTitleLabel):not(.aid-qol-story-card-modal),
-        [role="dialog"]:has(#scEntryLabel):not(.aid-qol-story-card-modal) {
+        [data-block-gameplay-undo-redo="story-card"]:not([data-state="closed"]):not(.aid-qol-story-card-modal),
+        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]):not([data-state="closed"]):not(.aid-qol-story-card-modal),
+        [role="dialog"]:has(#scTitleLabel):not([data-state="closed"]):not(.aid-qol-story-card-modal),
+        [role="dialog"]:has(#scEntryLabel):not([data-state="closed"]):not(.aid-qol-story-card-modal) {
           left: calc(50vw - 340px) !important;
           top: calc(50vh - 41vh) !important;
           width: 680px !important;
@@ -1369,13 +1421,13 @@
          * Outer modal uses overflow: hidden !important so the header is pinned and NEVER scrolls!
          * Resizing is handled smoothly by the dedicated .aid-qol-modal-corner-resizer handle.
          */
-        [role="dialog"][data-slot="aid-dialog-content"],
-        [role="dialog"][data-slot="platform-dialog-content"],
-        [role="dialog"]:has([data-slot="aid-dialog-title"]),
-        [role="dialog"]:has([data-memory-action-id]),
-        [role="dialog"]:has([aria-label*="close context" i]),
-        [role="dialog"]:has([aria-label*="close memories" i]),
-        .aid-qol-context-modal {
+        [role="dialog"][data-slot="aid-dialog-content"]:not([data-state="closed"]),
+        [role="dialog"][data-slot="platform-dialog-content"]:not([data-state="closed"]),
+        [role="dialog"]:has([data-slot="aid-dialog-title"]):not([data-state="closed"]),
+        [role="dialog"]:has([data-memory-action-id]):not([data-state="closed"]),
+        [role="dialog"]:has([aria-label*="close context" i]):not([data-state="closed"]),
+        [role="dialog"]:has([aria-label*="close memories" i]):not([data-state="closed"]),
+        .aid-qol-context-modal:not([data-state="closed"]) {
           resize: none !important;
           overflow: hidden !important;
           right: auto !important;
@@ -1400,8 +1452,8 @@
         }
 
         /* Pre-paint fallback centering for Context Overview dialog (max-w-[420px]) before inline styles execute */
-        [role="dialog"][data-slot="aid-dialog-content"].max-w-\[420px\]:not(.aid-qol-context-modal),
-        [role="dialog"].max-w-\[420px\]:has([data-slot="aid-dialog-title"]):not(.aid-qol-context-modal) {
+        [role="dialog"][data-slot="aid-dialog-content"].max-w-\[420px\]:not([data-state="closed"]):not(.aid-qol-context-modal),
+        [role="dialog"].max-w-\[420px\]:has([data-slot="aid-dialog-title"]):not([data-state="closed"]):not(.aid-qol-context-modal) {
           left: calc(50vw - 210px) !important;
           top: calc(50vh - 160px) !important;
           width: 420px !important;
@@ -1410,10 +1462,10 @@
         }
 
         /* Pre-paint fallback centering for Context Subdialogs (Adventure, Memories, AI Instructions, etc.) */
-        [role="dialog"][data-slot="aid-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"][data-slot="platform-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"]:has([data-slot="aid-dialog-title"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"]:has([data-memory-action-id]):not(.max-w-\[420px\]):not(.aid-qol-context-modal) {
+        [role="dialog"][data-slot="aid-dialog-content"]:not([data-state="closed"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"][data-slot="platform-dialog-content"]:not([data-state="closed"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"]:has([data-slot="aid-dialog-title"]):not([data-state="closed"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
+        [role="dialog"]:has([data-memory-action-id]):not([data-state="closed"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal) {
           left: calc(50vw - 240px) !important;
           top: calc(50vh - 256px) !important;
           width: 480px !important;
@@ -1423,9 +1475,26 @@
         }
 
         /* 
+         * Clean, instant exit styling for closing modals and backdrops.
+         * Ensures that when Radix transitions a dialog to data-state="closed",
+         * it cleanly fades out and immediately relinquishes pointer events.
+         */
+        [role="dialog"][data-state="closed"],
+        .aid-qol-story-card-modal[data-state="closed"],
+        .aid-qol-context-modal[data-state="closed"],
+        [data-slot*="overlay"][data-state="closed"],
+        [data-radix-dialog-overlay][data-state="closed"],
+        [data-slot="platform-dialog-overlay"][data-state="closed"],
+        [data-slot="aid-dialog-overlay"][data-state="closed"] {
+          animation: aid-qol-modal-fade-out 0.04s ease-out forwards !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+        }
+
+        /* 
          * Eliminate background darkening / blur overlays behind modals when configured.
-         * Targets all overlay slots for Story Cards, Context Viewer, subdialogs, and platform modals
-         * without touching main application layout (#__next).
+         * Strictly scoped to .aid-qol-no-modal-dimming so when background dimming is enabled,
+         * stock overlays function normally and never abruptly flash or get trapped.
          */
         html.aid-qol-no-modal-dimming [data-slot="aid-dialog-overlay"],
         html.aid-qol-no-modal-dimming [data-slot="platform-dialog-overlay"],
@@ -1448,19 +1517,38 @@
         body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-radix-dialog-overlay],
         body.aid-qol-no-modal-dimming:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
         body.aid-qol-no-modal-dimming:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-context-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"]:has([data-slot="aid-dialog-title"])) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot="platform-dialog-overlay"],
-        body:has([role="dialog"].aid-qol-story-card-modal) [data-radix-dialog-overlay] {
+        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay) {
           background-color: transparent !important;
           background: transparent !important;
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
           opacity: 0 !important;
           pointer-events: none !important;
+        }
+
+        /* 
+         * Zero-Dialog Safety Enforcement:
+         * When no modal dialog is actively open in the DOM, prevent any lingering or orphaned
+         * backdrop overlay from displaying black or swallowing clicks, and guarantee body / appRoot
+         * pointer events remain completely interactive.
+         */
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) [data-radix-dialog-overlay],
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) [data-slot="platform-dialog-overlay"],
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) [data-slot="aid-dialog-overlay"] {
+          display: none !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          visibility: hidden !important;
+        }
+
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) {
+          pointer-events: auto !important;
+        }
+
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) #__next,
+        body:not(:has([role="dialog"]:not([data-state="closed"]))) #root {
+          pointer-events: auto !important;
         }
 
         html.aid-qol-no-modal-dimming #__next,
@@ -1669,6 +1757,45 @@
       if (document.documentElement) document.documentElement.classList.toggle('aid-qol-no-modal-dimming', disabled);
       if (disabled) {
         this.neutralizeModalOverlays();
+      } else {
+        // If user unchecked "Remove dimming", clear inline styles from existing overlays so stock dimming restores
+        document.querySelectorAll('[data-slot*="overlay"], [data-radix-dialog-overlay]').forEach((el) => {
+          if (el.id === 'aid-qol-config-overlay') return;
+          el.style.removeProperty('background');
+          el.style.removeProperty('background-color');
+          el.style.removeProperty('backdrop-filter');
+          el.style.removeProperty('-webkit-backdrop-filter');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('pointer-events');
+        });
+      }
+    },
+
+    /**
+     * Cleans up residual overlays and restores body/root pointer events when no dialogs are active.
+     */
+    cleanupClosedModals() {
+      const activeDialog = document.querySelector(
+        '[role="dialog"]:not([data-state="closed"]):not(.aid-qol-config-modal), [role="alertdialog"]:not([data-state="closed"])'
+      );
+      if (!activeDialog) {
+        if (document.body && document.body.style.pointerEvents === 'none') {
+          document.body.style.removeProperty('pointer-events');
+        }
+        const appRoot = document.getElementById('__next') || document.getElementById('root');
+        if (appRoot) {
+          if (appRoot.style.pointerEvents === 'none') {
+            appRoot.style.removeProperty('pointer-events');
+          }
+          if (appRoot.getAttribute('aria-hidden') === 'true') {
+            appRoot.removeAttribute('aria-hidden');
+          }
+        }
+        document.querySelectorAll('[data-slot*="overlay"]:not(#aid-qol-config-overlay), [data-radix-dialog-overlay]').forEach((overlay) => {
+          overlay.style.setProperty('display', 'none', 'important');
+          overlay.style.setProperty('opacity', '0', 'important');
+          overlay.style.setProperty('pointer-events', 'none', 'important');
+        });
       }
     },
 
