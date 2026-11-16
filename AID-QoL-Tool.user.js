@@ -1244,32 +1244,43 @@
 
       this.injectStyles();
 
-      // Observe for dialogs appearing in the DOM with progressive retry for child mounting
+      // Observe for dialogs appearing in the DOM with immediate synchronous setup (zero-blink)
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
-        const checkModal = (retries = 3) => {
-          if (!modalNode.isConnected) return;
-          if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal) return;
+        const checkModal = (retries = 6) => {
+          if (!modalNode.isConnected) return true;
+          if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal) return true;
 
           if (CONFIG.get('storyCardModalsEnabled', true) && this.isStoryCardModal(modalNode)) {
             this.setupStoryCardModal(modalNode);
-          } else if (CONFIG.get('contextModalEnabled', true) && this.isContextViewerModal(modalNode)) {
-            this.setupContextViewerModal(modalNode);
-          } else if (retries > 0) {
-            setTimeout(() => checkModal(retries - 1), 80);
+            return true;
           }
+          if (CONFIG.get('contextModalEnabled', true) && this.isContextViewerModal(modalNode)) {
+            this.setupContextViewerModal(modalNode);
+            return true;
+          }
+
+          if (retries > 0) {
+            requestAnimationFrame(() => checkModal(retries - 1));
+          }
+          return false;
         };
 
-        setTimeout(() => checkModal(3), 50);
+        // Check immediately on the synchronous mutation tick before browser paint
+        checkModal(6);
       });
     },
 
     injectStyles() {
       GM_addStyle(`
         /* 
-         * Resizable Story Card modal styling (native resize).
+         * Resizable Story Card modal styling (native resize & zero-blink positioning).
          * Explicit right: auto !important and bottom: auto !important prevents Tailwind's
          * inset-0 and w-full from stretching the modal across the entire viewport!
          */
+        [data-block-gameplay-undo-redo="story-card"],
+        [role="dialog"]:has([data-keyboard-scroll-region*="story-card"]),
+        [role="dialog"]:has(#scTitleLabel),
+        [role="dialog"]:has(#scEntryLabel),
         .aid-qol-story-card-modal {
           resize: both !important;
           overflow: auto !important;
@@ -1288,10 +1299,14 @@
         }
 
         /* 
-         * Resizable Context Viewer modal styling.
+         * Resizable Context Viewer modal styling (zero-blink positioning).
          * Outer modal uses overflow: hidden !important so the header is pinned and NEVER scrolls!
          * Resizing is handled smoothly by the dedicated .aid-qol-modal-corner-resizer handle.
          */
+        [role="dialog"]:has([data-slot="aid-dialog-title"]),
+        [role="dialog"]:has([data-memory-action-id]),
+        [role="dialog"]:has([aria-label*="close context" i]),
+        [role="dialog"]:has([aria-label*="close memories" i]),
         .aid-qol-context-modal {
           resize: none !important;
           overflow: hidden !important;
@@ -1586,7 +1601,7 @@
       const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2');
       if (title) {
         const titleText = title.textContent.trim().toLowerCase();
-        if (/context\s*viewer|view\s*context|explore\s*memories/i.test(titleText)) {
+        if (/context\s*viewer|view\s*context|explore\s*memories|ai\s*instructions|plot\s*essentials|author'?s\s*note|complete\s*text/i.test(titleText)) {
           return true;
         }
       }
@@ -1595,14 +1610,14 @@
       const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
       if (closeBtn) {
         const ariaLabel = (closeBtn.getAttribute('aria-label') || '').toLowerCase();
-        if (ariaLabel.includes('context') || ariaLabel.includes('memories')) {
+        if (ariaLabel.includes('context') || ariaLabel.includes('memories') || ariaLabel.includes('instructions')) {
           return true;
         }
       }
 
       // 3. Characteristic Context Viewer or Subdialog UI signatures
       if (
-        modal.querySelector('[aria-label="Section tabs" i], [aria-label="Copy context text" i], [data-memory-action-id]') ||
+        modal.querySelector('[aria-label="Section tabs" i], [aria-label="Copy context text" i], [data-memory-action-id], [data-slot="memory-action-item"]') ||
         modal.querySelector('[aria-label*="Close context viewer" i], [aria-label*="Close memories" i]')
       ) {
         return true;
@@ -1685,24 +1700,25 @@
       this.bindResizeSaver(modal);
 
       // 6. Locate the visible header row to use as the drag handle
-      const header = this.findModalHeader(modal);
-      if (!header) {
-        delete modal.dataset.aidQolModal;
-        Logger.warn('Visible header not found yet for modal, will retry:', modal);
-        return;
-      }
+      const tryAttachHeader = (retries = 6) => {
+        if (!modal.isConnected) return;
+        const header = this.findModalHeader(modal);
+        if (header) {
+          header.classList.add('aid-qol-modal-handle');
+          Logger.log('Attached drag handle to Story Card header:', header);
+          this.bindDragEvents(modal, header);
+          header.addEventListener('dblclick', (e) => {
+            if (this.isInteractiveElement(e.target)) return;
+            this.toggleMaximize(modal);
+          });
+        } else if (retries > 0) {
+          requestAnimationFrame(() => tryAttachHeader(retries - 1));
+        } else {
+          Logger.warn('Visible header not found for Story Card modal:', modal);
+        }
+      };
 
-      header.classList.add('aid-qol-modal-handle');
-      Logger.log('Attached drag handle to header:', header);
-
-      // 7. Bind drag events
-      this.bindDragEvents(modal, header);
-
-      // 8. Double-click title bar to maximize / restore
-      header.addEventListener('dblclick', (e) => {
-        if (this.isInteractiveElement(e.target)) return;
-        this.toggleMaximize(modal);
-      });
+      tryAttachHeader();
     },
 
     /**
@@ -1822,7 +1838,7 @@
       resizerObserver.observe(modal, { childList: true });
 
       // 7. Locate the visible header row to use as the drag handle
-      const tryAttachHeader = (retries = 3) => {
+      const tryAttachHeader = (retries = 6) => {
         if (!modal.isConnected) return;
         const header = this.findContextModalHeader(modal);
         if (header) {
@@ -1834,7 +1850,7 @@
             this.toggleMaximize(modal);
           });
         } else if (retries > 0) {
-          setTimeout(() => tryAttachHeader(retries - 1), 100);
+          requestAnimationFrame(() => tryAttachHeader(retries - 1));
         } else {
           Logger.warn('Visible header not found for Context Viewer modal:', modal);
         }
