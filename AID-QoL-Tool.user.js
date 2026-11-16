@@ -42,6 +42,7 @@
     themeCardHeight: '64px',
     themeMenuSpacing: '12px',
     themeMenuFontSize: '14px',
+    themeTextareaHeight: '96px',
 
     // Input Preferences
     autoQuoteDo: true,
@@ -2683,7 +2684,8 @@
         themeActionColor: '#fb923c',
         themeCardHeight: '64px',
         themeMenuSpacing: '12px',
-        themeMenuFontSize: '14px'
+        themeMenuFontSize: '14px',
+        themeTextareaHeight: '96px'
       },
       compact: {
         themeFontSize: '15px',
@@ -2697,7 +2699,8 @@
         themeActionColor: '#fb923c',
         themeCardHeight: '44px',
         themeMenuSpacing: '4px',
-        themeMenuFontSize: '12px'
+        themeMenuFontSize: '12px',
+        themeTextareaHeight: '54px'
       },
       large: {
         themeFontSize: '21px',
@@ -2711,7 +2714,8 @@
         themeActionColor: '#fb923c',
         themeCardHeight: '64px',
         themeMenuSpacing: '12px',
-        themeMenuFontSize: '15px'
+        themeMenuFontSize: '15px',
+        themeTextareaHeight: '110px'
       },
       oled: {
         themeFontSize: '18px',
@@ -2725,7 +2729,8 @@
         themeActionColor: '#38bdf8',
         themeCardHeight: '46px',
         themeMenuSpacing: '6px',
-        themeMenuFontSize: '13px'
+        themeMenuFontSize: '13px',
+        themeTextareaHeight: '64px'
       }
     },
 
@@ -2765,7 +2770,8 @@
         themeActionColor: CONFIG.get('themeActionColor', '#fb923c'),
         themeCardHeight: CONFIG.get('themeCardHeight', '64px'),
         themeMenuSpacing: CONFIG.get('themeMenuSpacing', '12px'),
-        themeMenuFontSize: CONFIG.get('themeMenuFontSize', '14px')
+        themeMenuFontSize: CONFIG.get('themeMenuFontSize', '14px'),
+        themeTextareaHeight: CONFIG.get('themeTextareaHeight', '96px')
       };
     },
 
@@ -2783,19 +2789,22 @@
         themeActionColor,
         themeCardHeight,
         themeMenuSpacing,
-        themeMenuFontSize
+        themeMenuFontSize,
+        themeTextareaHeight
       } = settings;
 
       const cardHeightNum = parseInt(themeCardHeight) || 64;
       const menuSpacingNum = parseInt(themeMenuSpacing) || 12;
       const menuFontSizeNum = parseInt(themeMenuFontSize) || 14;
+      const textareaHeightNum = parseInt(themeTextareaHeight) || 96;
 
       // When preset is default and no custom styling is requested, produce no overriding CSS
       if (themePreset === 'default' && !themeTextColor && !themeBgColor &&
           themeFontSize === '18px' && themeFontWeight === '400' &&
           themeLineHeight === '1.7' && themeParagraphSpacing === '1.25em' &&
           themeStoryWidth === '900px' && themeActionStyle === 'default' &&
-          cardHeightNum === 64 && menuSpacingNum === 12 && menuFontSizeNum === 14) {
+          cardHeightNum === 64 && menuSpacingNum === 12 && menuFontSizeNum === 14 &&
+          textareaHeightNum === 96) {
         return '';
       }
 
@@ -2927,13 +2936,14 @@
 
 
       // 6. Interface & Menu Density Overrides (Story Cards, Sidebar & Gear Menu)
-      if (cardHeightNum < 64 || menuSpacingNum < 12) {
+      if (cardHeightNum < 64 || menuSpacingNum < 12 || textareaHeightNum !== 96) {
         const cardPaddingV = Math.max(2, Math.round((cardHeightNum - 26) / 2));
         const cardFontSize = cardHeightNum <= 38 ? '13px' : cardHeightNum <= 48 ? '14px' : '15px';
         const catHeight = Math.max(28, Math.round(cardHeightNum * 0.72));
         const itemGap = Math.max(2, Math.round(menuSpacingNum * 0.4));
         const catGapTop = Math.max(4, Math.round(menuSpacingNum * 0.7));
         const catGapBottom = Math.max(1, Math.round(menuSpacingNum * 0.25));
+        const textareaPaddingV = Math.max(3, Math.min(10, Math.round(textareaHeightNum * 0.08)));
 
         css += `
           /* AID-QoL Compact Interface & Story Card Overrides */
@@ -2978,6 +2988,20 @@
             padding-top: ${cardPaddingV}px !important;
             padding-bottom: ${cardPaddingV}px !important;
           }
+
+          /* Gear Menu Sub-menu Textareas (Plot Essentials, Author's Note, AI Instructions, Details, Story Cards) */
+          .aid-qol-game-menu-resizable textarea,
+          .aid-qol-game-menu-resizable [data-slot="aid-textarea"],
+          .aid-qol-game-menu-resizable [data-slot="platform-textarea"],
+          [aria-label="Game settings" i] textarea,
+          [aria-label="Game settings" i] [data-slot="aid-textarea"],
+          [aria-label="Game settings" i] [data-slot="platform-textarea"],
+          .aid-qol-story-card-modal textarea,
+          .aid-qol-story-card-modal [data-slot="aid-textarea"] {
+            min-height: ${textareaHeightNum}px !important;
+            padding-top: ${textareaPaddingV}px !important;
+            padding-bottom: ${textareaPaddingV}px !important;
+          }
         `;
       }
 
@@ -2986,6 +3010,20 @@
       if (menuFontSizeNum !== 14) {
         css += `
           /* Gear Menu (Adventure & Gameplay) Font Size */
+          .aid-qol-game-menu-resizable,
+          .aid-qol-game-menu-resizable .is_Text:not(.font_icons):not([data-slot="platform-icon-glyph"]),
+          .aid-qol-game-menu-resizable .font_body,
+          .aid-qol-game-menu-resizable [data-slot="platform-text"],
+          .aid-qol-game-menu-resizable [data-slot="platform-button"]:not(:has(.font_icons:only-child)),
+          .aid-qol-game-menu-resizable [data-slot="platform-button-text"],
+          .aid-qol-game-menu-resizable [data-slot="platform-input"],
+          .aid-qol-game-menu-resizable input,
+          .aid-qol-game-menu-resizable textarea,
+          .aid-qol-game-menu-resizable [data-slot="aid-textarea"],
+          .aid-qol-game-menu-resizable [data-slot="platform-textarea"],
+          .aid-qol-game-menu-resizable button:not(:has(.font_icons:only-child)),
+          .aid-qol-game-menu-resizable label,
+          .aid-qol-game-menu-resizable p,
           [aria-label="Game settings" i],
           [aria-label="Game settings" i] .is_Text:not(.font_icons):not([data-slot="platform-icon-glyph"]),
           [aria-label="Game settings" i] .font_body,
@@ -2994,14 +3032,46 @@
           [aria-label="Game settings" i] [data-slot="platform-button-text"],
           [aria-label="Game settings" i] [data-slot="platform-input"],
           [aria-label="Game settings" i] input,
+          [aria-label="Game settings" i] textarea,
+          [aria-label="Game settings" i] [data-slot="aid-textarea"],
+          [aria-label="Game settings" i] [data-slot="platform-textarea"],
           [aria-label="Game settings" i] button:not(:has(.font_icons:only-child)),
           [aria-label="Game settings" i] label,
           [aria-label="Game settings" i] p,
-          .aid-qol-game-menu-resizable [data-slot="platform-text"],
-          .aid-qol-game-menu-resizable [data-slot="platform-button-text"] {
+          .aid-qol-story-card-modal textarea,
+          .aid-qol-story-card-modal [data-slot="aid-textarea"],
+          .aid-qol-story-card-modal [data-slot="platform-textarea"],
+          .aid-qol-story-card-modal input,
+          .aid-qol-story-card-modal label,
+          .aid-qol-story-card-modal p {
             font-size: ${menuFontSizeNum}px !important;
           }
 
+          /* Ensure textareas in gear menu sub-menus scale line-height and placeholders */
+          .aid-qol-game-menu-resizable textarea,
+          .aid-qol-game-menu-resizable [data-slot="aid-textarea"],
+          .aid-qol-game-menu-resizable [data-slot="platform-textarea"],
+          [aria-label="Game settings" i] textarea,
+          [aria-label="Game settings" i] [data-slot="aid-textarea"],
+          [aria-label="Game settings" i] [data-slot="platform-textarea"],
+          .aid-qol-story-card-modal textarea,
+          .aid-qol-story-card-modal [data-slot="aid-textarea"],
+          .aid-qol-story-card-modal [data-slot="platform-textarea"] {
+            line-height: 1.45 !important;
+          }
+
+          .aid-qol-game-menu-resizable textarea::placeholder,
+          .aid-qol-game-menu-resizable [data-slot="aid-textarea"]::placeholder,
+          [aria-label="Game settings" i] textarea::placeholder,
+          [aria-label="Game settings" i] [data-slot="aid-textarea"]::placeholder,
+          .aid-qol-story-card-modal textarea::placeholder {
+            font-size: ${menuFontSizeNum}px !important;
+          }
+
+          .aid-qol-game-menu-resizable h1,
+          .aid-qol-game-menu-resizable h2,
+          .aid-qol-game-menu-resizable h3,
+          .aid-qol-game-menu-resizable [data-slot="platform-heading"],
           [aria-label="Game settings" i] h1,
           [aria-label="Game settings" i] h2,
           [aria-label="Game settings" i] h3,
@@ -3009,6 +3079,7 @@
             font-size: ${menuFontSizeNum + 1}px !important;
           }
 
+          .aid-qol-game-menu-resizable [role="tablist"] [role="tab"] span.is_ButtonText,
           [aria-label="Game settings" i] [role="tablist"] [role="tab"] span.is_ButtonText {
             font-size: ${menuFontSizeNum}px !important;
           }
@@ -3115,6 +3186,7 @@
       const cardHeight = document.getElementById('cfg-theme-card-height')?.value || '64';
       const menuSpacing = document.getElementById('cfg-theme-menu-spacing')?.value || '12';
       const menuFontSize = document.getElementById('cfg-theme-menu-font-size')?.value || '14';
+      const textareaHeight = document.getElementById('cfg-theme-textarea-height')?.value || '96';
       const textColor = document.getElementById('cfg-theme-text-color-hex')?.value.trim() || '';
       const bgColor = document.getElementById('cfg-theme-bg-color-hex')?.value.trim() || '';
       const actionStyle = document.getElementById('cfg-theme-action-style')?.value || 'default';
@@ -3130,6 +3202,7 @@
         themeCardHeight: `${cardHeight}px`,
         themeMenuSpacing: `${menuSpacing}px`,
         themeMenuFontSize: `${menuFontSize}px`,
+        themeTextareaHeight: `${textareaHeight}px`,
         themeTextColor: textColor,
         themeBgColor: bgColor,
         themeActionStyle: actionStyle,
@@ -3155,6 +3228,7 @@
       updateIfNotActive('cfg-theme-card-height-val', settings.themeCardHeight);
       updateIfNotActive('cfg-theme-menu-spacing-val', settings.themeMenuSpacing);
       updateIfNotActive('cfg-theme-menu-font-size-val', settings.themeMenuFontSize);
+      updateIfNotActive('cfg-theme-textarea-height-val', settings.themeTextareaHeight);
 
       // In-dialog Story Preview Box
       const previewCard = document.getElementById('aid-theme-preview-card');
@@ -3250,6 +3324,10 @@
       const menuFontSizeNum = parseInt(presetValues.themeMenuFontSize) || 14;
       const mfEl = document.getElementById('cfg-theme-menu-font-size');
       if (mfEl) mfEl.value = menuFontSizeNum;
+
+      const textareaHeightNum = parseInt(presetValues.themeTextareaHeight) || 96;
+      const thEl = document.getElementById('cfg-theme-textarea-height');
+      if (thEl) thEl.value = textareaHeightNum;
 
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -4275,6 +4353,17 @@
                 <input type="range" id="cfg-theme-menu-font-size" class="aid-qol-range-slider" min="11" max="20" step="1" value="14">
               </div>
 
+              <div class="aid-qol-slider-row" style="margin-top: 10px;">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-textarea-height">Sub-menu Textarea Height (Plot, Gameplay, Details)</label>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-textarea-height-val" class="aid-qol-value-input" value="96px" title="Click to type exact value (e.g. 54px, 96px, 120px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-textarea-height-reset" title="Reset to default (96px)">↺</button>
+                  </div>
+                </div>
+                <input type="range" id="cfg-theme-textarea-height" class="aid-qol-range-slider" min="44" max="160" step="2" value="96">
+              </div>
+
               <!-- Colors & Background Section -->
               <div class="aid-qol-section-title" style="margin-top: 18px;">Colors & Atmosphere</div>
 
@@ -4602,6 +4691,7 @@
       this.bindSliderWithDirectInput('cfg-theme-card-height', 'cfg-theme-card-height-val', 'cfg-theme-card-height-reset', 64, 'px');
       this.bindSliderWithDirectInput('cfg-theme-menu-spacing', 'cfg-theme-menu-spacing-val', 'cfg-theme-menu-spacing-reset', 12, 'px');
       this.bindSliderWithDirectInput('cfg-theme-menu-font-size', 'cfg-theme-menu-font-size-val', 'cfg-theme-menu-font-size-reset', 14, 'px');
+      this.bindSliderWithDirectInput('cfg-theme-textarea-height', 'cfg-theme-textarea-height-val', 'cfg-theme-textarea-height-reset', 96, 'px');
 
       // Dropdown Reset Buttons
       document.getElementById('cfg-theme-font-weight-reset')?.addEventListener('click', () => {
@@ -4866,6 +4956,10 @@
       const mfEl = document.getElementById('cfg-theme-menu-font-size');
       if (mfEl) mfEl.value = parseInt(menuFontSize) || 14;
 
+      const textareaHeight = CONFIG.get('themeTextareaHeight', '96px');
+      const thEl = document.getElementById('cfg-theme-textarea-height');
+      if (thEl) thEl.value = parseInt(textareaHeight) || 96;
+
       const textColor = CONFIG.get('themeTextColor', '');
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -5060,6 +5154,7 @@
       CONFIG.set('themeCardHeight', themeSettings.themeCardHeight);
       CONFIG.set('themeMenuSpacing', themeSettings.themeMenuSpacing);
       CONFIG.set('themeMenuFontSize', themeSettings.themeMenuFontSize);
+      CONFIG.set('themeTextareaHeight', themeSettings.themeTextareaHeight);
       CONFIG.set('themeTextColor', themeSettings.themeTextColor);
       CONFIG.set('themeBgColor', themeSettings.themeBgColor);
       CONFIG.set('themeActionStyle', themeSettings.themeActionStyle);
