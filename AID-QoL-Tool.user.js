@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.5.2
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card Modals, Game Menu Resizing, Antigravity Dev Bridge).
+// @version      3.6.0
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card & Context Modals, Game Menu Resizing, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -39,6 +39,12 @@
     scModalWidth: '680px',
     scModalHeight: '82vh',
     rememberSCSize: true,
+
+    // Context Viewer Modal
+    contextModalEnabled: true,
+    contextModalWidth: '480px',
+    contextModalHeight: 'auto',
+    rememberContextSize: true,
 
     // Game Menu (Right Sidebar) Resizing
     gameMenuResizeEnabled: true,
@@ -118,6 +124,14 @@
     `Story Card Modals: ${CONFIG.get('storyCardModalsEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
       CONFIG.set('storyCardModalsEnabled', !CONFIG.get('storyCardModalsEnabled'));
+      location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Context Viewer Modal: ${CONFIG.get('contextModalEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      CONFIG.set('contextModalEnabled', !CONFIG.get('contextModalEnabled'));
       location.reload();
     }
   );
@@ -1201,33 +1215,41 @@
   };
 
   // =========================================================================
-  // Feature Module 4: Story Card Modals (Drag & Top-Left Anchored Resize)
+  // Feature Module 4: Story Card & Context Viewer Modals (Drag & Anchored Resize)
   // =========================================================================
   const StoryCardModalModule = {
-    name: 'Story Card Modals',
+    name: 'Story Card & Context Modals',
 
     init() {
       Logger.info('Initializing StoryCardModalModule...');
 
-      if (!CONFIG.get('storyCardModalsEnabled')) return;
+      if (!CONFIG.get('storyCardModalsEnabled', true) && !CONFIG.get('contextModalEnabled', true)) return;
 
       this.injectStyles();
 
-      // Observe for dialogs appearing in the DOM
+      // Observe for dialogs appearing in the DOM with progressive retry for child mounting
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
-        // Allow a brief moment for child elements to mount
-        setTimeout(() => {
-          if (this.isStoryCardModal(modalNode)) {
+        const checkModal = (retries = 3) => {
+          if (!modalNode.isConnected) return;
+          if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal) return;
+
+          if (CONFIG.get('storyCardModalsEnabled', true) && this.isStoryCardModal(modalNode)) {
             this.setupStoryCardModal(modalNode);
+          } else if (CONFIG.get('contextModalEnabled', true) && this.isContextViewerModal(modalNode)) {
+            this.setupContextViewerModal(modalNode);
+          } else if (retries > 0) {
+            setTimeout(() => checkModal(retries - 1), 80);
           }
-        }, 60);
+        };
+
+        setTimeout(() => checkModal(3), 50);
       });
     },
 
     injectStyles() {
       GM_addStyle(`
         /* 
-         * Resizable Story Card modal styling.
+         * Resizable Story Card modal styling (native resize).
          * Explicit right: auto !important and bottom: auto !important prevents Tailwind's
          * inset-0 and w-full from stretching the modal across the entire viewport!
          */
@@ -1238,7 +1260,7 @@
           bottom: auto !important;
           margin: 0px !important;
           min-width: 320px !important;
-          min-height: 250px !important;
+          min-height: 200px !important;
           max-width: 98vw !important;
           max-height: 96vh !important;
           border-bottom-right-radius: 0px !important;
@@ -1246,6 +1268,209 @@
           transform: none !important;
           --tw-translate-x: 0px !important;
           --tw-translate-y: 0px !important;
+        }
+
+        /* 
+         * Resizable Context Viewer modal styling.
+         * Outer modal uses overflow: hidden !important so the header is pinned and NEVER scrolls!
+         * Resizing is handled smoothly by the dedicated .aid-qol-modal-corner-resizer handle.
+         */
+        .aid-qol-context-modal {
+          resize: none !important;
+          overflow: hidden !important;
+          right: auto !important;
+          bottom: auto !important;
+          margin: 0px !important;
+          min-width: 320px !important;
+          min-height: 200px !important;
+          max-width: 98vw !important;
+          max-height: 96vh !important;
+          border-bottom-right-radius: 0px !important;
+          box-sizing: border-box !important;
+          transform: none !important;
+          --tw-translate-x: 0px !important;
+          --tw-translate-y: 0px !important;
+        }
+
+        /* 
+         * Eliminate background darkening / graying overlay behind Context Viewer dialogs.
+         * Explicitly targets only dialog overlay slots so the main app (#__next) is never touched!
+         */
+        body:has([role="dialog"].aid-qol-context-modal) [data-slot="aid-dialog-overlay"],
+        body:has([role="dialog"].aid-qol-context-modal) [data-slot="platform-dialog-overlay"],
+        body:has([role="dialog"].aid-qol-context-modal) [data-slot*="dialog-overlay"],
+        body:has([role="dialog"].aid-qol-context-modal) [data-radix-dialog-overlay] {
+          background-color: transparent !important;
+          background: transparent !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
+        /* Allow inner content containers of Context Viewer and subdialogs to fluidly expand with modal width */
+        .aid-qol-context-modal > .is_View:only-of-type > div:first-child,
+        .aid-qol-context-modal > .is_View:only-of-type > div:last-child,
+        .aid-qol-context-modal > .is_View:first-of-type:not(:only-of-type) > div,
+        .aid-qol-context-modal > .flex.min-h-0,
+        .aid-qol-context-modal > .flex.min-h-0 .is_ScrollView {
+          max-width: none !important;
+          min-width: 0 !important;
+          width: 100% !important;
+        }
+
+        /* Ensure token badges inside token viewer flow inline naturally and never expand to full line width */
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) [class*="_maw-480px"] {
+          width: auto !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          flex: none !important;
+        }
+
+        /* Ensure tablist pill buttons remain fully symmetrical rounded pills */
+        .aid-qol-context-modal [role="tab"] {
+          border-radius: 9999px !important;
+        }
+
+        /* 
+         * Main View Context overview dialog layout:
+         * Top summary (header, token bar, legend, explanation) is pinned (flex-shrink: 0).
+         * Bottom "Details" toggle button is pinned (flex-shrink: 0).
+         * Middle details section expands to fill modal and scrolls its inner is_ScrollView ONLY.
+         */
+        .aid-qol-context-modal > .is_View:first-of-type:not(:only-of-type) {
+          flex-shrink: 0 !important;
+        }
+
+        .aid-qol-context-modal > .flex.min-h-0:not([style*="height: 0px"]):not([style*="height:0px"]):not([style*="height: 0"]):not([style*="height:0"]) {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          height: auto !important;
+          max-height: none !important;
+          overflow: hidden !important;
+        }
+
+        .aid-qol-context-modal > .is_View:last-of-type:not(:only-of-type) {
+          flex-shrink: 0 !important;
+        }
+
+        /* Context Viewer subdialogs: single inner container expands fluidly to fill modal height */
+        .aid-qol-context-modal > .is_View:only-of-type {
+          flex: 1 1 0px !important;
+          height: 100% !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+
+        /* Header in subdialogs stays pinned at top */
+        .aid-qol-context-modal > .is_View:only-of-type > div:first-child {
+          flex-shrink: 0 !important;
+        }
+
+        /* 
+         * Ensure the content card in Context Viewer subdialogs strictly respects modal height.
+         * Uses structural selector so token badges and inner elements are never deformed.
+         * Eliminates content blowout, restores the inner scrollbar, and keeps the Copy button pinned in view.
+         */
+        .aid-qol-context-modal > .is_View:only-of-type > div:last-child {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+          position: relative !important;
+          display: flex !important;
+          flex-direction: column !important;
+          border-bottom-right-radius: 0px !important;
+        }
+
+        .aid-qol-context-modal > .is_View:only-of-type > div:last-child > div:first-child {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+
+        /* Non-absolute secondary elements inside content card (such as token approximation notice) stay pinned */
+        .aid-qol-context-modal > .is_View:only-of-type > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]) {
+          flex-shrink: 0 !important;
+        }
+
+        /* Scroll container for subdialogs, memories, and main view details */
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"]),
+        .aid-qol-context-modal [data-keyboard-scroll-region] {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          scrollbar-gutter: stable !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* Scroll content inside ScrollView must expand naturally to fit its content */
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) > .css-g5y9jx,
+        .aid-qol-context-modal [data-keyboard-scroll-region] > .css-g5y9jx {
+          height: auto !important;
+          min-height: min-content !important;
+          flex: none !important;
+        }
+
+        /* Visible sleek 7px scrollbar styling for context viewer scrollables */
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"])::-webkit-scrollbar,
+        .aid-qol-context-modal [data-keyboard-scroll-region]::-webkit-scrollbar {
+          width: 7px !important;
+          height: 7px !important;
+          display: block !important;
+        }
+
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"])::-webkit-scrollbar-track,
+        .aid-qol-context-modal [data-keyboard-scroll-region]::-webkit-scrollbar-track {
+          background-color: rgba(0, 0, 0, 0.15) !important;
+          border-radius: 0px !important;
+        }
+
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"])::-webkit-scrollbar-thumb,
+        .aid-qol-context-modal [data-keyboard-scroll-region]::-webkit-scrollbar-thumb {
+          background-color: var(--borderColor, rgba(255, 255, 255, 0.25)) !important;
+          border-radius: 3px !important;
+        }
+
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"])::-webkit-scrollbar-thumb:hover,
+        .aid-qol-context-modal [data-keyboard-scroll-region]::-webkit-scrollbar-thumb:hover {
+          background-color: var(--color, rgba(255, 255, 255, 0.5)) !important;
+        }
+
+        /* Dedicated 2D corner resizer handle for Context Viewer dialogs */
+        .aid-qol-modal-corner-resizer {
+          position: absolute !important;
+          right: 0px !important;
+          bottom: 0px !important;
+          width: 18px !important;
+          height: 18px !important;
+          cursor: nwse-resize !important;
+          z-index: 100000 !important;
+          pointer-events: auto !important;
+          user-select: none !important;
+          -webkit-user-select: none !important;
+          touch-action: none !important;
+          box-sizing: border-box !important;
+          background-color: transparent !important;
+          background-repeat: no-repeat !important;
+          background-position: bottom right !important;
+          background-size: 12px 12px !important;
+          background-image: linear-gradient(135deg, transparent 0%, transparent 45%, var(--borderColor, rgba(255, 255, 255, 0.4)) 45%, var(--borderColor, rgba(255, 255, 255, 0.4)) 58%, transparent 58%, transparent 75%, var(--borderColor, rgba(255, 255, 255, 0.4)) 75%, var(--borderColor, rgba(255, 255, 255, 0.4)) 88%, transparent 88%) !important;
+        }
+
+        .aid-qol-modal-corner-resizer:hover,
+        .aid-qol-modal-corner-resizer.resizing {
+          background-image: linear-gradient(135deg, transparent 0%, transparent 45%, var(--color-aid-primary, rgba(249, 115, 22, 0.9)) 45%, var(--color-aid-primary, rgba(249, 115, 22, 0.9)) 58%, transparent 58%, transparent 75%, var(--color-aid-primary, rgba(249, 115, 22, 0.9)) 75%, var(--color-aid-primary, rgba(249, 115, 22, 0.9)) 88%, transparent 88%) !important;
         }
 
         /* Drag handle on the visible header bar */
@@ -1329,6 +1554,53 @@
     },
 
     /**
+     * Determines whether a given modal element represents the Context Viewer dialog or any of its subdialogs
+     * (e.g. Adventure, Explore Memories, AI Instructions, Complete Text, etc.).
+     * @param {HTMLElement} modal
+     * @returns {boolean}
+     */
+    isContextViewerModal(modal) {
+      if (!modal || modal.nodeType !== Node.ELEMENT_NODE) return false;
+
+      // Never treat Story Card modals as Context Viewer
+      if (this.isStoryCardModal(modal)) return false;
+
+      // 1. Explicit title check (screen-reader or visible)
+      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2');
+      if (title) {
+        const titleText = title.textContent.trim().toLowerCase();
+        if (/context\s*viewer|view\s*context|explore\s*memories/i.test(titleText)) {
+          return true;
+        }
+      }
+
+      // 2. Close button aria-label checks
+      const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
+      if (closeBtn) {
+        const ariaLabel = (closeBtn.getAttribute('aria-label') || '').toLowerCase();
+        if (ariaLabel.includes('context') || ariaLabel.includes('memories')) {
+          return true;
+        }
+      }
+
+      // 3. Characteristic Context Viewer or Subdialog UI signatures
+      if (
+        modal.querySelector('[aria-label="Section tabs" i], [aria-label="Copy context text" i], [data-memory-action-id]') ||
+        modal.querySelector('[aria-label*="Close context viewer" i], [aria-label*="Close memories" i]')
+      ) {
+        return true;
+      }
+
+      // 4. Visible text content fallback
+      const text = modal.textContent || '';
+      if (text.includes('Context used for this action') || /view\s*context|context\s*viewer/i.test(text)) {
+        return true;
+      }
+
+      return false;
+    },
+
+    /**
      * Enhances a Story Card modal with drag and top-left anchored resize capabilities.
      * @param {HTMLElement} modal
      */
@@ -1373,6 +1645,16 @@
       modal.style.margin = '0px';
       modal.style.transform = 'none';
 
+      // Bring newly opened modal immediately to front
+      StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+      modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+
+      // Clicking or interacting with the modal brings it to the top
+      modal.addEventListener('pointerdown', () => {
+        StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+        modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+      }, { capture: true });
+
       // Unset parent flex centering
       if (modal.parentElement) {
         modal.parentElement.style.justifyContent = 'unset';
@@ -1404,6 +1686,144 @@
         if (this.isInteractiveElement(e.target)) return;
         this.toggleMaximize(modal);
       });
+    },
+
+    /**
+     * Enhances the Context Viewer modal with drag and top-left anchored resize capabilities.
+     * @param {HTMLElement} modal
+     */
+    setupContextViewerModal(modal) {
+      if (!CONFIG.get('contextModalEnabled', true)) return;
+      if (modal.dataset.aidQolContextModal) return;
+      modal.dataset.aidQolContextModal = 'true';
+
+      Logger.log('Setting up Context Viewer modal:', modal);
+
+      // 1. Strip Tailwind classes that lock width or center via transform:
+      modal.classList.remove(
+        'inset-0',
+        'w-full',
+        'w-[calc(100vw-var(--spacing-overlay-viewport-total))]',
+        '-translate-x-1/2', 
+        '-translate-y-1/2', 
+        'translate-x-1/2', 
+        'translate-y-1/2', 
+        'm-auto',
+        'max-w-[480px]',
+        'max-w-[420px]',
+        'max-w-md',
+        'max-w-lg',
+        'h-[512px]',
+        'overflow-hidden'
+      );
+
+      // 2. Measure current DOM rect to anchor top-left coordinates seamlessly
+      const initialRect = modal.getBoundingClientRect();
+
+      // 3. Calculate initial dimensions from configured defaults or saved preferences
+      const configuredWidth = CONFIG.get('contextModalWidth', '480px');
+      const configuredHeight = CONFIG.get('contextModalHeight', 'auto');
+
+      const isOverview = !modal.classList.contains('h-[512px]') && 
+        (modal.querySelector('[data-slot="aid-dialog-title"]')?.textContent.trim().toLowerCase() === 'view context' ||
+         modal.classList.contains('max-w-[420px]'));
+
+      let widthPx = initialRect.width || (isOverview ? 420 : 480);
+      if (configuredWidth && configuredWidth !== 'auto') {
+        widthPx = Math.min(window.innerWidth - 30, Math.round(this.parseDimension(configuredWidth, window.innerWidth)));
+      }
+
+      let heightPx = null;
+      if (configuredHeight && configuredHeight !== 'auto') {
+        heightPx = Math.min(window.innerHeight - 40, Math.round(this.parseDimension(configuredHeight, window.innerHeight)));
+      } else if (!isOverview && initialRect.height > 100) {
+        heightPx = Math.min(window.innerHeight - 40, Math.round(initialRect.height));
+      }
+
+      // Symmetrically center horizontally and vertically
+      const leftPx = Math.max(10, Math.round((window.innerWidth - widthPx) / 2));
+      const topPx = heightPx
+        ? Math.max(10, Math.round((window.innerHeight - heightPx) / 2))
+        : (initialRect.top > 0 ? Math.round(initialRect.top) : Math.max(20, Math.round((window.innerHeight - (initialRect.height || 420)) / 2)));
+
+      // 4. Anchor top-left with fixed pixel coordinates
+      modal.style.position = 'fixed';
+      modal.style.left = `${leftPx}px`;
+      modal.style.top = `${topPx}px`;
+      modal.style.width = `${widthPx}px`;
+      if (heightPx) {
+        modal.style.height = `${heightPx}px`;
+      }
+      modal.style.right = 'auto';
+      modal.style.bottom = 'auto';
+      modal.style.margin = '0px';
+      modal.style.transform = 'none';
+
+      // Bring newly opened modal immediately to front
+      StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+      modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+
+      // Clicking or interacting with the modal brings it to the top
+      modal.addEventListener('pointerdown', () => {
+        StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+        modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+      }, { capture: true });
+
+      // Unset parent flex centering
+      if (modal.parentElement) {
+        modal.parentElement.style.justifyContent = 'unset';
+        modal.parentElement.style.alignItems = 'unset';
+      }
+
+      // 5. Enable Context Viewer styling (with pinned header and overflow: hidden)
+      modal.classList.add('aid-qol-context-modal');
+
+      // 6. Append dedicated corner resize handle to outer dialog and bind drag resize
+      const ensureResizer = () => {
+        if (!modal.isConnected) return;
+        let resizer = modal.querySelector(':scope > .aid-qol-modal-corner-resizer');
+        if (!resizer) {
+          resizer = document.createElement('div');
+          resizer.className = 'aid-qol-modal-corner-resizer';
+          resizer.title = 'Drag to resize modal';
+          modal.appendChild(resizer);
+          this.bindCornerResizeEvents(modal, resizer);
+        }
+      };
+      ensureResizer();
+
+      // Ensure resizer remains attached to outer dialog if React re-renders modal children
+      const resizerObserver = new MutationObserver(() => {
+        if (!modal.isConnected) {
+          resizerObserver.disconnect();
+          return;
+        }
+        if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
+          ensureResizer();
+        }
+      });
+      resizerObserver.observe(modal, { childList: true });
+
+      // 7. Locate the visible header row to use as the drag handle
+      const tryAttachHeader = (retries = 3) => {
+        if (!modal.isConnected) return;
+        const header = this.findContextModalHeader(modal);
+        if (header) {
+          header.classList.add('aid-qol-modal-handle');
+          Logger.log('Attached drag handle to Context Viewer header:', header);
+          this.bindDragEvents(modal, header);
+          header.addEventListener('dblclick', (e) => {
+            if (this.isInteractiveElement(e.target)) return;
+            this.toggleMaximize(modal);
+          });
+        } else if (retries > 0) {
+          setTimeout(() => tryAttachHeader(retries - 1), 100);
+        } else {
+          Logger.warn('Visible header not found for Context Viewer modal:', modal);
+        }
+      };
+
+      tryAttachHeader();
     },
 
     /**
@@ -1449,12 +1869,106 @@
     },
 
     /**
+     * Binds mouse drag listeners to the dedicated corner resizer handle.
+     * Enables smooth 2D resizing and saves preferred dimensions on release.
+     * @param {HTMLElement} modal
+     * @param {HTMLElement} resizer
+     */
+    bindCornerResizeEvents(modal, resizer) {
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let startWidth = 0;
+      let startHeight = 0;
+
+      // Transparent full-screen overlay during drag to prevent mouse events being captured by inner elements
+      let dragOverlay = document.getElementById('aid-qol-modal-resize-overlay');
+      if (!dragOverlay) {
+        dragOverlay = document.createElement('div');
+        dragOverlay.id = 'aid-qol-modal-resize-overlay';
+        dragOverlay.style.cssText = 'position:fixed;inset:0;z-index:999999;cursor:nwse-resize;user-select:none;display:none;';
+        document.body.appendChild(dragOverlay);
+      }
+
+      const onMouseDown = (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (modal.classList.contains('aid-qol-modal-maximized')) {
+          modal.classList.remove('aid-qol-modal-maximized');
+        }
+
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = modal.offsetWidth;
+        startHeight = modal.offsetHeight;
+        isDragging = false;
+
+        StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 999999, 999999) + 1;
+        modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+
+        const onMouseMove = (moveEvent) => {
+          const deltaX = moveEvent.clientX - startX;
+          const deltaY = moveEvent.clientY - startY;
+
+          if (!isDragging && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+            isDragging = true;
+            resizer.classList.add('resizing');
+            document.body.style.cursor = 'nwse-resize';
+            document.body.style.userSelect = 'none';
+            dragOverlay.style.display = 'block';
+          }
+
+          if (isDragging) {
+            const minW = 320;
+            const maxW = Math.max(minW, window.innerWidth - 20);
+            const minH = 160;
+            const maxH = Math.max(minH, window.innerHeight - 20);
+
+            const newW = Math.max(minW, Math.min(maxW, Math.round(startWidth + deltaX)));
+            const newH = Math.max(minH, Math.min(maxH, Math.round(startHeight + deltaY)));
+
+            modal.style.width = `${newW}px`;
+            modal.style.height = `${newH}px`;
+          }
+        };
+
+        const onMouseUp = () => {
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+
+          if (isDragging) {
+            isDragging = false;
+            dragOverlay.style.display = 'none';
+            resizer.classList.remove('resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            const finalW = Math.round(modal.offsetWidth);
+            const finalH = Math.round(modal.offsetHeight);
+            if (CONFIG.get('rememberContextSize', true) && finalW >= 300 && finalH >= 150) {
+              CONFIG.set('contextModalWidth', `${finalW}px`);
+              CONFIG.set('contextModalHeight', `${finalH}px`);
+              Logger.log(`Saved resized Context Viewer dimensions: ${finalW}px × ${finalH}px`);
+            }
+          }
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      };
+
+      resizer.addEventListener('mousedown', onMouseDown);
+    },
+
+    /**
      * Checks if a clicked element inside the header is an interactive button/input.
      * @param {HTMLElement} target
      * @returns {boolean}
      */
     isInteractiveElement(target) {
-      return !!target.closest('button, input, textarea, select, a, [role="tab"], [data-slot="platform-dropdown-menu-trigger"], [data-slot="platform-dialog-close"], [aria-label*="close" i]');
+      return !!target.closest('button, [role="button"], input, textarea, select, a, [role="tab"], [role="tablist"], [role="switch"], [data-slot="platform-dropdown-menu-trigger"], [data-slot="platform-dialog-close"], [data-slot="aid-dialog-close"], [data-slot="aid-button"], [data-memory-action-id], [aria-label*="close" i], [aria-label*="Copy" i], .aid-qol-modal-corner-resizer');
     },
 
     /**
@@ -1490,6 +2004,62 @@
     },
 
     /**
+     * Finds the visible top header row specifically for Context Viewer dialogs and submenus.
+     * Skips .sr-only titles and targets the row containing the title, category icon, or close button.
+     * @param {HTMLElement} modal
+     * @returns {HTMLElement|null}
+     */
+    findContextModalHeader(modal) {
+      // 1. Look for the top row containing the close button (present in submenus: Adventure, Memories, AI Instructions, Complete Text, etc.)
+      const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
+      if (closeBtn) {
+        const row = closeBtn.closest('._jc-space-betwe3241') || closeBtn.closest('._fd-row');
+        if (row && row !== modal) {
+          return row;
+        }
+      }
+
+      // 2. Look for visible h1 heading row
+      const h1 = modal.querySelector('h1');
+      if (h1 && !h1.classList.contains('sr-only')) {
+        const row = h1.closest('._jc-space-betwe3241') || h1.closest('._fd-row') || h1.parentElement;
+        if (row && row !== modal) {
+          return row;
+        }
+      }
+
+      // 3. Look for visible element with "View Context", "Context viewer", or "Memories"
+      const candidates = modal.querySelectorAll('span, div, h2, h3');
+      for (const el of candidates) {
+        if (!el.classList.contains('sr-only')) {
+          const t = el.textContent.trim().toLowerCase();
+          if (t === 'view context' || t === 'memories' || t === 'context viewer') {
+            const row = el.closest('._jc-space-betwe3241') || el.closest('._fd-row') || el.parentElement;
+            if (row && row !== modal) {
+              return row;
+            }
+          }
+        }
+      }
+
+      // 4. Look for the first row containing the w_search icon
+      const icon = modal.querySelector('span.font_icons');
+      if (icon && icon.textContent.includes('w_search')) {
+        const row = icon.closest('._jc-space-betwe3241') || icon.closest('._fd-row');
+        if (row && row !== modal) {
+          return row;
+        }
+      }
+
+      // 5. Fallback to first visible row in the modal
+      const firstRow = modal.querySelector('._fd-row');
+      if (firstRow && firstRow !== modal) return firstRow;
+
+      // 6. Fallback to standard modal header finder
+      return this.findModalHeader(modal);
+    },
+
+    /**
      * Binds mouse drag listeners to the modal header.
      * @param {HTMLElement} modal
      * @param {HTMLElement} header
@@ -1520,7 +2090,8 @@
         modal.style.bottom = 'auto';
         modal.style.left = `${rect.left}px`;
         modal.style.top = `${rect.top}px`;
-        modal.style.zIndex = '999999';
+        StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 999999, 999999) + 1;
+        modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
 
         const startX = e.clientX;
         const startY = e.clientY;
@@ -1895,14 +2466,17 @@
       }
       if (existing) return;
 
+      const nonStorySelector = 'textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *, #gameplay-output *, #gameplay-story-scrollview *, [aria-label="Story" i] *, #game-text-input-controller *, [data-gameplay-story-row-index] *, [data-gameplay-story-item-index] *, [data-gameplay-story-action-id] *)';
+
       const css = `
         /* 
          * Textarea Vertical Resizing.
          * Adds vertical resize capability to textareas across Story Cards, Memory,
          * Notes, and Scenarios by grabbing the small box at the bottom of the scrollbar.
-         * Excludes gameplay input dock (#game-text-input) to preserve dock layout.
+         * Explicitly excludes textareas inside the story half of the screen:
+         * running story paragraphs, story actions, and next prompt input dock.
          */
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *) {
+        ${nonStorySelector} {
           resize: vertical !important;
           overflow-y: auto !important;
           min-height: 48px !important;
@@ -1916,45 +2490,45 @@
          * Square bottom-right corner on any ancestor container wrapping the resizable textarea.
          * Handles direct parents, grandparents, and outer card wrappers (e.g. Gear Menu -> Adventure -> Plot essentials / Author's Note).
          */
-        *:has(> textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        *:has(> * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        *:has(> * > * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        *:has(> * > * > * > textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+        *:has(> ${nonStorySelector}),
+        *:has(> * > ${nonStorySelector}),
+        *:has(> * > * > ${nonStorySelector}),
+        *:has(> * > * > * > ${nonStorySelector}) {
           border-bottom-right-radius: 0px !important;
         }
 
         /* Target Tamagui and Tailwind radius classes on containers enclosing resizable textareas */
-        [class*="_bbrr-"]:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        [class*="rounded"]:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+        [class*="_bbrr-"]:has(${nonStorySelector}),
+        [class*="rounded"]:has(${nonStorySelector}) {
           border-bottom-right-radius: 0px !important;
         }
 
         /* Specifically inside Game Menu / Settings drawer (Adventure -> Plot textarea items) */
-        .aid-qol-game-menu-resizable div:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        [aria-label="Game settings" i] div:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)),
-        [aria-label="Game settings" i] *:has(textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)) {
+        .aid-qol-game-menu-resizable div:has(${nonStorySelector}),
+        [aria-label="Game settings" i] div:has(${nonStorySelector}),
+        [aria-label="Game settings" i] *:has(${nonStorySelector}) {
           border-bottom-right-radius: 0px !important;
         }
 
         /* Thinned, sleek scrollbar on resizable textareas */
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar {
+        ${nonStorySelector}::-webkit-scrollbar {
           width: 7px !important;
           height: 7px !important;
           display: block !important;
         }
 
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-track {
+        ${nonStorySelector}::-webkit-scrollbar-track {
           background-color: rgba(0, 0, 0, 0.15) !important;
           border-radius: 0px !important;
           border-bottom-right-radius: 0px !important;
         }
 
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb {
+        ${nonStorySelector}::-webkit-scrollbar-thumb {
           background-color: var(--borderColor, rgba(255, 255, 255, 0.22)) !important;
           border-radius: 3px !important;
         }
 
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-thumb:hover {
+        ${nonStorySelector}::-webkit-scrollbar-thumb:hover {
           background-color: var(--color, rgba(255, 255, 255, 0.45)) !important;
         }
 
@@ -1964,7 +2538,7 @@
          * Explicitly locks background-size and dimension limits to 7px x 7px so the handle
          * never inflates when content fits and the vertical scrollbar track is unneeded.
          */
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-resizer {
+        ${nonStorySelector}::-webkit-resizer {
           display: block !important;
           width: 7px !important;
           height: 7px !important;
@@ -1981,10 +2555,42 @@
           cursor: ns-resize !important;
         }
 
-        textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)::-webkit-scrollbar-corner {
+        ${nonStorySelector}::-webkit-scrollbar-corner {
           background-color: transparent !important;
           width: 7px !important;
           height: 7px !important;
+        }
+
+        /* 
+         * Explicitly disable resizing and hide resize handle for textareas in the story half of the screen:
+         * running story paragraphs, story actions, and next prompt input dock.
+         */
+        #gameplay-output textarea,
+        #gameplay-story-scrollview textarea,
+        [aria-label="Story" i] textarea,
+        #game-text-input-controller textarea,
+        [data-gameplay-story-row-index] textarea,
+        [data-gameplay-story-item-index] textarea,
+        [data-gameplay-story-action-id] textarea,
+        #game-text-input,
+        [aria-label="Action input" i],
+        [data-undo-redo-editor-field="actionInput"] {
+          resize: none !important;
+        }
+
+        #gameplay-output textarea::-webkit-resizer,
+        #gameplay-story-scrollview textarea::-webkit-resizer,
+        [aria-label="Story" i] textarea::-webkit-resizer,
+        #game-text-input-controller textarea::-webkit-resizer,
+        [data-gameplay-story-row-index] textarea::-webkit-resizer,
+        [data-gameplay-story-item-index] textarea::-webkit-resizer,
+        [data-gameplay-story-action-id] textarea::-webkit-resizer,
+        #game-text-input::-webkit-resizer,
+        [aria-label="Action input" i]::-webkit-resizer,
+        [data-undo-redo-editor-field="actionInput"]::-webkit-resizer {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
         }
       `;
 
@@ -1992,6 +2598,16 @@
       style.id = this.styleId;
       style.textContent = css;
       (document.head || document.documentElement).appendChild(style);
+    },
+
+    /**
+     * Helper to determine if a textarea belongs to the story half of the screen.
+     */
+    isStoryTextarea(textarea) {
+      if (!textarea) return false;
+      if (textarea.id === 'game-text-input') return true;
+      if (textarea.matches && textarea.matches('[aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"]')) return true;
+      return !!textarea.closest('#gameplay-output, #gameplay-story-scrollview, [aria-label="Story" i], #game-text-input-controller, [data-gameplay-story-row-index], [data-gameplay-story-item-index], [data-gameplay-story-action-id], .aid-qol-config-modal');
     },
 
     /**
@@ -2003,6 +2619,7 @@
       const squareCorners = (textarea) => {
         if (!CONFIG.get('textareaResizeEnabled', true)) return;
         if (!textarea || !textarea.isConnected) return;
+        if (this.isStoryTextarea(textarea)) return;
 
         textarea.style.setProperty('border-bottom-right-radius', '0px', 'important');
 
@@ -2021,12 +2638,11 @@
         }
       };
 
-      observeSelector(
-        'textarea:not(#game-text-input, [aria-label="Action input" i], [data-undo-redo-editor-field="actionInput"], .aid-qol-config-modal *)',
-        (textarea) => {
+      observeSelector('textarea', (textarea) => {
+        if (!this.isStoryTextarea(textarea)) {
           squareCorners(textarea);
         }
-      );
+      });
     }
   };
 
@@ -2490,7 +3106,7 @@
 
           <div class="aid-qol-config-tabs">
             <button class="aid-qol-tab-btn active" data-tab="aid-tab-hotkeys">Hotkeys</button>
-            <button class="aid-qol-tab-btn" data-tab="aid-tab-storycards">Cards & Menus</button>
+            <button class="aid-qol-tab-btn" data-tab="aid-tab-storycards">Modals & Menus</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-general">General</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-bridge">Dev Bridge</button>
           </div>
@@ -2610,6 +3226,28 @@
                 <div class="aid-qol-input-block">
                   <label for="cfg-scModalHeight">Default Height (e.g. 82vh, 850px):</label>
                   <input type="text" id="cfg-scModalHeight" class="aid-qol-text-input">
+                </div>
+              </div>
+
+              <div class="aid-qol-section-title">Context Viewer Modal</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-context-enabled"> Enable Context Viewer Drag & Resize
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-context-remember"> Automatically remember resized dimensions
+                </label>
+              </div>
+              <div class="aid-qol-inline-fields">
+                <div class="aid-qol-input-block">
+                  <label for="cfg-contextModalWidth">Default Width (e.g. 480px, 50vw):</label>
+                  <input type="text" id="cfg-contextModalWidth" class="aid-qol-text-input">
+                </div>
+                <div class="aid-qol-input-block">
+                  <label for="cfg-contextModalHeight">Default Height (e.g. auto, 600px):</label>
+                  <input type="text" id="cfg-contextModalHeight" class="aid-qol-text-input">
                 </div>
               </div>
 
@@ -2818,6 +3456,16 @@
       if (scW) scW.value = CONFIG.get('scModalWidth', '680px');
       if (scH) scH.value = CONFIG.get('scModalHeight', '82vh');
 
+      // Context Viewer options
+      const contextEnabled = document.getElementById('cfg-context-enabled');
+      const contextRemember = document.getElementById('cfg-context-remember');
+      const contextW = document.getElementById('cfg-contextModalWidth');
+      const contextH = document.getElementById('cfg-contextModalHeight');
+      if (contextEnabled) contextEnabled.checked = !!CONFIG.get('contextModalEnabled', true);
+      if (contextRemember) contextRemember.checked = !!CONFIG.get('rememberContextSize', true);
+      if (contextW) contextW.value = CONFIG.get('contextModalWidth', '480px');
+      if (contextH) contextH.value = CONFIG.get('contextModalHeight', 'auto');
+
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');
       const menuW = document.getElementById('cfg-gameMenuWidth');
@@ -2942,6 +3590,16 @@
       if (scRemember) CONFIG.set('rememberSCSize', scRemember.checked);
       if (scW && scW.value.trim()) CONFIG.set('scModalWidth', scW.value.trim());
       if (scH && scH.value.trim()) CONFIG.set('scModalHeight', scH.value.trim());
+
+      // Context Viewer options
+      const contextEnabled = document.getElementById('cfg-context-enabled');
+      const contextRemember = document.getElementById('cfg-context-remember');
+      const contextW = document.getElementById('cfg-contextModalWidth');
+      const contextH = document.getElementById('cfg-contextModalHeight');
+      if (contextEnabled) CONFIG.set('contextModalEnabled', contextEnabled.checked);
+      if (contextRemember) CONFIG.set('rememberContextSize', contextRemember.checked);
+      if (contextW && contextW.value.trim()) CONFIG.set('contextModalWidth', contextW.value.trim());
+      if (contextH && contextH.value.trim()) CONFIG.set('contextModalHeight', contextH.value.trim());
 
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');

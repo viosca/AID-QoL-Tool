@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.5.2)
+# AID-QoL-Tool (v3.6.0)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -54,12 +54,15 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Preserves Story Paragraph Spacing**: Collapsing actions doesn't abruptly smash paragraphs together; actions collapse to an invisible `1.5em` blank line spacer, preserving natural book-like paragraph breaks.
 * **Toggle Shortcut**: Press `Alt+Ctrl+U` to toggle action visibility anytime without using the mouse.
 
-### 4. Story Card Modals (Drag, Top-Left Anchored Resize, Auto-Remember)
-* **Smooth Header Dragging**: Grab anywhere on the visible modal header row to reposition Story Cards.
+### 4. Story Card & Context Viewer Modals (Drag, Anchored Resize, Auto-Remember)
+* **Smooth Header Dragging**: Grab anywhere on the visible modal header row to reposition Story Cards or Context Viewer windows.
 * **Anchored Resizing**: Resizes outward from the bottom-right corner without center-snapping, jumps, or Tailwind width capping.
+* **Dedicated 2D Corner Resizer**: Custom resize handle for Context Viewer overview and subdialogs (Adventure, Instructions, Memories).
+* **Transparent Backdrop**: Eliminates modal darkening so background game story text remains completely visible and readable while managing cards or inspecting context.
+* **Multi-Window Layering**: Opening subdialogs places them directly in front, and clicking any open modal immediately brings it to the top.
 * **Double-Click Title**: Double-click the header bar to maximize / restore.
-* **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh`).
-* **Auto-Remember Dimensions**: Uses a debounced `ResizeObserver` to automatically remember any size you adjust the card to.
+* **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh` for cards, `480px` for context).
+* **Auto-Remember Dimensions**: Uses a debounced `ResizeObserver` to automatically remember any size you adjust modals to.
 
 ### 5. Game Play Menu Horizontal Resize (Split Screen)
 * **Draggable Left Border**: Hover over the left edge of the right-hand Game Menu (Settings/Adventure/Story Cards) to grab the vertical split-screen resize handle.
