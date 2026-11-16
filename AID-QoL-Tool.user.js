@@ -3089,8 +3089,9 @@
         #aid-qol-config-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(8px);
+          background: transparent !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
           z-index: 1000000;
           display: none;
           align-items: center;
@@ -3128,6 +3129,8 @@
           padding: 16px 20px;
           background: rgba(255, 255, 255, 0.03);
           border-bottom: 1px solid var(--borderColor, rgba(255, 255, 255, 0.08));
+          cursor: grab;
+          user-select: none;
         }
 
         .aid-qol-config-title {
@@ -4186,6 +4189,57 @@
         if (e.target === overlay) this.close();
       });
 
+      // Make modal draggable by header
+      const header = overlay.querySelector('.aid-qol-config-header');
+      const modal = overlay.querySelector('.aid-qol-config-modal');
+      if (header && modal) {
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let startLeft = 0, startTop = 0;
+
+        header.addEventListener('pointerdown', (e) => {
+          if (e.target.closest('#cfg-btn-x') || e.target.closest('button')) return;
+          isDragging = true;
+          header.setPointerCapture(e.pointerId);
+          header.style.cursor = 'grabbing';
+
+          const rect = modal.getBoundingClientRect();
+          modal.style.position = 'absolute';
+          modal.style.margin = '0';
+          modal.style.left = `${rect.left}px`;
+          modal.style.top = `${rect.top}px`;
+
+          startX = e.clientX;
+          startY = e.clientY;
+          startLeft = rect.left;
+          startTop = rect.top;
+        });
+
+        header.addEventListener('pointermove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+
+          const newLeft = Math.max(10, Math.min(window.innerWidth - modal.offsetWidth - 10, startLeft + dx));
+          const newTop = Math.max(10, Math.min(window.innerHeight - modal.offsetHeight - 10, startTop + dy));
+
+          modal.style.left = `${newLeft}px`;
+          modal.style.top = `${newTop}px`;
+        });
+
+        const stopDrag = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try {
+            header.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+          header.style.cursor = 'grab';
+        };
+
+        header.addEventListener('pointerup', stopDrag);
+        header.addEventListener('pointercancel', stopDrag);
+      }
+
       // Close button
       document.getElementById('cfg-btn-x')?.addEventListener('click', () => this.close());
       document.getElementById('cfg-btn-cancel')?.addEventListener('click', () => this.close());
@@ -4565,6 +4619,13 @@
         DevBridgeModule.updateUI();
       }
       if (this.overlay) {
+        const modal = this.overlay.querySelector('.aid-qol-config-modal');
+        if (modal) {
+          modal.style.position = '';
+          modal.style.left = '';
+          modal.style.top = '';
+          modal.style.margin = '';
+        }
         this.overlay.style.display = 'flex';
       }
 
