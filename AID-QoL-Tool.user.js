@@ -63,6 +63,9 @@
     contextModalHeight: 'auto',
     rememberContextSize: true,
 
+    // Modal Backdrops & Overlays
+    disableModalDimming: true,
+
     // Game Menu (Right Sidebar) Resizing
     gameMenuResizeEnabled: true,
     gameMenuWidth: '424px',
@@ -150,6 +153,16 @@
     () => {
       CONFIG.set('contextModalEnabled', !CONFIG.get('contextModalEnabled'));
       location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Modal Background Dimming: ${CONFIG.get('disableModalDimming', true) ? 'REMOVED' : 'DEFAULT'} (Click to toggle)`,
+    () => {
+      const next = !CONFIG.get('disableModalDimming', true);
+      CONFIG.set('disableModalDimming', next);
+      StoryCardModalModule.updateModalDimmingState();
+      ConfigUIModule.showToast(`Modal Dimming: ${next ? 'REMOVED' : 'DEFAULT'}`);
     }
   );
 
@@ -1240,12 +1253,17 @@
     init() {
       Logger.info('Initializing StoryCardModalModule...');
 
-      if (!CONFIG.get('storyCardModalsEnabled', true) && !CONFIG.get('contextModalEnabled', true)) return;
-
       this.injectStyles();
+      this.updateModalDimmingState();
+
+      if (!CONFIG.get('storyCardModalsEnabled', true) && !CONFIG.get('contextModalEnabled', true)) return;
 
       // Observe for dialogs appearing in the DOM with immediate synchronous setup (zero-blink)
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
+        if (CONFIG.get('disableModalDimming', true)) {
+          this.neutralizeModalOverlays(modalNode);
+        }
+
         const checkModal = (retries = 6) => {
           if (!modalNode.isConnected) return true;
           if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal) return true;
@@ -1267,6 +1285,19 @@
 
         // Check immediately on the synchronous mutation tick before browser paint
         checkModal(6);
+      });
+
+      // Observe for overlay elements appearing in the DOM to neutralize dimming & blur instantly
+      observeSelector('[data-slot*="overlay"], [data-radix-dialog-overlay]', (overlayNode) => {
+        if (CONFIG.get('disableModalDimming', true)) {
+          if (overlayNode.id === 'aid-qol-config-overlay') return;
+          overlayNode.style.setProperty('background', 'transparent', 'important');
+          overlayNode.style.setProperty('background-color', 'transparent', 'important');
+          overlayNode.style.setProperty('backdrop-filter', 'none', 'important');
+          overlayNode.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+          overlayNode.style.setProperty('opacity', '0', 'important');
+          overlayNode.style.setProperty('pointer-events', 'none', 'important');
+        }
       });
     },
 
@@ -1392,23 +1423,52 @@
         }
 
         /* 
-         * Eliminate background darkening / graying overlay behind Context Viewer dialogs.
-         * Explicitly targets only dialog overlay slots so the main app (#__next) is never touched!
+         * Eliminate background darkening / blur overlays behind modals when configured.
+         * Targets all overlay slots for Story Cards, Context Viewer, subdialogs, and platform modals
+         * without touching main application layout (#__next).
          */
-        body:has([role="dialog"].aid-qol-context-modal) [data-slot="aid-dialog-overlay"],
-        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot="aid-dialog-overlay"],
-        body:has([role="dialog"]:has([data-slot="aid-dialog-title"])) [data-slot="aid-dialog-overlay"],
-        body:has([role="dialog"].aid-qol-context-modal) [data-slot="platform-dialog-overlay"],
-        body:has([role="dialog"].aid-qol-context-modal) [data-slot*="dialog-overlay"],
-        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot*="dialog-overlay"],
-        body:has([role="dialog"].aid-qol-context-modal) [data-radix-dialog-overlay],
-        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-radix-dialog-overlay] {
+        html.aid-qol-no-modal-dimming [data-slot="aid-dialog-overlay"],
+        html.aid-qol-no-modal-dimming [data-slot="platform-dialog-overlay"],
+        html.aid-qol-no-modal-dimming [data-slot*="dialog-overlay"],
+        html.aid-qol-no-modal-dimming [data-slot*="sheet-overlay"],
+        html.aid-qol-no-modal-dimming [data-slot*="overlay"]:not([role="dialog"]):not([role="alertdialog"]):not(#aid-qol-config-overlay),
+        html.aid-qol-no-modal-dimming [data-radix-dialog-overlay],
+        html.aid-qol-no-modal-dimming body:has([role="dialog"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        html.aid-qol-no-modal-dimming body:has([role="dialog"]) [data-radix-dialog-overlay],
+        html.aid-qol-no-modal-dimming body:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        html.aid-qol-no-modal-dimming body:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        html.aid-qol-no-modal-dimming body:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        body.aid-qol-no-modal-dimming [data-slot="aid-dialog-overlay"],
+        body.aid-qol-no-modal-dimming [data-slot="platform-dialog-overlay"],
+        body.aid-qol-no-modal-dimming [data-slot*="dialog-overlay"],
+        body.aid-qol-no-modal-dimming [data-slot*="sheet-overlay"],
+        body.aid-qol-no-modal-dimming [data-slot*="overlay"]:not([role="dialog"]):not([role="alertdialog"]):not(#aid-qol-config-overlay),
+        body.aid-qol-no-modal-dimming [data-radix-dialog-overlay],
+        body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-radix-dialog-overlay],
+        body.aid-qol-no-modal-dimming:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        body.aid-qol-no-modal-dimming:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
+        body:has([role="dialog"].aid-qol-context-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body:has([role="dialog"][data-slot="aid-dialog-content"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body:has([role="dialog"]:has([data-slot="aid-dialog-title"])) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
+        body:has([role="dialog"].aid-qol-story-card-modal) [data-slot="platform-dialog-overlay"],
+        body:has([role="dialog"].aid-qol-story-card-modal) [data-radix-dialog-overlay] {
           background-color: transparent !important;
           background: transparent !important;
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
           opacity: 0 !important;
           pointer-events: none !important;
+        }
+
+        html.aid-qol-no-modal-dimming #__next,
+        body.aid-qol-no-modal-dimming #__next,
+        html.aid-qol-no-modal-dimming #root,
+        body.aid-qol-no-modal-dimming #root {
+          filter: none !important;
+          -webkit-filter: none !important;
         }
 
         /* Allow inner content containers of Context Viewer and subdialogs to fluidly expand with modal width */
@@ -1601,6 +1661,45 @@
     },
 
     /**
+     * Toggles or updates the body and documentElement classes that eliminate modal dimming and blur.
+     */
+    updateModalDimmingState() {
+      const disabled = CONFIG.get('disableModalDimming', true);
+      if (document.body) document.body.classList.toggle('aid-qol-no-modal-dimming', disabled);
+      if (document.documentElement) document.documentElement.classList.toggle('aid-qol-no-modal-dimming', disabled);
+      if (disabled) {
+        this.neutralizeModalOverlays();
+      }
+    },
+
+    /**
+     * Neutralizes modal backdrop overlays across the page.
+     * @param {HTMLElement} [modal]
+     */
+    neutralizeModalOverlays(modal = null) {
+      if (!CONFIG.get('disableModalDimming', true)) return;
+
+      const clearOverlay = (el) => {
+        if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
+        if (modal && (el === modal || el.contains(modal))) return;
+        if (el.id === 'aid-qol-config-overlay') return;
+        if (el.getAttribute('role') === 'dialog' || el.getAttribute('role') === 'alertdialog') return;
+        el.style.setProperty('background', 'transparent', 'important');
+        el.style.setProperty('background-color', 'transparent', 'important');
+        el.style.setProperty('backdrop-filter', 'none', 'important');
+        el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+        el.style.setProperty('opacity', '0', 'important');
+        el.style.setProperty('pointer-events', 'none', 'important');
+      };
+
+      if (modal && modal.parentElement) {
+        Array.from(modal.parentElement.children).forEach(clearOverlay);
+      }
+
+      document.querySelectorAll('[data-slot*="overlay"], [data-radix-dialog-overlay]').forEach(clearOverlay);
+    },
+
+    /**
      * Parses dimension string (e.g. "680px", "82vh", "50vw", "70%") into pixel value.
      * @param {string|number} dim
      * @param {number} totalSize
@@ -1775,6 +1874,11 @@
         modal.parentElement.style.alignItems = 'unset';
       }
 
+      // Neutralize any sibling/backdrop overlays if dimming removal is enabled
+      if (CONFIG.get('disableModalDimming', true)) {
+        this.neutralizeModalOverlays(modal);
+      }
+
       // 4. Enable native resize
       modal.classList.add('aid-qol-story-card-modal');
 
@@ -1901,6 +2005,11 @@
       if (modal.parentElement) {
         modal.parentElement.style.justifyContent = 'unset';
         modal.parentElement.style.alignItems = 'unset';
+      }
+
+      // Neutralize any sibling/backdrop overlays if dimming removal is enabled
+      if (CONFIG.get('disableModalDimming', true)) {
+        this.neutralizeModalOverlays(modal);
       }
 
       // 4. Enable Context Viewer styling (with pinned header and overflow: hidden)
@@ -4595,6 +4704,16 @@
                 </div>
               </div>
 
+              <div class="aid-qol-section-title">Modal Backdrops & Overlays</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-modal-dimming"> Remove background dimming and blur behind modals
+                </label>
+                <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; padding-left: 28px;">
+                  Removes the dark translucent shading and blur behind all modals (Story Cards, Context Viewer, subdialogs, etc.) so the story and game interface remain clearly visible and accessible.
+                </div>
+              </div>
+
               <div class="aid-qol-section-title">Game Play Menu (Right Sidebar)</div>
               <div class="aid-qol-field-group">
                 <label class="aid-qol-checkbox-label">
@@ -5016,6 +5135,10 @@
       if (contextW) contextW.value = CONFIG.get('contextModalWidth', '480px');
       if (contextH) contextH.value = CONFIG.get('contextModalHeight', 'auto');
 
+      // Modal Dimming options
+      const modalDimming = document.getElementById('cfg-modal-dimming');
+      if (modalDimming) modalDimming.checked = !!CONFIG.get('disableModalDimming', true);
+
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');
       const menuW = document.getElementById('cfg-gameMenuWidth');
@@ -5228,6 +5351,13 @@
       if (contextRemember) CONFIG.set('rememberContextSize', contextRemember.checked);
       if (contextW && contextW.value.trim()) CONFIG.set('contextModalWidth', contextW.value.trim());
       if (contextH && contextH.value.trim()) CONFIG.set('contextModalHeight', contextH.value.trim());
+
+      // Modal Dimming options
+      const modalDimming = document.getElementById('cfg-modal-dimming');
+      if (modalDimming) {
+        CONFIG.set('disableModalDimming', modalDimming.checked);
+        StoryCardModalModule.updateModalDimmingState();
+      }
 
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');
