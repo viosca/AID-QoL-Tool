@@ -41,6 +41,7 @@
     themeUiDensity: 'default', // 'default', 'compact', 'ultra', 'custom'
     themeCardHeight: '64px',
     themeMenuSpacing: '12px',
+    themeMenuFontSize: '14px',
 
     // Input Preferences
     autoQuoteDo: true,
@@ -2681,7 +2682,8 @@
         themeActionStyle: 'default',
         themeActionColor: '#fb923c',
         themeCardHeight: '64px',
-        themeMenuSpacing: '12px'
+        themeMenuSpacing: '12px',
+        themeMenuFontSize: '14px'
       },
       compact: {
         themeFontSize: '15px',
@@ -2694,7 +2696,8 @@
         themeActionStyle: 'dimmed',
         themeActionColor: '#fb923c',
         themeCardHeight: '44px',
-        themeMenuSpacing: '4px'
+        themeMenuSpacing: '4px',
+        themeMenuFontSize: '12px'
       },
       large: {
         themeFontSize: '21px',
@@ -2707,7 +2710,8 @@
         themeActionStyle: 'italic',
         themeActionColor: '#fb923c',
         themeCardHeight: '64px',
-        themeMenuSpacing: '12px'
+        themeMenuSpacing: '12px',
+        themeMenuFontSize: '15px'
       },
       oled: {
         themeFontSize: '18px',
@@ -2720,7 +2724,8 @@
         themeActionStyle: 'accent',
         themeActionColor: '#38bdf8',
         themeCardHeight: '46px',
-        themeMenuSpacing: '6px'
+        themeMenuSpacing: '6px',
+        themeMenuFontSize: '13px'
       }
     },
 
@@ -2759,7 +2764,8 @@
         themeActionStyle: CONFIG.get('themeActionStyle', 'default'),
         themeActionColor: CONFIG.get('themeActionColor', '#fb923c'),
         themeCardHeight: CONFIG.get('themeCardHeight', '64px'),
-        themeMenuSpacing: CONFIG.get('themeMenuSpacing', '12px')
+        themeMenuSpacing: CONFIG.get('themeMenuSpacing', '12px'),
+        themeMenuFontSize: CONFIG.get('themeMenuFontSize', '14px')
       };
     },
 
@@ -2776,18 +2782,20 @@
         themeActionStyle,
         themeActionColor,
         themeCardHeight,
-        themeMenuSpacing
+        themeMenuSpacing,
+        themeMenuFontSize
       } = settings;
 
       const cardHeightNum = parseInt(themeCardHeight) || 64;
       const menuSpacingNum = parseInt(themeMenuSpacing) || 12;
+      const menuFontSizeNum = parseInt(themeMenuFontSize) || 14;
 
       // When preset is default and no custom styling is requested, produce no overriding CSS
       if (themePreset === 'default' && !themeTextColor && !themeBgColor &&
           themeFontSize === '18px' && themeFontWeight === '400' &&
           themeLineHeight === '1.7' && themeParagraphSpacing === '1.25em' &&
           themeStoryWidth === '900px' && themeActionStyle === 'default' &&
-          cardHeightNum === 64 && menuSpacingNum === 12) {
+          cardHeightNum === 64 && menuSpacingNum === 12 && menuFontSizeNum === 14) {
         return '';
       }
 
@@ -2800,11 +2808,17 @@
         #gameplay-story-scrollview .font_gameplaySans,
         #gameplay-story-scrollview .fs-aid-story-content span.is_Text,
         #gameplay-story-scrollview #action-edit-textarea,
-        #gameplay-story-scrollview #story-edit-textarea {
+        #gameplay-story-scrollview #story-edit-textarea,
+        #game-text-input,
+        textarea#game-text-input {
           font-size: ${themeFontSize || '18px'} !important;
           font-weight: ${themeFontWeight || '400'} !important;
-          line-height: ${themeLineHeight || '1.7'} !important;
           ${themeTextColor ? `color: ${themeTextColor} !important;` : ''}
+        }
+
+        #game-text-input::placeholder,
+        textarea#game-text-input::placeholder {
+          font-size: ${themeFontSize || '18px'} !important;
         }
       `;
 
@@ -2967,6 +2981,40 @@
         `;
       }
 
+
+      // 7. Gear Menu (Adventure & Gameplay) Font Size
+      if (menuFontSizeNum !== 14) {
+        css += `
+          /* Gear Menu (Adventure & Gameplay) Font Size */
+          [aria-label="Game settings" i],
+          [aria-label="Game settings" i] .is_Text:not(.font_icons):not([data-slot="platform-icon-glyph"]),
+          [aria-label="Game settings" i] .font_body,
+          [aria-label="Game settings" i] [data-slot="platform-text"],
+          [aria-label="Game settings" i] [data-slot="platform-button"]:not(:has(.font_icons:only-child)),
+          [aria-label="Game settings" i] [data-slot="platform-button-text"],
+          [aria-label="Game settings" i] [data-slot="platform-input"],
+          [aria-label="Game settings" i] input,
+          [aria-label="Game settings" i] button:not(:has(.font_icons:only-child)),
+          [aria-label="Game settings" i] label,
+          [aria-label="Game settings" i] p,
+          .aid-qol-game-menu-resizable [data-slot="platform-text"],
+          .aid-qol-game-menu-resizable [data-slot="platform-button-text"] {
+            font-size: ${menuFontSizeNum}px !important;
+          }
+
+          [aria-label="Game settings" i] h1,
+          [aria-label="Game settings" i] h2,
+          [aria-label="Game settings" i] h3,
+          [aria-label="Game settings" i] [data-slot="platform-heading"] {
+            font-size: ${menuFontSizeNum + 1}px !important;
+          }
+
+          [aria-label="Game settings" i] [role="tablist"] [role="tab"] span.is_ButtonText {
+            font-size: ${menuFontSizeNum}px !important;
+          }
+        `;
+      }
+
       return css;
     },
 
@@ -3066,6 +3114,7 @@
       const storyWidth = document.getElementById('cfg-theme-story-width')?.value || '900';
       const cardHeight = document.getElementById('cfg-theme-card-height')?.value || '64';
       const menuSpacing = document.getElementById('cfg-theme-menu-spacing')?.value || '12';
+      const menuFontSize = document.getElementById('cfg-theme-menu-font-size')?.value || '14';
       const textColor = document.getElementById('cfg-theme-text-color-hex')?.value.trim() || '';
       const bgColor = document.getElementById('cfg-theme-bg-color-hex')?.value.trim() || '';
       const actionStyle = document.getElementById('cfg-theme-action-style')?.value || 'default';
@@ -3080,6 +3129,7 @@
         themeStoryWidth: `${storyWidth}px`,
         themeCardHeight: `${cardHeight}px`,
         themeMenuSpacing: `${menuSpacing}px`,
+        themeMenuFontSize: `${menuFontSize}px`,
         themeTextColor: textColor,
         themeBgColor: bgColor,
         themeActionStyle: actionStyle,
@@ -3104,6 +3154,7 @@
       updateIfNotActive('cfg-theme-story-width-val', settings.themeStoryWidth);
       updateIfNotActive('cfg-theme-card-height-val', settings.themeCardHeight);
       updateIfNotActive('cfg-theme-menu-spacing-val', settings.themeMenuSpacing);
+      updateIfNotActive('cfg-theme-menu-font-size-val', settings.themeMenuFontSize);
 
       // In-dialog Story Preview Box
       const previewCard = document.getElementById('aid-theme-preview-card');
@@ -3195,6 +3246,10 @@
       const menuSpacingNum = parseInt(presetValues.themeMenuSpacing) || 12;
       const msEl = document.getElementById('cfg-theme-menu-spacing');
       if (msEl) msEl.value = menuSpacingNum;
+
+      const menuFontSizeNum = parseInt(presetValues.themeMenuFontSize) || 14;
+      const mfEl = document.getElementById('cfg-theme-menu-font-size');
+      if (mfEl) mfEl.value = menuFontSizeNum;
 
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -4209,6 +4264,17 @@
                 <input type="range" id="cfg-theme-menu-spacing" class="aid-qol-range-slider" min="2" max="16" step="1" value="12">
               </div>
 
+              <div class="aid-qol-slider-row" style="margin-top: 10px;">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-menu-font-size">Gear Menu Font Size (Adventure & Gameplay)</label>
+                  <div class="aid-qol-slider-controls">
+                    <input type="text" id="cfg-theme-menu-font-size-val" class="aid-qol-value-input" value="14px" title="Click to type exact value (e.g. 12px, 14px)">
+                    <button type="button" class="aid-qol-btn-reset-field" id="cfg-theme-menu-font-size-reset" title="Reset to default (14px)">↺</button>
+                  </div>
+                </div>
+                <input type="range" id="cfg-theme-menu-font-size" class="aid-qol-range-slider" min="11" max="20" step="1" value="14">
+              </div>
+
               <!-- Colors & Background Section -->
               <div class="aid-qol-section-title" style="margin-top: 18px;">Colors & Atmosphere</div>
 
@@ -4535,6 +4601,7 @@
       this.bindSliderWithDirectInput('cfg-theme-story-width', 'cfg-theme-story-width-val', 'cfg-theme-story-width-reset', 900, 'px');
       this.bindSliderWithDirectInput('cfg-theme-card-height', 'cfg-theme-card-height-val', 'cfg-theme-card-height-reset', 64, 'px');
       this.bindSliderWithDirectInput('cfg-theme-menu-spacing', 'cfg-theme-menu-spacing-val', 'cfg-theme-menu-spacing-reset', 12, 'px');
+      this.bindSliderWithDirectInput('cfg-theme-menu-font-size', 'cfg-theme-menu-font-size-val', 'cfg-theme-menu-font-size-reset', 14, 'px');
 
       // Dropdown Reset Buttons
       document.getElementById('cfg-theme-font-weight-reset')?.addEventListener('click', () => {
@@ -4795,6 +4862,10 @@
       const msEl = document.getElementById('cfg-theme-menu-spacing');
       if (msEl) msEl.value = parseInt(menuSpacing) || 12;
 
+      const menuFontSize = CONFIG.get('themeMenuFontSize', '14px');
+      const mfEl = document.getElementById('cfg-theme-menu-font-size');
+      if (mfEl) mfEl.value = parseInt(menuFontSize) || 14;
+
       const textColor = CONFIG.get('themeTextColor', '');
       const textHex = document.getElementById('cfg-theme-text-color-hex');
       const textPicker = document.getElementById('cfg-theme-text-color-picker');
@@ -4988,6 +5059,7 @@
       CONFIG.set('themeStoryWidth', themeSettings.themeStoryWidth);
       CONFIG.set('themeCardHeight', themeSettings.themeCardHeight);
       CONFIG.set('themeMenuSpacing', themeSettings.themeMenuSpacing);
+      CONFIG.set('themeMenuFontSize', themeSettings.themeMenuFontSize);
       CONFIG.set('themeTextColor', themeSettings.themeTextColor);
       CONFIG.set('themeBgColor', themeSettings.themeBgColor);
       CONFIG.set('themeActionStyle', themeSettings.themeActionStyle);

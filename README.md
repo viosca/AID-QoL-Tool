@@ -87,7 +87,7 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Granular Typography Controls (Direct Typed Entry + Sliders)**:
   * **Direct Precision Typing**: Click any value box to type exact values directly (e.g. `18.5px`, `1.65`, `850px`). Sliders update seamlessly.
   * **Individual Field Reset**: Every slider and dropdown features a `↺` button that restores that specific setting back to default with one click.
-  * **Font Size**: Live slider and input from `13px` to `26px` (defaults to `18px`).
+  * **Font Size**: Live slider and input from `13px` to `26px` (defaults to `18px`). Dynamically synchronizes font size across story paragraphs, inline editing textareas, and the bottom action entry prompt.
   * **Font Boldness / Weight**: Choose from `300 (Light)`, `400 (Regular)`, `500 (Medium)`, `600 (Semi-Bold)`, or `700 (Bold)`.
   * **Line Height**: Live slider and input from `1.20` to `2.40` (defaults to `1.70`).
   * **Story Text Color**: Hex input, native color picker, and 1-click quick swatches (Pure White, Warm Paper, Soft Gray, Golden Amber, Sage Mint).
@@ -95,6 +95,7 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
   * **Paragraph & Action Spacing**: Live slider and input from `0.40em` to `2.40em` (defaults to `1.25em`).
   * **Story Max Width**: Live slider and input from `600px` to `1400px` (defaults to `900px`). Automatically synchronizes the bottom prompt dock (`#game-text-input-controller`) to match.
 * **Interface & Menu Density (Story Cards & Gear Menu)**:
+  * **Gear Menu Font Size**: Live slider and input from `11px` to `20px` (defaults to `14px`) to customize text scale across Adventure and Gameplay sidebar panels.
   * **Story Card Item Height**: Live slider and input from `32px` to `64px` (defaults to `64px`). In compact mode, slims card rows down to `44px` or `36px` to fit significantly more cards on screen.
   * **Category & Item Separation**: Live slider and input from `2px` to `16px` (defaults to `12px`). Eliminates excessive whitespace between category titles (`Character`, `Class`, etc.) and their card listings.
   * **Gear Menu Density**: Tightens tab lists, search bars, and action buttons for streamlined navigation.
