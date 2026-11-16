@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.6.0)
+# AID-QoL-Tool (v3.7.0)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -76,7 +76,39 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Visual Grip Indicator**: Stylized corner resizer with diagonal grab lines and vertical resize cursor (`↕`).
 * **Preserves Main Gameplay Dock**: Automatically excludes the docked action input bar (`#game-text-input`) to avoid dock clipping.
 
-### 7. Native In-Game Configuration Dialog
+### 7. Theme & Typography Manager
+* **Dedicated Configuration Tab**: Built directly into the in-game Configuration Dialog under **🎨 Theme & Style**.
+* **Curated Presets**:
+  * **⚙️ Default**: Restores native AI Dungeon typography, layout, and atmosphere.
+  * **📱 Compact**: High-density reading with reduced font size (15px), tighter line height (1.45), snug paragraph spacing (0.85em), and narrower column width (780px).
+  * **📖 Large / Cozy**: Spacious, comfortable reading with warmer paper tones (`#f4efe6`), larger typography (21px), relaxed line height (1.85), medium font weight (500), and generous paragraph spacing (1.5em).
+  * **🌑 OLED Pure Black**: True `#000000` deep black background with high-contrast text (`#e4e4e7`), glowing cyan action accents (`#38bdf8`), and suppressed background saturation for pitch-black contrast and battery savings.
+  * **🎨 Custom**: Full granular control over every visual attribute.
+* **Granular Typography Controls**:
+  * **Font Size**: Live slider from `13px` to `26px` (defaults to `18px`).
+  * **Font Boldness / Weight**: Choose from `300 (Light)`, `400 (Regular)`, `500 (Medium)`, `600 (Semi-Bold)`, or `700 (Bold)`.
+  * **Line Height**: Live slider from `1.20` to `2.40` (defaults to `1.70`).
+  * **Story Text Color**: Hex input, native color picker, and 1-click quick swatches (Pure White, Warm Paper, Soft Gray, Golden Amber, Sage Mint).
+* **Layout & Column Width**:
+  * **Paragraph & Action Spacing**: Live slider from `0.40em` to `2.40em` (defaults to `1.25em`).
+  * **Story Max Width**: Live slider from `600px` to `1400px` (defaults to `900px`). Automatically synchronizes the bottom prompt dock (`#game-text-input-controller`) to match.
+* **Atmosphere & Background Overrides**:
+  * **Background Color**: Hex input, native color picker, and 1-click quick swatches (OLED Black, Midnight Slate, Deep Charcoal, Espresso Dark).
+* **Player Action Styling**:
+  * Style player inputs (`Do`, `Say`, `>`) independently from story text:
+    * `Default (Native)`
+    * `Dimmed / Subdued` (72% opacity)
+    * `Italicized`
+    * `Accent Colored`
+    * `Italic + Accent Colored`
+    * `Underlined`
+  * **Action Accent Color Picker**: Quick swatches for AID Amber (`#fb923c`), Electric Sky (`#38bdf8`), Emerald (`#34d399`), Crimson Rose (`#f43f5e`), and Mystic Violet (`#c084fc`).
+* **Real-Time Interactive Story Preview**:
+  * Built-in live excerpt card inside the settings dialog immediately displays changes as sliders and swatches are adjusted.
+  * Active story stream updates in real-time.
+  * Safe revert: Closing the dialog without saving (Cancel / Esc / X) cleanly restores previously saved settings.
+
+### 8. Native In-Game Configuration Dialog
 * Modern, AID-themed Settings Dialog replacing legacy config tools.
 * **Seamless AID Aesthetic**: Styled with AID-native dark colors, subtle borders, and distinct toggle switch check indicators.
 * Easily accessed via:
@@ -86,11 +118,12 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Full Customization**:
   * **Hotkeys**: Interactive hotkey binder for turns, story modes, and navigation.
   * **Modifier Keys**: Choose any combination of `Alt`, `Ctrl`, and `Shift`.
+  * **Theme & Typography**: Presets, sliders, colors, and live preview.
   * **Story Card & Menu Dimensions**: Set default modal width/height and Game Menu sidebar width with live width updates and auto-remember toggles.
   * **General Options**: Toggle auto-quoting, auto-focus, action visibility, and debug logs.
   * **Reset to Defaults**: One-click restore button.
 
-### 8. Antigravity Dev Bridge & Token Sync
+### 9. Antigravity Dev Bridge & Token Sync
 * **Zero-Credential Token Extraction**: Automatically reads the active Firebase Auth session from `indexedDB` or intercepted GraphQL requests.
 * **One-Click Clipboard Copy**: Click `📋 Copy Token for .env` to format `AID_ACCESS_TOKEN=<token>` straight onto your clipboard.
 * **Direct Local Bridge Sync**: Click `🔄 Sync to Antigravity (Port 8765)` to push the active token and current scenario/adventure shortId directly into `AID-LLM-connector`'s `.env` file via `http://127.0.0.1:8765/sync`.

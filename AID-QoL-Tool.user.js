@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.6.0
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card & Context Modals, Game Menu Resizing, Antigravity Dev Bridge).
+// @version      3.7.0
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card & Context Modals, Game Menu Resizing, Theme & Typography Manager, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -27,6 +27,18 @@
   // Configuration & State
   // =========================================================================
   const DEFAULT_CONFIG = {
+    // Theme & Typography Manager
+    themePreset: 'default', // 'default', 'compact', 'large', 'oled', 'custom'
+    themeFontSize: '18px',
+    themeFontWeight: '400',
+    themeLineHeight: '1.7',
+    themeParagraphSpacing: '1.25em',
+    themeStoryWidth: '900px',
+    themeTextColor: '', // empty = native AID text color
+    themeBgColor: '',   // empty = native AID background color
+    themeActionStyle: 'default', // 'default', 'dimmed', 'italic', 'accent', 'italic-accent', 'underlined'
+    themeActionColor: '#fb923c',
+
     // Input Preferences
     autoQuoteDo: true,
     autoFocusInput: true,
@@ -2647,12 +2659,425 @@
   };
 
   // =========================================================================
-  // Feature Module 7: Configuration Dialog (Native In-Game Settings Modal)
+  // =========================================================================
+  // Feature Module 7: Theme & Typography Manager
+  // =========================================================================
+  const ThemeManagerModule = {
+    name: 'Theme & Typography Manager',
+    styleElId: 'aid-qol-theme-style',
+
+    PRESETS: {
+      default: {
+        themeFontSize: '18px',
+        themeFontWeight: '400',
+        themeLineHeight: '1.7',
+        themeParagraphSpacing: '1.25em',
+        themeStoryWidth: '900px',
+        themeTextColor: '',
+        themeBgColor: '',
+        themeActionStyle: 'default',
+        themeActionColor: '#fb923c'
+      },
+      compact: {
+        themeFontSize: '15px',
+        themeFontWeight: '400',
+        themeLineHeight: '1.45',
+        themeParagraphSpacing: '0.85em',
+        themeStoryWidth: '780px',
+        themeTextColor: '',
+        themeBgColor: '',
+        themeActionStyle: 'dimmed',
+        themeActionColor: '#fb923c'
+      },
+      large: {
+        themeFontSize: '21px',
+        themeFontWeight: '500',
+        themeLineHeight: '1.85',
+        themeParagraphSpacing: '1.5em',
+        themeStoryWidth: '980px',
+        themeTextColor: '#f4efe6',
+        themeBgColor: '',
+        themeActionStyle: 'italic',
+        themeActionColor: '#fb923c'
+      },
+      oled: {
+        themeFontSize: '18px',
+        themeFontWeight: '400',
+        themeLineHeight: '1.7',
+        themeParagraphSpacing: '1.25em',
+        themeStoryWidth: '900px',
+        themeTextColor: '#e4e4e7',
+        themeBgColor: '#000000',
+        themeActionStyle: 'accent',
+        themeActionColor: '#38bdf8'
+      }
+    },
+
+    init() {
+      Logger.info('Initializing ThemeManagerModule...');
+      this.applySavedConfig();
+      this.initActionObserver();
+    },
+
+    initActionObserver() {
+      const markActions = () => {
+        const actionEls = document.querySelectorAll('#gameplay-story-scrollview [data-gameplay-story-action-id]');
+        actionEls.forEach(el => {
+          const text = (el.textContent || '').trim();
+          if (text.startsWith('>') || el.classList.contains('_col-core9')) {
+            el.classList.add('aid-qol-player-action');
+          }
+        });
+      };
+      observeSelector('#gameplay-story-scrollview [data-gameplay-story-action-id]', () => {
+        markActions();
+      });
+    },
+
+    getSavedSettings() {
+      const preset = CONFIG.get('themePreset', 'default');
+      return {
+        themePreset: preset,
+        themeFontSize: CONFIG.get('themeFontSize', '18px'),
+        themeFontWeight: CONFIG.get('themeFontWeight', '400'),
+        themeLineHeight: CONFIG.get('themeLineHeight', '1.7'),
+        themeParagraphSpacing: CONFIG.get('themeParagraphSpacing', '1.25em'),
+        themeStoryWidth: CONFIG.get('themeStoryWidth', '900px'),
+        themeTextColor: CONFIG.get('themeTextColor', ''),
+        themeBgColor: CONFIG.get('themeBgColor', ''),
+        themeActionStyle: CONFIG.get('themeActionStyle', 'default'),
+        themeActionColor: CONFIG.get('themeActionColor', '#fb923c')
+      };
+    },
+
+    buildCSS(settings) {
+      const {
+        themePreset,
+        themeFontSize,
+        themeFontWeight,
+        themeLineHeight,
+        themeParagraphSpacing,
+        themeStoryWidth,
+        themeTextColor,
+        themeBgColor,
+        themeActionStyle,
+        themeActionColor
+      } = settings;
+
+      // When preset is default and no custom styling is requested, produce no overriding CSS
+      if (themePreset === 'default' && !themeTextColor && !themeBgColor &&
+          themeFontSize === '18px' && themeFontWeight === '400' &&
+          themeLineHeight === '1.7' && themeParagraphSpacing === '1.25em' &&
+          themeStoryWidth === '900px' && themeActionStyle === 'default') {
+        return '';
+      }
+
+      let css = `/* AID-QoL Dynamic Theme Styles */\n`;
+
+      // 1. Typography & Colors for story text and story-editing textareas
+      css += `
+        #gameplay-story-scrollview [data-gameplay-story-action-id],
+        #gameplay-story-scrollview [role="document"],
+        #gameplay-story-scrollview .font_gameplaySans,
+        #gameplay-story-scrollview .fs-aid-story-content span.is_Text,
+        #gameplay-story-scrollview #action-edit-textarea,
+        #gameplay-story-scrollview #story-edit-textarea {
+          font-size: ${themeFontSize || '18px'} !important;
+          font-weight: ${themeFontWeight || '400'} !important;
+          line-height: ${themeLineHeight || '1.7'} !important;
+          ${themeTextColor ? `color: ${themeTextColor} !important;` : ''}
+        }
+      `;
+
+      // 2. Action / Paragraph Spacing
+      if (themeParagraphSpacing && themeParagraphSpacing !== '1.25em') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id] {
+            margin-bottom: ${themeParagraphSpacing} !important;
+            display: inline-block !important;
+            width: 100% !important;
+          }
+          #gameplay-story-scrollview .fs-aid-story-content {
+            row-gap: ${themeParagraphSpacing} !important;
+          }
+        `;
+      }
+
+      // 3. Story Column Max Width
+      if (themeStoryWidth) {
+        css += `
+          #gameplay-story-scrollview .fs-aid-story-content,
+          #gameplay-story-scrollview .fs-aid-story-controls,
+          #gameplay-story-scrollview [data-gameplay-story-item-index] > div > div,
+          #gameplay-story-scrollview ._maw-900px,
+          .gameplay-action-input-dock #game-text-input-controller,
+          .gameplay-action-input-dock ._maw-900px {
+            max-width: ${themeStoryWidth} !important;
+          }
+        `;
+      }
+
+      // 4. Background Color Overrides
+      if (themeBgColor) {
+        css += `
+          body.t_dark,
+          #gameplay-output,
+          #gameplay-story-scrollview,
+          .gameplay-viewport-root {
+            background-color: ${themeBgColor} !important;
+          }
+          .gameplay-action-input-dock #game-text-input-controller {
+            background-color: ${themeBgColor} !important;
+          }
+          .gameplay-action-input-dock #game-text-input-controller > .is_Row {
+            background-color: ${themeBgColor} !important;
+          }
+        `;
+
+        const isPureBlack = themeBgColor.toLowerCase() === '#000000' || themeBgColor.toLowerCase() === '#000' || themeBgColor.toLowerCase() === 'black';
+        if (isPureBlack) {
+          css += `
+            #gameplay-saturate {
+              opacity: 0.05 !important;
+            }
+            .gameplay-action-input-dock #game-text-input-controller {
+              border-color: rgba(255, 255, 255, 0.12) !important;
+            }
+            .gameplay-action-input-dock #game-text-input-controller > .is_Row {
+              box-shadow: 0 0 24px rgba(0, 0, 0, 0.95) !important;
+            }
+          `;
+        }
+      }
+
+      // 5. Action Text Styling
+      const actionCol = themeActionColor || '#fb923c';
+      if (themeActionStyle === 'dimmed') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id]._col-core9,
+          #gameplay-story-scrollview [data-gameplay-story-action-id].aid-qol-player-action {
+            opacity: 0.72 !important;
+          }
+        `;
+      } else if (themeActionStyle === 'italic') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id]._col-core9,
+          #gameplay-story-scrollview [data-gameplay-story-action-id].aid-qol-player-action {
+            font-style: italic !important;
+          }
+        `;
+      } else if (themeActionStyle === 'accent') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id]._col-core9,
+          #gameplay-story-scrollview [data-gameplay-story-action-id].aid-qol-player-action {
+            color: ${actionCol} !important;
+          }
+        `;
+      } else if (themeActionStyle === 'italic-accent') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id]._col-core9,
+          #gameplay-story-scrollview [data-gameplay-story-action-id].aid-qol-player-action {
+            font-style: italic !important;
+            color: ${actionCol} !important;
+          }
+        `;
+      } else if (themeActionStyle === 'underlined') {
+        css += `
+          #gameplay-story-scrollview [data-gameplay-story-action-id]._col-core9,
+          #gameplay-story-scrollview [data-gameplay-story-action-id].aid-qol-player-action {
+            text-decoration: underline !important;
+            text-decoration-color: ${actionCol} !important;
+            text-underline-offset: 4px !important;
+          }
+        `;
+      }
+
+      return css;
+    },
+
+    getOrCreateStyleTag() {
+      let tag = document.getElementById(this.styleElId);
+      if (!tag) {
+        tag = document.createElement('style');
+        tag.id = this.styleElId;
+        tag.type = 'text/css';
+        (document.head || document.documentElement).appendChild(tag);
+      }
+      return tag;
+    },
+
+    applySavedConfig() {
+      const settings = this.getSavedSettings();
+      const css = this.buildCSS(settings);
+      const tag = this.getOrCreateStyleTag();
+      tag.textContent = css;
+    },
+
+    applyLiveStyles(settings) {
+      const css = this.buildCSS(settings);
+      const tag = this.getOrCreateStyleTag();
+      tag.textContent = css;
+    },
+
+    revertToSaved() {
+      this.applySavedConfig();
+    }
+  };
+
+  // Feature Module 8: Configuration Dialog (Native In-Game Settings Modal)
   // =========================================================================
   const ConfigUIModule = {
     name: 'Configuration Dialog',
     overlayId: 'aid-qol-config-overlay',
     overlay: null,
+    currentPreset: 'default',
+    initialThemeSettings: null,
+
+    gatherCurrentThemeUI() {
+      const fontSize = document.getElementById('cfg-theme-font-size')?.value || '18';
+      const fontWeight = document.getElementById('cfg-theme-font-weight')?.value || '400';
+      const lineHeight = document.getElementById('cfg-theme-line-height')?.value || '1.7';
+      const paragraphSpacing = document.getElementById('cfg-theme-paragraph-spacing')?.value || '1.25';
+      const storyWidth = document.getElementById('cfg-theme-story-width')?.value || '900';
+      const textColor = document.getElementById('cfg-theme-text-color-hex')?.value.trim() || '';
+      const bgColor = document.getElementById('cfg-theme-bg-color-hex')?.value.trim() || '';
+      const actionStyle = document.getElementById('cfg-theme-action-style')?.value || 'default';
+      const actionColor = document.getElementById('cfg-theme-action-color-hex')?.value.trim() || '#fb923c';
+
+      return {
+        themePreset: this.currentPreset || 'custom',
+        themeFontSize: `${fontSize}px`,
+        themeFontWeight: fontWeight,
+        themeLineHeight: lineHeight,
+        themeParagraphSpacing: `${paragraphSpacing}em`,
+        themeStoryWidth: `${storyWidth}px`,
+        themeTextColor: textColor,
+        themeBgColor: bgColor,
+        themeActionStyle: actionStyle,
+        themeActionColor: actionColor
+      };
+    },
+
+    updateThemeLivePreview() {
+      const settings = this.gatherCurrentThemeUI();
+
+      // Readout badges
+      const fsVal = document.getElementById('cfg-theme-font-size-val');
+      if (fsVal) fsVal.textContent = settings.themeFontSize;
+
+      const lhVal = document.getElementById('cfg-theme-line-height-val');
+      if (lhVal) lhVal.textContent = Number(settings.themeLineHeight).toFixed(2);
+
+      const psVal = document.getElementById('cfg-theme-paragraph-spacing-val');
+      if (psVal) psVal.textContent = settings.themeParagraphSpacing;
+
+      const swVal = document.getElementById('cfg-theme-story-width-val');
+      if (swVal) swVal.textContent = settings.themeStoryWidth;
+
+      // In-dialog Story Preview Box
+      const previewCard = document.getElementById('aid-theme-preview-card');
+      const previewContent = document.getElementById('aid-theme-preview-content');
+      const previewAction = document.getElementById('aid-preview-action');
+      const previewStory = document.getElementById('aid-preview-story');
+
+      if (previewCard && previewContent && previewAction && previewStory) {
+        if (settings.themeBgColor) {
+          previewCard.style.backgroundColor = settings.themeBgColor;
+        } else {
+          previewCard.style.backgroundColor = 'rgba(0, 0, 0, 0.45)';
+        }
+
+        previewContent.style.fontSize = settings.themeFontSize;
+        previewContent.style.fontWeight = settings.themeFontWeight;
+        previewContent.style.lineHeight = settings.themeLineHeight;
+        previewContent.style.color = settings.themeTextColor || '#e4e4e7';
+
+        previewAction.style.marginBottom = settings.themeParagraphSpacing;
+        previewStory.style.marginBottom = '0px';
+
+        // Action styling
+        previewAction.style.opacity = '1';
+        previewAction.style.fontStyle = 'normal';
+        previewAction.style.textDecoration = 'none';
+        previewAction.style.color = settings.themeTextColor || '#e4e4e7';
+
+        if (settings.themeActionStyle === 'dimmed') {
+          previewAction.style.opacity = '0.72';
+        } else if (settings.themeActionStyle === 'italic') {
+          previewAction.style.fontStyle = 'italic';
+        } else if (settings.themeActionStyle === 'accent') {
+          previewAction.style.color = settings.themeActionColor;
+        } else if (settings.themeActionStyle === 'italic-accent') {
+          previewAction.style.fontStyle = 'italic';
+          previewAction.style.color = settings.themeActionColor;
+        } else if (settings.themeActionStyle === 'underlined') {
+          previewAction.style.textDecoration = 'underline';
+          previewAction.style.textDecorationColor = settings.themeActionColor;
+        }
+      }
+
+      // Live updates to game page
+      ThemeManagerModule.applyLiveStyles(settings);
+    },
+
+    markCustomPreset() {
+      this.currentPreset = 'custom';
+      document.querySelectorAll('.aid-qol-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === 'custom');
+      });
+    },
+
+    applyPresetToUI(presetKey) {
+      this.currentPreset = presetKey;
+
+      document.querySelectorAll('.aid-qol-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === presetKey);
+      });
+
+      const presetValues = ThemeManagerModule.PRESETS[presetKey];
+      if (!presetValues) return;
+
+      const fontSizeNum = parseInt(presetValues.themeFontSize) || 18;
+      const lineHeightNum = parseFloat(presetValues.themeLineHeight) || 1.7;
+      const paraSpacingNum = parseFloat(presetValues.themeParagraphSpacing) || 1.25;
+      const storyWidthNum = parseInt(presetValues.themeStoryWidth) || 900;
+
+      const fsEl = document.getElementById('cfg-theme-font-size');
+      if (fsEl) fsEl.value = fontSizeNum;
+
+      const fwEl = document.getElementById('cfg-theme-font-weight');
+      if (fwEl) fwEl.value = presetValues.themeFontWeight;
+
+      const lhEl = document.getElementById('cfg-theme-line-height');
+      if (lhEl) lhEl.value = lineHeightNum;
+
+      const psEl = document.getElementById('cfg-theme-paragraph-spacing');
+      if (psEl) psEl.value = paraSpacingNum;
+
+      const swEl = document.getElementById('cfg-theme-story-width');
+      if (swEl) swEl.value = storyWidthNum;
+
+      const textHex = document.getElementById('cfg-theme-text-color-hex');
+      const textPicker = document.getElementById('cfg-theme-text-color-picker');
+      if (textHex) textHex.value = presetValues.themeTextColor;
+      if (textPicker && presetValues.themeTextColor) textPicker.value = presetValues.themeTextColor;
+
+      const bgHex = document.getElementById('cfg-theme-bg-color-hex');
+      const bgPicker = document.getElementById('cfg-theme-bg-color-picker');
+      if (bgHex) bgHex.value = presetValues.themeBgColor;
+      if (bgPicker && presetValues.themeBgColor) bgPicker.value = presetValues.themeBgColor;
+
+      const actStyle = document.getElementById('cfg-theme-action-style');
+      if (actStyle) actStyle.value = presetValues.themeActionStyle;
+
+      const actHex = document.getElementById('cfg-theme-action-color-hex');
+      const actPicker = document.getElementById('cfg-theme-action-color-picker');
+      if (actHex) actHex.value = presetValues.themeActionColor;
+      if (actPicker && presetValues.themeActionColor) actPicker.value = presetValues.themeActionColor;
+
+      this.updateThemeLivePreview();
+    },
+
 
     init() {
       Logger.info('Initializing ConfigUIModule...');
@@ -2678,9 +3103,9 @@
         .aid-qol-config-modal {
           background: var(--aid-theme-bg, var(--background, #0c0c0e));
           color: var(--color, #f4f4f5);
-          width: 620px;
-          max-width: 92vw;
-          max-height: 88vh;
+          width: 650px;
+          max-width: 94vw;
+          max-height: 90vh;
           border: 1px solid var(--borderColor, rgba(255, 255, 255, 0.12));
           border-radius: 14px;
           box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.05);
@@ -3084,6 +3509,270 @@
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Theme & Typography Manager Styles */
+        .aid-qol-presets-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .aid-qol-preset-btn {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #d4d4d8;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .aid-qol-preset-btn:hover {
+          background: rgba(255, 255, 255, 0.12);
+          color: #ffffff;
+          border-color: rgba(255, 255, 255, 0.28);
+        }
+
+        .aid-qol-preset-btn.active {
+          background: rgba(249, 115, 22, 0.2);
+          color: var(--color-aid-primary, #fb923c);
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 10px rgba(249, 115, 22, 0.35);
+          font-weight: 600;
+        }
+
+        .aid-qol-theme-preview-card {
+          background: rgba(0, 0, 0, 0.45);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          border-radius: 10px;
+          padding: 14px 18px;
+          margin-bottom: 18px;
+          box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+          transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .aid-qol-preview-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #a1a1aa;
+          padding-bottom: 8px;
+          margin-bottom: 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .aid-qol-preview-indicator {
+          color: var(--color-aid-primary, #fb923c);
+          font-weight: 600;
+        }
+
+        .aid-qol-preview-content {
+          transition: font-size 0.15s ease, line-height 0.15s ease, color 0.15s ease;
+        }
+
+        .aid-qol-preview-action {
+          margin: 0;
+          padding: 0;
+          transition: all 0.15s ease;
+        }
+
+        .aid-qol-preview-story {
+          margin: 0;
+          padding: 0;
+          transition: all 0.15s ease;
+        }
+
+        .aid-qol-slider-row {
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 8px;
+          padding: 10px 14px;
+          margin-bottom: 10px;
+        }
+
+        .aid-qol-slider-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+          color: #d4d4d8;
+          margin-bottom: 8px;
+        }
+
+        .aid-qol-value-badge {
+          font-size: 12px;
+          font-family: ui-monospace, monospace;
+          background: rgba(249, 115, 22, 0.15);
+          color: var(--color-aid-primary, #fb923c);
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          padding: 2px 7px;
+          border-radius: 5px;
+        }
+
+        .aid-qol-range-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 100%;
+          height: 6px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.15);
+          outline: none;
+          margin: 4px 0;
+          cursor: pointer;
+        }
+
+        .aid-qol-range-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--color-aid-primary, #f97316);
+          cursor: pointer;
+          border: 2px solid #ffffff;
+          box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+          transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .aid-qol-range-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.15);
+          box-shadow: 0 0 10px rgba(249, 115, 22, 0.6);
+        }
+
+        .aid-qol-select-input {
+          width: 100%;
+          padding: 7px 10px;
+          background: rgba(0, 0, 0, 0.5);
+          color: #f4f4f5;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 6px;
+          font-size: 13px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .aid-qol-select-input:focus {
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+        }
+
+        .aid-qol-color-control-group {
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 8px;
+          padding: 10px 14px;
+        }
+
+        .aid-qol-color-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .aid-qol-color-title {
+          font-size: 13px;
+          color: #d4d4d8;
+          font-weight: 500;
+        }
+
+        .aid-qol-color-inputs {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .aid-qol-color-picker {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 28px;
+          height: 28px;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          border-radius: 6px;
+          background: transparent;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .aid-qol-color-picker::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+
+        .aid-qol-color-picker::-webkit-color-swatch {
+          border: none;
+          border-radius: 5px;
+        }
+
+        .aid-qol-hex-input {
+          width: 125px;
+          height: 28px;
+          padding: 0 8px;
+          font-family: ui-monospace, monospace;
+          font-size: 12px;
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 6px;
+          color: #ffffff;
+          outline: none;
+        }
+
+        .aid-qol-hex-input:focus {
+          border-color: var(--color-aid-primary, #f97316);
+          box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
+        }
+
+        .aid-qol-btn-clear {
+          font-size: 11px;
+          padding: 4px 8px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 5px;
+          color: #a1a1aa;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .aid-qol-btn-clear:hover {
+          background: rgba(255, 255, 255, 0.15);
+          color: #ffffff;
+        }
+
+        .aid-qol-swatches-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .aid-qol-swatch-label {
+          font-size: 11px;
+          color: #71717a;
+          margin-right: 2px;
+        }
+
+        .aid-qol-swatch {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          cursor: pointer;
+          padding: 0;
+          transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+
+        .aid-qol-swatch:hover {
+          transform: scale(1.2);
+          border-color: #ffffff;
+        }
+
       `);
     },
 
@@ -3099,13 +3788,14 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.5.2</span>
+              <span class="aid-qol-config-badge">v3.7.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
 
           <div class="aid-qol-config-tabs">
             <button class="aid-qol-tab-btn active" data-tab="aid-tab-hotkeys">Hotkeys</button>
+            <button class="aid-qol-tab-btn" data-tab="aid-tab-theme">Theme & Style</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-storycards">Modals & Menus</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-general">General</button>
             <button class="aid-qol-tab-btn" data-tab="aid-tab-bridge">Dev Bridge</button>
@@ -3201,6 +3891,154 @@
                 <div class="aid-qol-key-item">
                   <span class="aid-qol-key-label">Edit Character Name</span>
                   <input type="text" maxlength="1" id="cfg-keyCharacterName" class="aid-qol-key-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- Theme & Style Tab -->
+            <div class="aid-qol-tab-panel" id="aid-tab-theme" style="display:none">
+              <!-- Presets Header -->
+              <div class="aid-qol-section-title">Theme Presets</div>
+              <div class="aid-qol-presets-row">
+                <button type="button" class="aid-qol-preset-btn" data-preset="default">⚙️ Default</button>
+                <button type="button" class="aid-qol-preset-btn" data-preset="compact">📱 Compact</button>
+                <button type="button" class="aid-qol-preset-btn" data-preset="large">📖 Large / Cozy</button>
+                <button type="button" class="aid-qol-preset-btn" data-preset="oled">🌑 OLED Black</button>
+                <button type="button" class="aid-qol-preset-btn" data-preset="custom">🎨 Custom</button>
+              </div>
+
+              <!-- Live Story Preview Box -->
+              <div class="aid-qol-theme-preview-card" id="aid-theme-preview-card">
+                <div class="aid-qol-preview-header">
+                  <span>Live Story Preview</span>
+                  <span class="aid-qol-preview-indicator">● Real-time</span>
+                </div>
+                <div class="aid-qol-preview-content" id="aid-theme-preview-content">
+                  <div class="aid-qol-preview-action" id="aid-preview-action">&gt; You examine the ancient stone altar.</div>
+                  <div class="aid-qol-preview-story" id="aid-preview-story">The runes hum with faint starlight as your fingers trace the weathered engravings. The chamber falls silent, waiting for your next command.</div>
+                </div>
+              </div>
+
+              <!-- Typography Section -->
+              <div class="aid-qol-section-title">Typography & Reading</div>
+              <div class="aid-qol-slider-row">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-font-size">Font Size</label>
+                  <span class="aid-qol-value-badge" id="cfg-theme-font-size-val">18px</span>
+                </div>
+                <input type="range" id="cfg-theme-font-size" class="aid-qol-range-slider" min="13" max="26" step="1" value="18">
+              </div>
+
+              <div class="aid-qol-inline-fields" style="margin-top: 10px;">
+                <div class="aid-qol-input-block" style="flex: 1;">
+                  <label for="cfg-theme-font-weight">Font Boldness / Weight:</label>
+                  <select id="cfg-theme-font-weight" class="aid-qol-select-input">
+                    <option value="300">300 (Light)</option>
+                    <option value="400">400 (Regular)</option>
+                    <option value="500">500 (Medium)</option>
+                    <option value="600">600 (Semi-Bold)</option>
+                    <option value="700">700 (Bold)</option>
+                  </select>
+                </div>
+                <div class="aid-qol-input-block" style="flex: 1;">
+                  <label for="cfg-theme-action-style">Action Text Style:</label>
+                  <select id="cfg-theme-action-style" class="aid-qol-select-input">
+                    <option value="default">Default (Native)</option>
+                    <option value="dimmed">Dimmed / Subdued</option>
+                    <option value="italic">Italicized</option>
+                    <option value="accent">Accent Colored</option>
+                    <option value="italic-accent">Italic + Accent</option>
+                    <option value="underlined">Underlined</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="aid-qol-slider-row" style="margin-top: 10px;">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-line-height">Line Height</label>
+                  <span class="aid-qol-value-badge" id="cfg-theme-line-height-val">1.70</span>
+                </div>
+                <input type="range" id="cfg-theme-line-height" class="aid-qol-range-slider" min="1.20" max="2.40" step="0.05" value="1.70">
+              </div>
+
+              <!-- Spacing & Layout Section -->
+              <div class="aid-qol-section-title" style="margin-top: 18px;">Spacing & Layout</div>
+              <div class="aid-qol-slider-row">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-paragraph-spacing">Paragraph & Action Spacing</label>
+                  <span class="aid-qol-value-badge" id="cfg-theme-paragraph-spacing-val">1.25em</span>
+                </div>
+                <input type="range" id="cfg-theme-paragraph-spacing" class="aid-qol-range-slider" min="0.40" max="2.40" step="0.05" value="1.25">
+              </div>
+
+              <div class="aid-qol-slider-row" style="margin-top: 10px;">
+                <div class="aid-qol-slider-header">
+                  <label for="cfg-theme-story-width">Story Max Width</label>
+                  <span class="aid-qol-value-badge" id="cfg-theme-story-width-val">900px</span>
+                </div>
+                <input type="range" id="cfg-theme-story-width" class="aid-qol-range-slider" min="600" max="1400" step="20" value="900">
+              </div>
+
+              <!-- Colors & Background Section -->
+              <div class="aid-qol-section-title" style="margin-top: 18px;">Colors & Atmosphere</div>
+
+              <!-- Story Text Color -->
+              <div class="aid-qol-color-control-group">
+                <div class="aid-qol-color-header">
+                  <span class="aid-qol-color-title">Story Text Color</span>
+                  <div class="aid-qol-color-inputs">
+                    <input type="color" id="cfg-theme-text-color-picker" class="aid-qol-color-picker" value="#ffffff">
+                    <input type="text" id="cfg-theme-text-color-hex" class="aid-qol-hex-input" placeholder="Native / #f4efe6">
+                    <button type="button" class="aid-qol-btn-clear" id="cfg-theme-text-color-clear" title="Reset to native AID color">Reset</button>
+                  </div>
+                </div>
+                <div class="aid-qol-swatches-row" id="cfg-theme-text-swatches">
+                  <span class="aid-qol-swatch-label">Quick:</span>
+                  <button type="button" class="aid-qol-swatch" data-color="" title="Native AID text" style="background: repeating-linear-gradient(45deg, #222, #222 3px, #444 3px, #444 6px);"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#ffffff" title="Pure White" style="background: #ffffff;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#f4efe6" title="Warm Paper" style="background: #f4efe6;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#d4d4d8" title="Soft Neutral Gray" style="background: #d4d4d8;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#fde68a" title="Golden Amber" style="background: #fde68a;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#a7f3d0" title="Sage Mint" style="background: #a7f3d0;"></button>
+                </div>
+              </div>
+
+              <!-- Background Color -->
+              <div class="aid-qol-color-control-group" style="margin-top: 10px;">
+                <div class="aid-qol-color-header">
+                  <span class="aid-qol-color-title">Background Color</span>
+                  <div class="aid-qol-color-inputs">
+                    <input type="color" id="cfg-theme-bg-color-picker" class="aid-qol-color-picker" value="#000000">
+                    <input type="text" id="cfg-theme-bg-color-hex" class="aid-qol-hex-input" placeholder="Native / #000000">
+                    <button type="button" class="aid-qol-btn-clear" id="cfg-theme-bg-color-clear" title="Reset to native AID background">Reset</button>
+                  </div>
+                </div>
+                <div class="aid-qol-swatches-row" id="cfg-theme-bg-swatches">
+                  <span class="aid-qol-swatch-label">Quick:</span>
+                  <button type="button" class="aid-qol-swatch" data-color="" title="Native AID background" style="background: repeating-linear-gradient(45deg, #222, #222 3px, #444 3px, #444 6px);"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#000000" title="OLED Pure Black" style="background: #000000; border-color: #555;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#0f172a" title="Midnight Slate" style="background: #0f172a;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#18181b" title="Deep Charcoal" style="background: #18181b;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#141210" title="Espresso Dark" style="background: #141210;"></button>
+                </div>
+              </div>
+
+              <!-- Action Accent Color -->
+              <div class="aid-qol-color-control-group" id="cfg-theme-action-color-group" style="margin-top: 10px;">
+                <div class="aid-qol-color-header">
+                  <span class="aid-qol-color-title">Action Accent Color</span>
+                  <div class="aid-qol-color-inputs">
+                    <input type="color" id="cfg-theme-action-color-picker" class="aid-qol-color-picker" value="#fb923c">
+                    <input type="text" id="cfg-theme-action-color-hex" class="aid-qol-hex-input" placeholder="#fb923c">
+                  </div>
+                </div>
+                <div class="aid-qol-swatches-row" id="cfg-theme-action-swatches">
+                  <span class="aid-qol-swatch-label">Quick:</span>
+                  <button type="button" class="aid-qol-swatch" data-color="#fb923c" title="AID Amber" style="background: #fb923c;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#38bdf8" title="Electric Sky" style="background: #38bdf8;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#34d399" title="Emerald" style="background: #34d399;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#f43f5e" title="Crimson Rose" style="background: #f43f5e;"></button>
+                  <button type="button" class="aid-qol-swatch" data-color="#c084fc" title="Mystic Violet" style="background: #c084fc;"></button>
                 </div>
               </div>
             </div>
@@ -3395,6 +4233,140 @@
         });
       });
 
+
+      // Theme Preset Buttons
+      overlay.querySelectorAll('.aid-qol-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.preset;
+          if (preset === 'custom') {
+            this.markCustomPreset();
+          } else {
+            this.applyPresetToUI(preset);
+          }
+        });
+      });
+
+      // Theme Sliders
+      ['cfg-theme-font-size', 'cfg-theme-line-height', 'cfg-theme-paragraph-spacing', 'cfg-theme-story-width'].forEach(id => {
+        const slider = document.getElementById(id);
+        if (slider) {
+          slider.addEventListener('input', () => {
+            this.markCustomPreset();
+            this.updateThemeLivePreview();
+          });
+        }
+      });
+
+      // Theme Selects
+      ['cfg-theme-font-weight', 'cfg-theme-action-style'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (sel) {
+          sel.addEventListener('change', () => {
+            this.markCustomPreset();
+            this.updateThemeLivePreview();
+          });
+        }
+      });
+
+      // Story Text Color
+      const textPicker = document.getElementById('cfg-theme-text-color-picker');
+      const textHex = document.getElementById('cfg-theme-text-color-hex');
+      const textClear = document.getElementById('cfg-theme-text-color-clear');
+
+      textPicker?.addEventListener('input', () => {
+        if (textHex) textHex.value = textPicker.value;
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      textHex?.addEventListener('input', () => {
+        const val = textHex.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(val) && textPicker) {
+          textPicker.value = val;
+        }
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      textClear?.addEventListener('click', () => {
+        if (textHex) textHex.value = '';
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+
+      // Text Swatches
+      overlay.querySelectorAll('#cfg-theme-text-swatches .aid-qol-swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const col = btn.dataset.color;
+          if (textHex) textHex.value = col;
+          if (textPicker && col) textPicker.value = col;
+          this.markCustomPreset();
+          this.updateThemeLivePreview();
+        });
+      });
+
+      // Background Color
+      const bgPicker = document.getElementById('cfg-theme-bg-color-picker');
+      const bgHex = document.getElementById('cfg-theme-bg-color-hex');
+      const bgClear = document.getElementById('cfg-theme-bg-color-clear');
+
+      bgPicker?.addEventListener('input', () => {
+        if (bgHex) bgHex.value = bgPicker.value;
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      bgHex?.addEventListener('input', () => {
+        const val = bgHex.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(val) && bgPicker) {
+          bgPicker.value = val;
+        }
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      bgClear?.addEventListener('click', () => {
+        if (bgHex) bgHex.value = '';
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+
+      // Background Swatches
+      overlay.querySelectorAll('#cfg-theme-bg-swatches .aid-qol-swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const col = btn.dataset.color;
+          if (bgHex) bgHex.value = col;
+          if (bgPicker && col) bgPicker.value = col;
+          this.markCustomPreset();
+          this.updateThemeLivePreview();
+        });
+      });
+
+      // Action Accent Color
+      const actPicker = document.getElementById('cfg-theme-action-color-picker');
+      const actHex = document.getElementById('cfg-theme-action-color-hex');
+
+      actPicker?.addEventListener('input', () => {
+        if (actHex) actHex.value = actPicker.value;
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+      actHex?.addEventListener('input', () => {
+        const val = actHex.value.trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(val) && actPicker) {
+          actPicker.value = val;
+        }
+        this.markCustomPreset();
+        this.updateThemeLivePreview();
+      });
+
+      // Action Swatches
+      overlay.querySelectorAll('#cfg-theme-action-swatches .aid-qol-swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const col = btn.dataset.color;
+          if (actHex) actHex.value = col;
+          if (actPicker && col) actPicker.value = col;
+          this.markCustomPreset();
+          this.updateThemeLivePreview();
+        });
+      });
+
       // Dev Bridge buttons
       document.getElementById('aid-bridge-sync-btn')?.addEventListener('click', () => {
         DevBridgeModule.syncToBridge();
@@ -3485,6 +4457,59 @@
       if (genAutoFocus) genAutoFocus.checked = !!CONFIG.get('autoFocusInput', true);
       if (genHotkeys) genHotkeys.checked = !!CONFIG.get('hotkeysEnabled', true);
       if (genDebug) genDebug.checked = !!CONFIG.get('debugLogging', false);
+
+      // Theme & Typography Settings
+      const savedPreset = CONFIG.get('themePreset', 'default');
+      this.currentPreset = savedPreset;
+
+      document.querySelectorAll('.aid-qol-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === savedPreset);
+      });
+
+      const fontSize = CONFIG.get('themeFontSize', '18px');
+      const fsEl = document.getElementById('cfg-theme-font-size');
+      if (fsEl) fsEl.value = parseInt(fontSize) || 18;
+
+      const fontWeight = CONFIG.get('themeFontWeight', '400');
+      const fwEl = document.getElementById('cfg-theme-font-weight');
+      if (fwEl) fwEl.value = fontWeight;
+
+      const lineHeight = CONFIG.get('themeLineHeight', '1.7');
+      const lhEl = document.getElementById('cfg-theme-line-height');
+      if (lhEl) lhEl.value = parseFloat(lineHeight) || 1.7;
+
+      const paraSpacing = CONFIG.get('themeParagraphSpacing', '1.25em');
+      const psEl = document.getElementById('cfg-theme-paragraph-spacing');
+      if (psEl) psEl.value = parseFloat(paraSpacing) || 1.25;
+
+      const storyWidth = CONFIG.get('themeStoryWidth', '900px');
+      const swEl = document.getElementById('cfg-theme-story-width');
+      if (swEl) swEl.value = parseInt(storyWidth) || 900;
+
+      const textColor = CONFIG.get('themeTextColor', '');
+      const textHex = document.getElementById('cfg-theme-text-color-hex');
+      const textPicker = document.getElementById('cfg-theme-text-color-picker');
+      if (textHex) textHex.value = textColor;
+      if (textPicker && textColor) textPicker.value = textColor;
+
+      const bgColor = CONFIG.get('themeBgColor', '');
+      const bgHex = document.getElementById('cfg-theme-bg-color-hex');
+      const bgPicker = document.getElementById('cfg-theme-bg-color-picker');
+      if (bgHex) bgHex.value = bgColor;
+      if (bgPicker && bgColor) bgPicker.value = bgColor;
+
+      const actionStyle = CONFIG.get('themeActionStyle', 'default');
+      const actStyle = document.getElementById('cfg-theme-action-style');
+      if (actStyle) actStyle.value = actionStyle;
+
+      const actionColor = CONFIG.get('themeActionColor', '#fb923c');
+      const actHex = document.getElementById('cfg-theme-action-color-hex');
+      const actPicker = document.getElementById('cfg-theme-action-color-picker');
+      if (actHex) actHex.value = actionColor;
+      if (actPicker && actionColor) actPicker.value = actionColor;
+
+      this.updateThemeLivePreview();
+
     },
 
     applyThemeStyles() {
@@ -3533,6 +4558,7 @@
 
     open() {
       this.render();
+      this.initialThemeSettings = ThemeManagerModule.getSavedSettings();
       this.applyThemeStyles();
       this.populateFields();
       if (typeof DevBridgeModule !== 'undefined') {
@@ -3550,6 +4576,7 @@
     },
 
     close() {
+      ThemeManagerModule.revertToSaved();
       if (this.overlay) {
         this.overlay.style.display = 'none';
       }
@@ -3635,6 +4662,21 @@
       if (genHotkeys) CONFIG.set('hotkeysEnabled', genHotkeys.checked);
       if (genDebug) CONFIG.set('debugLogging', genDebug.checked);
 
+      // Save Theme & Typography Settings
+      const themeSettings = this.gatherCurrentThemeUI();
+      CONFIG.set('themePreset', this.currentPreset || 'custom');
+      CONFIG.set('themeFontSize', themeSettings.themeFontSize);
+      CONFIG.set('themeFontWeight', themeSettings.themeFontWeight);
+      CONFIG.set('themeLineHeight', themeSettings.themeLineHeight);
+      CONFIG.set('themeParagraphSpacing', themeSettings.themeParagraphSpacing);
+      CONFIG.set('themeStoryWidth', themeSettings.themeStoryWidth);
+      CONFIG.set('themeTextColor', themeSettings.themeTextColor);
+      CONFIG.set('themeBgColor', themeSettings.themeBgColor);
+      CONFIG.set('themeActionStyle', themeSettings.themeActionStyle);
+      CONFIG.set('themeActionColor', themeSettings.themeActionColor);
+
+      ThemeManagerModule.applySavedConfig();
+
       Logger.info('Configuration updated via Settings dialog.');
       this.showToast('✓ AID-QoL Settings saved successfully!');
       this.close();
@@ -3643,6 +4685,7 @@
     resetDefaults() {
       if (!confirm('Are you sure you want to reset all AID-QoL settings to defaults?')) return;
       CONFIG.resetToDefaults();
+      this.applyPresetToUI('default');
       this.populateFields();
       this.showToast('✓ Settings reset to defaults!');
     },
@@ -3919,6 +4962,7 @@
     StoryCardModalModule,
     GameMenuResizeModule,
     TextareaResizeModule,
+    ThemeManagerModule,
     ConfigUIModule,
     DevBridgeModule,
   ];
