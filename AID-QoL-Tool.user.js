@@ -1261,7 +1261,7 @@
       // Observe for dialogs appearing in the DOM with immediate synchronous setup (zero-blink)
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
         if (CONFIG.get('disableModalDimming', true)) {
-          this.neutralizeModalOverlays(modalNode);
+          this.neutralizeModalOverlays();
         }
 
         const checkModal = (retries = 6) => {
@@ -1288,15 +1288,9 @@
       });
 
       // Observe for overlay elements appearing in the DOM to neutralize dimming & blur instantly
-      observeSelector('[data-slot*="overlay"], [data-radix-dialog-overlay]', (overlayNode) => {
+      observeSelector(this.overlaySelector, () => {
         if (CONFIG.get('disableModalDimming', true)) {
-          if (overlayNode.id === 'aid-qol-config-overlay') return;
-          overlayNode.style.setProperty('background', 'transparent', 'important');
-          overlayNode.style.setProperty('background-color', 'transparent', 'important');
-          overlayNode.style.setProperty('backdrop-filter', 'none', 'important');
-          overlayNode.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
-          overlayNode.style.setProperty('opacity', '0', 'important');
-          overlayNode.style.setProperty('pointer-events', 'none', 'important');
+          this.neutralizeModalOverlays();
         }
       });
     },
@@ -1424,31 +1418,19 @@
 
         /* 
          * Eliminate background darkening / blur overlays behind modals when configured.
-         * Targets all overlay slots for Story Cards, Context Viewer, subdialogs, and platform modals
-         * without touching main application layout (#__next).
+         * Strictly targets only dialog/sheet overlay slots so the main application layout
+         * (.app-root / #__next) is never touched!
          */
         html.aid-qol-no-modal-dimming [data-slot="aid-dialog-overlay"],
         html.aid-qol-no-modal-dimming [data-slot="platform-dialog-overlay"],
         html.aid-qol-no-modal-dimming [data-slot*="dialog-overlay"],
         html.aid-qol-no-modal-dimming [data-slot*="sheet-overlay"],
-        html.aid-qol-no-modal-dimming [data-slot*="overlay"]:not([role="dialog"]):not([role="alertdialog"]):not(#aid-qol-config-overlay),
         html.aid-qol-no-modal-dimming [data-radix-dialog-overlay],
-        html.aid-qol-no-modal-dimming body:has([role="dialog"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        html.aid-qol-no-modal-dimming body:has([role="dialog"]) [data-radix-dialog-overlay],
-        html.aid-qol-no-modal-dimming body:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        html.aid-qol-no-modal-dimming body:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        html.aid-qol-no-modal-dimming body:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
         body.aid-qol-no-modal-dimming [data-slot="aid-dialog-overlay"],
         body.aid-qol-no-modal-dimming [data-slot="platform-dialog-overlay"],
         body.aid-qol-no-modal-dimming [data-slot*="dialog-overlay"],
         body.aid-qol-no-modal-dimming [data-slot*="sheet-overlay"],
-        body.aid-qol-no-modal-dimming [data-slot*="overlay"]:not([role="dialog"]):not([role="alertdialog"]):not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming [data-radix-dialog-overlay],
-        body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-slot*="overlay"]:not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming:has([role="dialog"]) [data-radix-dialog-overlay],
-        body.aid-qol-no-modal-dimming:has([role="dialog"]) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming:has(.aid-qol-story-card-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay),
-        body.aid-qol-no-modal-dimming:has(.aid-qol-context-modal) div.fixed.inset-0:not([role="dialog"]):not(:has([role="dialog"])):not(#aid-qol-config-overlay) {
+        body.aid-qol-no-modal-dimming [data-radix-dialog-overlay] {
           background-color: transparent !important;
           background: transparent !important;
           backdrop-filter: none !important;
@@ -1654,6 +1636,8 @@
       `);
     },
 
+    overlaySelector: '[data-slot="aid-dialog-overlay"], [data-slot="platform-dialog-overlay"], [data-slot*="dialog-overlay"], [data-slot*="sheet-overlay"], [data-radix-dialog-overlay]',
+
     /**
      * Toggles or updates the body and documentElement classes that eliminate modal dimming and blur.
      */
@@ -1664,7 +1648,7 @@
       if (disabled) {
         this.neutralizeModalOverlays();
       } else {
-        document.querySelectorAll('[data-slot*="overlay"], [data-radix-dialog-overlay]').forEach((el) => {
+        document.querySelectorAll(this.overlaySelector).forEach((el) => {
           if (el.id === 'aid-qol-config-overlay') return;
           el.style.removeProperty('background');
           el.style.removeProperty('background-color');
@@ -1678,15 +1662,16 @@
 
     /**
      * Neutralizes modal backdrop overlays across the page.
-     * @param {HTMLElement} [modal]
+     * Strictly targets only dialog/sheet overlay slots so the main app (.app-root / #__next) is never touched!
      */
-    neutralizeModalOverlays(modal = null) {
+    neutralizeModalOverlays() {
       if (!CONFIG.get('disableModalDimming', true)) return;
 
       const clearOverlay = (el) => {
         if (!el || el.nodeType !== Node.ELEMENT_NODE) return;
-        if (modal && (el === modal || el.contains(modal))) return;
-        if (el.id === 'aid-qol-config-overlay') return;
+        if (el.id === 'aid-qol-config-overlay' || el.id === '__next' || el.id === 'root') return;
+        if (el.classList.contains('app-root') || el === document.body || el === document.documentElement) return;
+        if (el.querySelector('#__next, .app-root')) return;
         if (el.getAttribute('role') === 'dialog' || el.getAttribute('role') === 'alertdialog') return;
         el.style.setProperty('background', 'transparent', 'important');
         el.style.setProperty('background-color', 'transparent', 'important');
@@ -1696,11 +1681,7 @@
         el.style.setProperty('pointer-events', 'none', 'important');
       };
 
-      if (modal && modal.parentElement) {
-        Array.from(modal.parentElement.children).forEach(clearOverlay);
-      }
-
-      document.querySelectorAll('[data-slot*="overlay"], [data-radix-dialog-overlay]').forEach(clearOverlay);
+      document.querySelectorAll(this.overlaySelector).forEach(clearOverlay);
     },
 
     /**
@@ -1872,15 +1853,21 @@
         modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
       }, { capture: true });
 
-      // Unset parent flex centering
-      if (modal.parentElement) {
+      // Unset parent flex centering (only on portal wrappers, never on body/app-root)
+      if (
+        modal.parentElement &&
+        modal.parentElement !== document.body &&
+        modal.parentElement !== document.documentElement &&
+        !modal.parentElement.classList.contains('app-root') &&
+        modal.parentElement.id !== '__next'
+      ) {
         modal.parentElement.style.justifyContent = 'unset';
         modal.parentElement.style.alignItems = 'unset';
       }
 
       // Neutralize any sibling/backdrop overlays if dimming removal is enabled
       if (CONFIG.get('disableModalDimming', true)) {
-        this.neutralizeModalOverlays(modal);
+        this.neutralizeModalOverlays();
       }
 
       // 4. Enable native resize
@@ -2005,15 +1992,21 @@
         modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
       }, { capture: true });
 
-      // Unset parent flex centering
-      if (modal.parentElement) {
+      // Unset parent flex centering (only on portal wrappers, never on body/app-root)
+      if (
+        modal.parentElement &&
+        modal.parentElement !== document.body &&
+        modal.parentElement !== document.documentElement &&
+        !modal.parentElement.classList.contains('app-root') &&
+        modal.parentElement.id !== '__next'
+      ) {
         modal.parentElement.style.justifyContent = 'unset';
         modal.parentElement.style.alignItems = 'unset';
       }
 
       // Neutralize any sibling/backdrop overlays if dimming removal is enabled
       if (CONFIG.get('disableModalDimming', true)) {
-        this.neutralizeModalOverlays(modal);
+        this.neutralizeModalOverlays();
       }
 
       // 4. Enable Context Viewer styling (with pinned header and overflow: hidden)
