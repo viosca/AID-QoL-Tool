@@ -77,3 +77,10 @@ A categorized list of proposed Quality-of-Life (QoL) features and enhancements f
 - [ ] **Named Custom Theme Profiles & Theme Export / Import**
   - **Concept:** Allow users to name and save multiple custom theme profiles (e.g., "Late Night Cozy", "Sci-Fi Terminal", "Compact Editing") alongside the built-in presets, as well as export and import theme settings via JSON string or file.
   - **Why it matters:** Makes it easy to switch between personalized setups for different genres or devices, back up carefully tuned typography/density settings, and share custom themes with other players.
+
+---
+
+## 6. Code Architecture & Internal Refactoring
+
+- [ ] **DRY Consolidation & Runtime Performance Pass** (see [**REFACTORING.md**](REFACTORING.md) for full details and line-by-line impact)
+  - **Summary:** Consolidate duplicated UI/config bindings into a declarative schema, replace dynamic stylesheet string rebuilding with CSS custom properties (`--aid-qol-*`), unify modal window drag/anchoring helpers, and multiplex the 8 separate `MutationObserver` instances into a single shared observer (~905 lines / ~16% code reduction and lower DOM/CSS overhead during live streaming and slider previews).

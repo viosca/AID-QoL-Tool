@@ -157,7 +157,8 @@ AID-QoL-Tool/
 ├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
 ├── FEATURE_IDEAS.md             # Future enhancement ideas & roadmap
 ├── LICENSE.md                   # MIT License
-└── README.md                    # Project documentation
+├── README.md                    # Project documentation
+└── REFACTORING.md               # Internal DRY & performance refactoring roadmap
 ```
 
 ---
