@@ -69,3 +69,11 @@ A categorized list of proposed Quality-of-Life (QoL) features and enhancements f
 
 - [ ] **Multi-Card Quick Switcher (Tabs or Dropdown in Story Card Modal)**
   - **Concept:** When viewing or editing a Story Card, provide "Next" / "Previous" arrows or a quick dropdown to switch between cards directly without closing the modal and finding the next card in the sidebar.
+
+---
+
+## 5. Theme & Configuration Management
+
+- [ ] **Named Custom Theme Profiles & Theme Export / Import**
+  - **Concept:** Allow users to name and save multiple custom theme profiles (e.g., "Late Night Cozy", "Sci-Fi Terminal", "Compact Editing") alongside the built-in presets, as well as export and import theme settings via JSON string or file.
+  - **Why it matters:** Makes it easy to switch between personalized setups for different genres or devices, back up carefully tuned typography/density settings, and share custom themes with other players.

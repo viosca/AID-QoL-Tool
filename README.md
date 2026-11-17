@@ -1,4 +1,4 @@
-# AID-QoL-Tool (v3.7.0)
+# AID-QoL-Tool (v3.7.1)
 
 [![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
@@ -58,7 +58,8 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Smooth Header Dragging**: Grab anywhere on the visible modal header row to reposition Story Cards or Context Viewer windows.
 * **Anchored Resizing**: Resizes outward from the bottom-right corner without center-snapping, jumps, or Tailwind width capping.
 * **Dedicated 2D Corner Resizer**: Custom resize handle for Context Viewer overview and subdialogs (Adventure, Instructions, Memories).
-* **Transparent Backdrop**: Eliminates modal darkening so background game story text remains completely visible and readable while managing cards or inspecting context.
+* **Configurable Transparent Backdrop**: Eliminates modal darkening and blur by default (configurable in **Modals & Menus** settings or via the Tampermonkey menu) so background game story text remains completely visible and readable while managing cards or inspecting context.
+* **Zero-Blink Pre-Paint Positioning**: Opens Story Cards, Context Viewer, and all Context Subdialogs directly at their target coordinates and dimensions with no initial size/position jump.
 * **Multi-Window Layering**: Opening subdialogs places them directly in front, and clicking any open modal immediately brings it to the top.
 * **Double-Click Title**: Double-click the header bar to maximize / restore.
 * **Configurable Initial Size**: Centered symmetrically on open (defaults to `680px` × `82vh` for cards, `480px` for context).
@@ -154,6 +155,7 @@ AID-QoL-Tool/
 ├── .gitignore                   # Repository ignore rules
 ├── AID-QoL-Tool.user.js         # Active v3 production script
 ├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
+├── FEATURE_IDEAS.md             # Future enhancement ideas & roadmap
 ├── LICENSE.md                   # MIT License
 └── README.md                    # Project documentation
 ```

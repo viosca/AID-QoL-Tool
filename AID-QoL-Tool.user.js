@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.7.0
+// @version      3.7.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card & Context Modals, Game Menu Resizing, Theme & Typography Manager, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -4335,7 +4335,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.7.0</span>
+              <span class="aid-qol-config-badge">v3.7.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -5700,7 +5700,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.5.2 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.7.1 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
