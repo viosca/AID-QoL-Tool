@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.7.1
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card & Context Modals, Game Menu Resizing, Theme & Typography Manager, Antigravity Dev Bridge).
+// @version      3.7.2
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -62,6 +62,12 @@
     contextModalWidth: '480px',
     contextModalHeight: 'auto',
     rememberContextSize: true,
+
+    // Script Modals (Add Scripts, Manage Scripts, etc.)
+    scriptModalEnabled: true,
+    scriptModalWidth: '680px',
+    scriptModalHeight: '76vh',
+    rememberScriptSize: true,
 
     // Modal Backdrops & Overlays
     disableModalDimming: true,
@@ -152,6 +158,14 @@
     `Context Viewer Modal: ${CONFIG.get('contextModalEnabled') ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
     () => {
       CONFIG.set('contextModalEnabled', !CONFIG.get('contextModalEnabled'));
+      location.reload();
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Script Modals: ${CONFIG.get('scriptModalEnabled', true) ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      CONFIG.set('scriptModalEnabled', !CONFIG.get('scriptModalEnabled', true));
       location.reload();
     }
   );
@@ -1245,10 +1259,10 @@
   };
 
   // =========================================================================
-  // Feature Module 4: Story Card & Context Viewer Modals (Drag & Anchored Resize)
+  // Feature Module 4: Story Card, Context & Script Modals (Drag & Anchored Resize)
   // =========================================================================
   const StoryCardModalModule = {
-    name: 'Story Card & Context Modals',
+    name: 'Story Card, Context & Script Modals',
 
     init() {
       Logger.info('Initializing StoryCardModalModule...');
@@ -1256,7 +1270,11 @@
       this.injectStyles();
       this.updateModalDimmingState();
 
-      if (!CONFIG.get('storyCardModalsEnabled', true) && !CONFIG.get('contextModalEnabled', true)) return;
+      if (
+        !CONFIG.get('storyCardModalsEnabled', true) &&
+        !CONFIG.get('contextModalEnabled', true) &&
+        !CONFIG.get('scriptModalEnabled', true)
+      ) return;
 
       // Observe for dialogs appearing in the DOM with immediate synchronous setup (zero-blink)
       observeSelector('[role="dialog"], [role="alertdialog"]', (modalNode) => {
@@ -1266,10 +1284,14 @@
 
         const checkModal = (retries = 6) => {
           if (!modalNode.isConnected) return true;
-          if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal) return true;
+          if (modalNode.dataset.aidQolModal || modalNode.dataset.aidQolContextModal || modalNode.dataset.aidQolScriptModal) return true;
 
           if (CONFIG.get('storyCardModalsEnabled', true) && this.isStoryCardModal(modalNode)) {
             this.setupStoryCardModal(modalNode);
+            return true;
+          }
+          if (CONFIG.get('scriptModalEnabled', true) && this.isScriptModal(modalNode)) {
+            this.setupScriptModal(modalNode);
             return true;
           }
           if (CONFIG.get('contextModalEnabled', true) && this.isContextViewerModal(modalNode)) {
@@ -1356,20 +1378,20 @@
         }
 
         /* 
-         * Resizable Context Viewer modal styling (zero-blink positioning).
+         * Resizable Context Viewer & Script modal styling (zero-blink positioning).
          * Disables Radix slide-in / translate keyframes and Tailwind transitions so the dialog
-         * and all its subdialogs (Adventure, Memories, AI Instructions, Plot Essentials, etc.)
+         * and all its subdialogs (Adventure, Memories, AI Instructions, Plot Essentials, Add Scripts, etc.)
          * open cleanly at their deterministic position without animation artifacts or jumping.
          * Outer modal uses overflow: hidden !important so the header is pinned and NEVER scrolls!
          * Resizing is handled smoothly by the dedicated .aid-qol-modal-corner-resizer handle.
          */
         [role="dialog"][data-slot="aid-dialog-content"],
-        [role="dialog"][data-slot="platform-dialog-content"],
         [role="dialog"]:has([data-slot="aid-dialog-title"]),
         [role="dialog"]:has([data-memory-action-id]),
         [role="dialog"]:has([aria-label*="close context" i]),
         [role="dialog"]:has([aria-label*="close memories" i]),
-        .aid-qol-context-modal {
+        .aid-qol-context-modal,
+        .aid-qol-script-modal {
           resize: none !important;
           overflow: hidden !important;
           right: auto !important;
@@ -1404,16 +1426,50 @@
         }
 
         /* Pre-paint fallback centering for Context Subdialogs (Adventure, Memories, AI Instructions, etc.) */
-        [role="dialog"][data-slot="aid-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"][data-slot="platform-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"]:has([data-slot="aid-dialog-title"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal),
-        [role="dialog"]:has([data-memory-action-id]):not(.max-w-\[420px\]):not(.aid-qol-context-modal) {
+        [role="dialog"][data-slot="aid-dialog-content"]:not(.max-w-\[420px\]):not(.aid-qol-context-modal):not(.aid-qol-script-modal),
+        [role="dialog"]:has([data-slot="aid-dialog-title"]):not(.max-w-\[420px\]):not(.aid-qol-context-modal):not(.aid-qol-script-modal),
+        [role="dialog"]:has([data-memory-action-id]):not(.max-w-\[420px\]):not(.aid-qol-context-modal):not(.aid-qol-script-modal) {
           left: calc(50vw - 240px) !important;
           top: calc(50vh - 256px) !important;
           width: 480px !important;
           height: 512px !important;
           transform: none !important;
           transition: none !important;
+        }
+
+        /* Pre-paint fallback centering for Script modals (Add Scripts, Manage Scripts, etc.) */
+        .aid-qol-script-modal:not([style*="left:"]) {
+          left: calc(50vw - 340px) !important;
+          top: calc(50vh - 38vh) !important;
+          width: 680px !important;
+          height: 76vh !important;
+          transform: none !important;
+          transition: none !important;
+        }
+
+        /* Script modal content flexibility & inner scrolling */
+        .aid-qol-script-modal > div {
+          max-width: none !important;
+          min-width: 0 !important;
+          width: 100% !important;
+        }
+
+        .aid-qol-script-modal [data-slot="platform-dialog-header"],
+        .aid-qol-script-modal [data-slot="aid-dialog-header"] {
+          flex-shrink: 0 !important;
+        }
+
+        .aid-qol-script-modal [data-radix-scroll-area-viewport],
+        .aid-qol-script-modal .overflow-y-auto,
+        .aid-qol-script-modal [data-keyboard-scroll-region] {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          overflow-y: auto !important;
+          scrollbar-gutter: stable !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.15) !important;
         }
 
         /* 
@@ -1755,8 +1811,9 @@
       // 2. Ignore our own QoL config dialog
       if (modal.id && modal.id.startsWith('aid-qol-')) return false;
 
-      // 3. Never treat Story Card modals as Context Viewer
+      // 3. Never treat Story Card modals or Script modals as Context Viewer
       if (this.isStoryCardModal(modal)) return false;
+      if (this.isScriptModal(modal)) return false;
 
       // 4. Standard AID Radix dialog content or close button signatures
       if (modal.getAttribute('data-slot') === 'aid-dialog-content') return true;
@@ -1791,6 +1848,58 @@
       // 8. Visible text content fallback
       const text = modal.textContent || '';
       if (text.includes('Context used for this action') || /view\s*context|context\s*viewer/i.test(text)) {
+        return true;
+      }
+
+      return false;
+    },
+
+    /**
+     * Determines whether a given modal element represents a Script modal (e.g. Add Scripts, Manage Scripts, Script Editor).
+     * @param {HTMLElement} modal
+     * @returns {boolean}
+     */
+    isScriptModal(modal) {
+      if (!modal || modal.nodeType !== Node.ELEMENT_NODE) return false;
+
+      // 1. Ignore alert / confirm dialogs
+      if (modal.getAttribute('role') === 'alertdialog') return false;
+
+      // 2. Ignore our own QoL config dialog
+      if (modal.id && modal.id.startsWith('aid-qol-')) return false;
+
+      // 3. Never treat Story Card modals as Script modal
+      if (this.isStoryCardModal(modal)) return false;
+
+      // 4. Explicit title check (screen-reader or visible)
+      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3, h4');
+      if (title) {
+        const titleText = title.textContent.trim().toLowerCase();
+        if (/script/i.test(titleText)) {
+          return true;
+        }
+      }
+
+      // 5. Close button aria-label checks
+      const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[data-slot="platform-dialog-close"], button[aria-label*="close" i]');
+      if (closeBtn) {
+        const ariaLabel = (closeBtn.getAttribute('aria-label') || '').toLowerCase();
+        if (ariaLabel.includes('script')) {
+          return true;
+        }
+      }
+
+      // 6. Script-specific elements, buttons, or input placeholders
+      if (
+        modal.querySelector('[data-slot*="script" i], [aria-label*="script" i], input[placeholder*="script" i]') ||
+        modal.querySelector('button[aria-label*="script" i]')
+      ) {
+        return true;
+      }
+
+      // 7. Modal text contains signature phrases
+      const text = (modal.textContent || '').slice(0, 1500);
+      if (/add\s*scripts?|manage\s*scripts?|custom\s*code|scenario\s*scripts?|script\s*library|select\s*scripts?/i.test(text)) {
         return true;
       }
 
@@ -2065,6 +2174,156 @@
     },
 
     /**
+     * Enhances a Script modal (e.g. Add Scripts, Manage Scripts, Script Editor) with drag, top-left anchored positioning, and corner resizing.
+     * @param {HTMLElement} modal
+     */
+    setupScriptModal(modal) {
+      if (!CONFIG.get('scriptModalEnabled', true)) return;
+      if (modal.dataset.aidQolScriptModal) return;
+      modal.dataset.aidQolScriptModal = 'true';
+
+      Logger.log('Setting up Script modal:', modal);
+
+      // 1. Strip Tailwind classes that lock width or center via transform/transitions:
+      const stripClasses = () => {
+        modal.classList.remove(
+          'left-1/2',
+          'top-1/2',
+          'inset-0',
+          'w-full',
+          'w-[calc(100vw-var(--spacing-overlay-viewport-total))]',
+          '-translate-x-1/2', 
+          '-translate-y-1/2', 
+          'translate-x-1/2', 
+          'translate-y-1/2', 
+          'm-auto',
+          'max-w-[480px]',
+          'max-w-[420px]',
+          'max-w-md',
+          'max-w-lg',
+          'max-w-xl',
+          'max-w-2xl',
+          'max-w-3xl',
+          'max-w-4xl',
+          'max-w-5xl',
+          'max-w-6xl',
+          'h-[512px]',
+          'duration-200',
+          'overflow-hidden'
+        );
+      };
+      stripClasses();
+
+      // 2. Calculate initial dimensions from configured defaults or saved preferences
+      const configuredWidth = CONFIG.get('scriptModalWidth', '680px');
+      const configuredHeight = CONFIG.get('scriptModalHeight', '76vh');
+
+      const widthPx = Math.min(window.innerWidth - 30, Math.round(this.parseDimension(configuredWidth, window.innerWidth)));
+      const heightPx = Math.min(window.innerHeight - 40, Math.round(this.parseDimension(configuredHeight, window.innerHeight)));
+
+      // Symmetrically center horizontally and vertically
+      const leftPx = Math.max(10, Math.round((window.innerWidth - widthPx) / 2));
+      const topPx = Math.max(20, Math.round((window.innerHeight - heightPx) / 2));
+
+      // 3. Anchor top-left with fixed pixel coordinates
+      modal.style.setProperty('position', 'fixed', 'important');
+      modal.style.setProperty('left', `${leftPx}px`, 'important');
+      modal.style.setProperty('top', `${topPx}px`, 'important');
+      modal.style.setProperty('width', `${widthPx}px`, 'important');
+      modal.style.setProperty('height', `${heightPx}px`, 'important');
+      modal.style.setProperty('right', 'auto', 'important');
+      modal.style.setProperty('bottom', 'auto', 'important');
+      modal.style.setProperty('margin', '0px', 'important');
+      modal.style.setProperty('transform', 'none', 'important');
+      modal.style.setProperty('transition', 'none', 'important');
+
+      // Bring newly opened modal immediately to front
+      StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+      modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+
+      // Clicking or interacting with the modal brings it to the top
+      modal.addEventListener('pointerdown', () => {
+        StoryCardModalModule.highestZ = Math.max(StoryCardModalModule.highestZ || 100000, 100000) + 1;
+        modal.style.zIndex = `${StoryCardModalModule.highestZ}`;
+      }, { capture: true });
+
+      // Unset parent flex centering (only on portal wrappers, never on body/app-root)
+      if (
+        modal.parentElement &&
+        modal.parentElement !== document.body &&
+        modal.parentElement !== document.documentElement &&
+        !modal.parentElement.classList.contains('app-root') &&
+        modal.parentElement.id !== '__next'
+      ) {
+        modal.parentElement.style.justifyContent = 'unset';
+        modal.parentElement.style.alignItems = 'unset';
+      }
+
+      // Neutralize any sibling/backdrop overlays if dimming removal is enabled
+      if (CONFIG.get('disableModalDimming', true)) {
+        this.neutralizeModalOverlays();
+      }
+
+      // 4. Enable Script modal styling (inherits pinned header & sleek scrollbars)
+      modal.classList.add('aid-qol-script-modal');
+      modal.classList.add('aid-qol-context-modal');
+
+      // 5. Append dedicated corner resize handle to outer dialog and bind drag resize
+      const ensureResizer = () => {
+        if (!modal.isConnected) return;
+        let resizer = modal.querySelector(':scope > .aid-qol-modal-corner-resizer');
+        if (!resizer) {
+          resizer = document.createElement('div');
+          resizer.className = 'aid-qol-modal-corner-resizer';
+          resizer.title = 'Drag to resize modal';
+          modal.appendChild(resizer);
+          this.bindCornerResizeEvents(modal, resizer);
+        }
+      };
+      ensureResizer();
+
+      // Ensure resizer remains attached to outer dialog and classes stay stripped if React re-renders modal
+      const resizerObserver = new MutationObserver(() => {
+        if (!modal.isConnected) {
+          resizerObserver.disconnect();
+          return;
+        }
+        stripClasses();
+        if (!modal.classList.contains('aid-qol-script-modal')) {
+          modal.classList.add('aid-qol-script-modal');
+        }
+        if (!modal.classList.contains('aid-qol-context-modal')) {
+          modal.classList.add('aid-qol-context-modal');
+        }
+        if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
+          ensureResizer();
+        }
+      });
+      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
+
+      // 6. Locate the visible header row to use as the drag handle
+      const tryAttachHeader = (retries = 6) => {
+        if (!modal.isConnected) return;
+        const header = this.findModalHeader(modal);
+        if (header) {
+          header.classList.add('aid-qol-modal-handle');
+          Logger.log('Attached drag handle to Script modal header:', header);
+          this.bindDragEvents(modal, header);
+          header.addEventListener('dblclick', (e) => {
+            if (this.isInteractiveElement(e.target)) return;
+            this.toggleMaximize(modal);
+          });
+        } else if (retries > 0) {
+          requestAnimationFrame(() => tryAttachHeader(retries - 1));
+        } else {
+          Logger.warn('Visible header not found for Script modal:', modal);
+        }
+      };
+
+      tryAttachHeader();
+    },
+
+    /**
      * Saves user's resized modal dimensions so future modals remember it.
      * Uses ResizeObserver with debouncing for clean, leak-free persistence.
      * @param {HTMLElement} modal
@@ -2185,7 +2444,13 @@
 
             const finalW = Math.round(modal.offsetWidth);
             const finalH = Math.round(modal.offsetHeight);
-            if (CONFIG.get('rememberContextSize', true) && finalW >= 300 && finalH >= 150) {
+            if (modal.dataset.aidQolScriptModal) {
+              if (CONFIG.get('rememberScriptSize', true) && finalW >= 300 && finalH >= 150) {
+                CONFIG.set('scriptModalWidth', `${finalW}px`);
+                CONFIG.set('scriptModalHeight', `${finalH}px`);
+                Logger.log(`Saved resized Script modal dimensions: ${finalW}px × ${finalH}px`);
+              }
+            } else if (CONFIG.get('rememberContextSize', true) && finalW >= 300 && finalH >= 150) {
               CONFIG.set('contextModalWidth', `${finalW}px`);
               CONFIG.set('contextModalHeight', `${finalH}px`);
               Logger.log(`Saved resized Context Viewer dimensions: ${finalW}px × ${finalH}px`);
@@ -2217,7 +2482,7 @@
      */
     findModalHeader(modal) {
       // 1. Look for a VISIBLE heading (ignore .sr-only!)
-      const headings = modal.querySelectorAll('h2, h3, h4, [data-slot="platform-dialog-title"]');
+      const headings = modal.querySelectorAll('h2, h3, h4, [data-slot="platform-dialog-title"], [data-slot="aid-dialog-title"]');
       for (const h of headings) {
         if (!h.classList.contains('sr-only')) {
           const parentRow = h.parentElement;
@@ -2227,14 +2492,17 @@
         }
       }
 
-      // 2. Look for explicit platform-dialog-header container
-      const headerSlot = modal.querySelector('[data-slot="platform-dialog-header"]');
+      // 2. Look for explicit dialog-header container
+      const headerSlot = modal.querySelector('[data-slot="platform-dialog-header"], [data-slot="aid-dialog-header"]');
       if (headerSlot) return headerSlot;
 
       // 3. Look for the top row containing the "More" button or Close button
-      const moreBtn = modal.querySelector('button[aria-label="More" i], [data-slot="platform-dialog-close"]');
-      if (moreBtn && moreBtn.parentElement && moreBtn.parentElement !== modal) {
-        return moreBtn.parentElement;
+      const closeBtn = modal.querySelector('button[aria-label="More" i], [data-slot="platform-dialog-close"], [data-slot="aid-dialog-close"], button[aria-label*="close" i]');
+      if (closeBtn) {
+        const parentRow = closeBtn.closest('[data-slot="platform-dialog-header"], [data-slot="aid-dialog-header"]') || closeBtn.parentElement;
+        if (parentRow && parentRow !== modal) {
+          return parentRow;
+        }
       }
 
       // 4. Fallback to first element child
@@ -4335,7 +4603,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.7.1</span>
+              <span class="aid-qol-config-badge">v3.7.2</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -4701,13 +4969,35 @@
                 </div>
               </div>
 
+              <div class="aid-qol-section-title">Script Modals</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-script-enabled"> Enable Script Modal Drag & Resize (e.g. Add Scripts)
+                </label>
+              </div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-script-remember"> Automatically remember resized dimensions
+                </label>
+              </div>
+              <div class="aid-qol-inline-fields">
+                <div class="aid-qol-input-block">
+                  <label for="cfg-scriptModalWidth">Default Width (e.g. 680px, 60vw):</label>
+                  <input type="text" id="cfg-scriptModalWidth" class="aid-qol-text-input">
+                </div>
+                <div class="aid-qol-input-block">
+                  <label for="cfg-scriptModalHeight">Default Height (e.g. 76vh, 600px):</label>
+                  <input type="text" id="cfg-scriptModalHeight" class="aid-qol-text-input">
+                </div>
+              </div>
+
               <div class="aid-qol-section-title">Modal Backdrops & Overlays</div>
               <div class="aid-qol-field-group">
                 <label class="aid-qol-checkbox-label">
                   <input type="checkbox" id="cfg-modal-dimming"> Remove background dimming and blur behind modals
                 </label>
                 <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; padding-left: 28px;">
-                  Removes the dark translucent shading and blur behind all modals (Story Cards, Context Viewer, subdialogs, etc.) so the story and game interface remain clearly visible and accessible.
+                  Removes the dark translucent shading and blur behind all modals (Story Cards, Context Viewer, Script modals, subdialogs, etc.) so the story and game interface remain clearly visible and accessible.
                 </div>
               </div>
 
@@ -5132,6 +5422,16 @@
       if (contextW) contextW.value = CONFIG.get('contextModalWidth', '480px');
       if (contextH) contextH.value = CONFIG.get('contextModalHeight', 'auto');
 
+      // Script Modal options
+      const scriptEnabled = document.getElementById('cfg-script-enabled');
+      const scriptRemember = document.getElementById('cfg-script-remember');
+      const scriptW = document.getElementById('cfg-scriptModalWidth');
+      const scriptH = document.getElementById('cfg-scriptModalHeight');
+      if (scriptEnabled) scriptEnabled.checked = !!CONFIG.get('scriptModalEnabled', true);
+      if (scriptRemember) scriptRemember.checked = !!CONFIG.get('rememberScriptSize', true);
+      if (scriptW) scriptW.value = CONFIG.get('scriptModalWidth', '680px');
+      if (scriptH) scriptH.value = CONFIG.get('scriptModalHeight', '76vh');
+
       // Modal Dimming options
       const modalDimming = document.getElementById('cfg-modal-dimming');
       if (modalDimming) modalDimming.checked = !!CONFIG.get('disableModalDimming', true);
@@ -5348,6 +5648,16 @@
       if (contextRemember) CONFIG.set('rememberContextSize', contextRemember.checked);
       if (contextW && contextW.value.trim()) CONFIG.set('contextModalWidth', contextW.value.trim());
       if (contextH && contextH.value.trim()) CONFIG.set('contextModalHeight', contextH.value.trim());
+
+      // Script Modal options
+      const scriptEnabled = document.getElementById('cfg-script-enabled');
+      const scriptRemember = document.getElementById('cfg-script-remember');
+      const scriptW = document.getElementById('cfg-scriptModalWidth');
+      const scriptH = document.getElementById('cfg-scriptModalHeight');
+      if (scriptEnabled) CONFIG.set('scriptModalEnabled', scriptEnabled.checked);
+      if (scriptRemember) CONFIG.set('rememberScriptSize', scriptRemember.checked);
+      if (scriptW && scriptW.value.trim()) CONFIG.set('scriptModalWidth', scriptW.value.trim());
+      if (scriptH && scriptH.value.trim()) CONFIG.set('scriptModalHeight', scriptH.value.trim());
 
       // Modal Dimming options
       const modalDimming = document.getElementById('cfg-modal-dimming');
@@ -5700,7 +6010,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.7.1 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.7.2 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
