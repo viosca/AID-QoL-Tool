@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.8.0
+// @version      3.8.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
@@ -1611,10 +1611,14 @@
          * The content card / text & token container in subdialogs:
          * Expands fluidly with modal width and height.
          */
-        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
-        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
-        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) {
+        .aid-qol-context-submodal *:has(> .is_ScrollView),
+        .aid-qol-context-submodal *:has(> [data-keyboard-scroll-region]),
+        .aid-qol-context-submodal *:has(> [data-radix-scroll-area-viewport]),
+        .aid-qol-context-submodal *:has(> [role="tabpanel"]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) *:has(> .is_ScrollView),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) *:has(> [data-keyboard-scroll-region]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) *:has(> [data-radix-scroll-area-viewport]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) *:has(> [role="tabpanel"]) {
           flex: 1 1 0px !important;
           min-height: 0 !important;
           height: 100% !important;
@@ -1629,25 +1633,11 @@
           border-bottom-right-radius: 0px !important;
         }
 
-        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
-        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) > div:first-child,
-        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
-        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) > div:first-child {
-          flex: 1 1 0px !important;
-          min-height: 0 !important;
-          height: 100% !important;
-          max-height: 100% !important;
-          width: 100% !important;
-          max-width: none !important;
-          min-width: 0 !important;
-          overflow: hidden !important;
-          display: flex !important;
-          flex-direction: column !important;
-        }
-
         /* Non-absolute secondary elements inside content card (such as token approximation notice or copy button) stay pinned */
-        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]) {
+        .aid-qol-context-submodal [data-slot*="header"],
+        .aid-qol-context-submodal [role="tablist"],
+        .aid-qol-context-submodal button:not([role="tab"]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [role="tablist"] {
           flex-shrink: 0 !important;
         }
 
@@ -1655,6 +1645,7 @@
         .aid-qol-context-modal .is_ScrollView:not([role="tablist"]),
         .aid-qol-context-modal [data-keyboard-scroll-region],
         .aid-qol-context-modal [data-radix-scroll-area-viewport],
+        .aid-qol-context-modal [role="tabpanel"],
         .aid-qol-context-modal textarea,
         .aid-qol-context-modal .overflow-y-auto {
           flex: 1 1 0px !important;
@@ -1671,15 +1662,31 @@
           scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.15) !important;
         }
 
-        /* Allow inner view and cards in submodal to expand horizontally beyond 480px */
+        /* Override fixed width and height classes on all inner submodal elements */
         .aid-qol-context-submodal [class*="max-w-"],
         .aid-qol-context-submodal [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-submodal [class*="_w-480px"],
+        .aid-qol-context-submodal [class*="_w-420px"],
         .aid-qol-context-submodal [class*="w-\[480px\]"],
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="max-w-"],
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-480px"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-420px"],
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="w-\[480px\]"] {
           max-width: none !important;
           width: 100% !important;
+          min-width: 0 !important;
+        }
+
+        .aid-qol-context-submodal [class*="h-\[512px\]"],
+        .aid-qol-context-submodal [class*="_h-512px"],
+        .aid-qol-context-submodal [class*="_mah-512px"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="h-\[512px\]"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_h-512px"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_mah-512px"] {
+          height: 100% !important;
+          max-height: 100% !important;
+          min-height: 0 !important;
         }
 
         /* Scroll content inside ScrollView must expand naturally to fit its content */
@@ -1887,9 +1894,8 @@
       // 2. Ignore our own QoL config dialog
       if (modal.id && modal.id.startsWith('aid-qol-')) return false;
 
-      // 3. Never treat Story Card modals or Script modals as Context Viewer
+      // 3. Never treat Story Card modals as Context Viewer
       if (this.isStoryCardModal(modal)) return false;
-      if (this.isScriptModal(modal)) return false;
 
       // 4. Standard AID Radix dialog content or close button signatures
       if (modal.getAttribute('data-slot') === 'aid-dialog-content') return true;
@@ -1944,13 +1950,15 @@
       // 2. Ignore our own QoL config dialog
       if (modal.id && modal.id.startsWith('aid-qol-')) return false;
 
-      // 3. Never treat Story Card modals as Script modal
+      // 3. Never treat Story Card modals or Context Viewer modals as Script modal
       if (this.isStoryCardModal(modal)) return false;
+      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3, h4');
+      const titleText = (title?.textContent || '').trim().toLowerCase();
+      if (/context|memories|adventure|instruction|plot|author'?s\s*note/i.test(titleText)) return false;
+      if (modal.querySelector('[aria-label="Section tabs" i], [aria-label="Copy context text" i], [data-memory-action-id]')) return false;
 
       // 4. Explicit title check (screen-reader or visible)
-      const title = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3, h4');
       if (title) {
-        const titleText = title.textContent.trim().toLowerCase();
         if (/script/i.test(titleText)) {
           return true;
         }
@@ -2238,8 +2246,9 @@
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
         }
+        this.expandSubmodalContent(modal);
       });
-      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
+      resizerObserver.observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
       // 6. Locate the visible header row to use as the drag handle
       const tryAttachHeader = (retries = 6) => {
@@ -2261,6 +2270,45 @@
       };
 
       tryAttachHeader();
+      this.expandSubmodalContent(modal);
+    },
+
+    /**
+     * Traverses submodal scrollables and cards to ensure full fluid width and height expansion.
+     * @param {HTMLElement} modal
+     */
+    expandSubmodalContent(modal) {
+      if (!modal || !modal.isConnected) return;
+      if (modal.dataset.aidQolContextType === 'overview') return;
+
+      const scrollables = modal.querySelectorAll(
+        '.is_ScrollView:not([role="tablist"]), [data-keyboard-scroll-region], [data-radix-scroll-area-viewport], [role="tabpanel"], .overflow-y-auto'
+      );
+
+      scrollables.forEach((scroll) => {
+        scroll.style.setProperty('max-width', 'none', 'important');
+        scroll.style.setProperty('width', '100%', 'important');
+        scroll.style.setProperty('min-width', '0px', 'important');
+        scroll.style.setProperty('flex', '1 1 0px', 'important');
+        scroll.style.setProperty('height', '100%', 'important');
+        scroll.style.setProperty('max-height', '100%', 'important');
+
+        let cur = scroll.parentElement;
+        while (cur && cur !== modal) {
+          cur.style.setProperty('max-width', 'none', 'important');
+          cur.style.setProperty('width', '100%', 'important');
+          cur.style.setProperty('min-width', '0px', 'important');
+
+          const isHeaderOrTabs = cur.querySelector('[data-slot*="header"], [aria-label*="close" i], [role="tablist"]') === cur;
+          if (!isHeaderOrTabs && cur.tagName === 'DIV') {
+            cur.style.setProperty('flex', '1 1 0px', 'important');
+            cur.style.setProperty('height', '100%', 'important');
+            cur.style.setProperty('max-height', '100%', 'important');
+            cur.style.setProperty('min-height', '0px', 'important');
+          }
+          cur = cur.parentElement;
+        }
+      });
     },
 
     /**
@@ -2388,8 +2436,9 @@
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
         }
+        this.expandSubmodalContent(modal);
       });
-      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
+      resizerObserver.observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
       // 6. Locate the visible header row to use as the drag handle
       const tryAttachHeader = (retries = 6) => {
@@ -4693,7 +4742,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.8.0</span>
+              <span class="aid-qol-config-badge">v3.8.1</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -6148,30 +6197,33 @@
 
       // Immediate slider interaction listeners (0ms visual feedback while adjusting context length)
       const handleSliderInteraction = (e) => {
-        const slider = e.target.closest && e.target.closest('[role="slider"], input[type="range"]');
-        if (slider) {
-          this.handleSliderChange(slider);
-        }
+        this.checkSliderActivity(e.target);
       };
 
-      document.addEventListener('input', handleSliderInteraction, { passive: true });
-      document.addEventListener('change', handleSliderInteraction, { passive: true });
-      document.addEventListener('pointerup', handleSliderInteraction, { passive: true });
-      document.addEventListener('mouseup', handleSliderInteraction, { passive: true });
-      document.addEventListener('keyup', handleSliderInteraction, { passive: true });
+      ['input', 'change', 'pointerdown', 'pointermove', 'pointerup', 'mousedown', 'mousemove', 'mouseup', 'keyup'].forEach(evt => {
+        document.addEventListener(evt, handleSliderInteraction, { passive: true });
+      });
 
-      // Observe DOM for slider aria-valuenow changes (e.g. animated or programmatic step adjustments)
+      // Observe DOM for slider aria-valuenow changes and DOM credit badges
       const sliderObserver = new MutationObserver((mutations) => {
         for (const m of mutations) {
           if (m.type === 'attributes' && m.attributeName === 'aria-valuenow') {
-            this.handleSliderChange(m.target);
+            this.processSlider(m.target);
+          } else if (m.type === 'characterData' || m.type === 'childList') {
+            const domCredits = this.scanDOMCredits();
+            if (domCredits !== null && this.currentStatus && this.currentStatus.creditsPerAction !== domCredits) {
+              this.currentStatus.creditsPerAction = domCredits;
+              this.updateFlameUI();
+            }
           }
         }
       });
       sliderObserver.observe(document.body, {
         attributes: true,
         attributeFilter: ['aria-valuenow'],
+        childList: true,
         subtree: true,
+        characterData: true,
       });
 
       // Periodic check on URL / adventure navigation
@@ -6196,18 +6248,44 @@
       this.debouncedRefresh(1000);
     },
 
-    handleSliderChange(slider) {
-      if (!slider || !this.currentStatus) return;
+    checkSliderActivity(target) {
+      if (!target) return;
+      let slider = target.closest && target.closest('[role="slider"], input[type="range"]');
+      if (!slider && target.querySelector) {
+        slider = target.querySelector('[role="slider"], input[type="range"]');
+      }
+      if (slider) {
+        this.processSlider(slider);
+        return;
+      }
+      // Fallback: check all sliders in the DOM
+      const sliders = document.querySelectorAll('[role="slider"], input[type="range"]');
+      for (const s of sliders) {
+        if (this.isContextSlider(s)) {
+          this.processSlider(s);
+        }
+      }
+    },
 
-      // Locate surrounding container/row to check setting label
-      const container = slider.closest('div[class*="_fd-"], div[class*="flex"], [role="group"], div') || slider.parentElement;
-      const rowText = (container?.textContent || '').toLowerCase();
-      const ariaLabel = (slider.getAttribute('aria-label') || '').toLowerCase();
+    isContextSlider(slider) {
+      if (!slider) return false;
+      const rawVal = slider.getAttribute('aria-valuenow') || slider.value;
+      const tokens = parseInt(rawVal, 10);
+      if (tokens && !isNaN(tokens) && tokens >= 500) {
+        return true;
+      }
+      let cur = slider.parentElement;
+      let depth = 0;
+      while (cur && depth < 8 && cur !== document.body) {
+        if (/context/i.test(cur.textContent || '')) return true;
+        cur = cur.parentElement;
+        depth++;
+      }
+      return false;
+    },
 
-      // Check if this slider represents Context Length / Context Size
-      const isContextSlider = ariaLabel.includes('context') || rowText.includes('context');
-      if (!isContextSlider) return;
-
+    processSlider(slider) {
+      if (!this.isContextSlider(slider)) return;
       const rawVal = slider.getAttribute('aria-valuenow') || slider.value;
       const tokens = parseInt(rawVal, 10);
       if (!tokens || isNaN(tokens) || tokens < 500) return;
@@ -6215,16 +6293,51 @@
       this.updateContextTokensLocally(tokens);
     },
 
+    scanDOMCredits() {
+      // Find any element showing "Credits" in settings (e.g. "1 Credit", "2 Credits", "0 Credits")
+      const candidates = document.querySelectorAll('div[role="button"], p, span');
+      for (const el of candidates) {
+        const text = el.textContent?.trim() || '';
+        const m = text.match(/^(\d+)\s+Credits?$/i);
+        if (m) {
+          const credits = parseInt(m[1], 10);
+          if (!isNaN(credits)) {
+            return credits;
+          }
+        }
+      }
+      return null;
+    },
+
     updateContextTokensLocally(newTokens) {
-      if (!this.currentStatus) return;
-      if (this.currentStatus.contextTokens === newTokens) return;
+      if (!this.currentStatus) {
+        this.currentStatus = {
+          displayName: 'AI Model',
+          activeModel: 'active',
+          contextTokens: newTokens,
+          creditsPerAction: 0,
+          balance: 0,
+          userTier: 'aid-free',
+          longTermMemory: false
+        };
+      } else if (this.currentStatus.contextTokens === newTokens) {
+        return;
+      }
 
       Logger.log(`Immediate Context slider change: ${this.currentStatus.contextTokens} -> ${newTokens}`);
       this.currentStatus.contextTokens = newTokens;
 
-      if (this.directoryModelsCache && this.currentStatus.activeModel) {
+      // Check DOM credits button/text first (AI Dungeon's own calculated credits display in the DOM)
+      const domCredits = this.scanDOMCredits();
+      if (domCredits !== null) {
+        this.currentStatus.creditsPerAction = domCredits;
+      } else if (this.directoryModelsCache && this.currentStatus.activeModel) {
         const model = this.findModel(this.directoryModelsCache, this.currentStatus.activeModel);
         this.currentStatus.creditsPerAction = this.calculateCredits(model, this.currentStatus.userTier, newTokens);
+      } else {
+        // Standard threshold fallback (free tier threshold is 2000 tokens)
+        const freeThreshold = 2000;
+        this.currentStatus.creditsPerAction = newTokens > freeThreshold ? Math.max(1, Math.ceil((newTokens - freeThreshold) / 4000)) : 0;
       }
 
       this.updateFlameUI();
@@ -6522,7 +6635,7 @@
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.8.0 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.8.1 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
