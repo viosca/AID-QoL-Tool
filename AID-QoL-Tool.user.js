@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.8.1
+// @version      3.8.2
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://aidungeon.com/*
@@ -2247,9 +2247,8 @@
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
         }
-        this.expandSubmodalContent(modal);
       });
-      resizerObserver.observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
 
       // 6. Locate the visible header row to use as the drag handle
       const tryAttachHeader = (retries = 6) => {
@@ -2271,45 +2270,6 @@
       };
 
       tryAttachHeader();
-      this.expandSubmodalContent(modal);
-    },
-
-    /**
-     * Traverses submodal scrollables and cards to ensure full fluid width and height expansion.
-     * @param {HTMLElement} modal
-     */
-    expandSubmodalContent(modal) {
-      if (!modal || !modal.isConnected) return;
-      if (modal.dataset.aidQolContextType === 'overview') return;
-
-      const scrollables = modal.querySelectorAll(
-        '.is_ScrollView:not([role="tablist"]), [data-keyboard-scroll-region], [data-radix-scroll-area-viewport], [role="tabpanel"], .overflow-y-auto'
-      );
-
-      scrollables.forEach((scroll) => {
-        scroll.style.setProperty('max-width', 'none', 'important');
-        scroll.style.setProperty('width', '100%', 'important');
-        scroll.style.setProperty('min-width', '0px', 'important');
-        scroll.style.setProperty('flex', '1 1 0px', 'important');
-        scroll.style.setProperty('height', '100%', 'important');
-        scroll.style.setProperty('max-height', '100%', 'important');
-
-        let cur = scroll.parentElement;
-        while (cur && cur !== modal) {
-          cur.style.setProperty('max-width', 'none', 'important');
-          cur.style.setProperty('width', '100%', 'important');
-          cur.style.setProperty('min-width', '0px', 'important');
-
-          const isHeaderOrTabs = cur.querySelector('[data-slot*="header"], [aria-label*="close" i], [role="tablist"]') === cur;
-          if (!isHeaderOrTabs && cur.tagName === 'DIV') {
-            cur.style.setProperty('flex', '1 1 0px', 'important');
-            cur.style.setProperty('height', '100%', 'important');
-            cur.style.setProperty('max-height', '100%', 'important');
-            cur.style.setProperty('min-height', '0px', 'important');
-          }
-          cur = cur.parentElement;
-        }
-      });
     },
 
     /**
@@ -6197,35 +6157,39 @@
       });
 
       // Immediate slider interaction listeners (0ms visual feedback while adjusting context length)
-      const handleSliderInteraction = (e) => {
-        this.checkSliderActivity(e.target);
-      };
+      document.addEventListener('input', (e) => {
+        const slider = e.target?.closest?.('[role="slider"], input[type="range"]');
+        if (slider) this.processSlider(slider);
+      }, { passive: true });
 
-      ['input', 'change', 'pointerdown', 'pointermove', 'pointerup', 'mousedown', 'mousemove', 'mouseup', 'keyup'].forEach(evt => {
-        document.addEventListener(evt, handleSliderInteraction, { passive: true });
-      });
+      document.addEventListener('change', (e) => {
+        const slider = e.target?.closest?.('[role="slider"], input[type="range"]');
+        if (slider) this.processSlider(slider);
+      }, { passive: true });
 
-      // Observe DOM for slider aria-valuenow changes and DOM credit badges
-      const sliderObserver = new MutationObserver((mutations) => {
-        for (const m of mutations) {
-          if (m.type === 'attributes' && m.attributeName === 'aria-valuenow') {
-            this.processSlider(m.target);
-          } else if (m.type === 'characterData' || m.type === 'childList') {
-            const domCredits = this.scanDOMCredits();
-            if (domCredits !== null && this.currentStatus && this.currentStatus.creditsPerAction !== domCredits) {
-              this.currentStatus.creditsPerAction = domCredits;
-              this.updateFlameUI();
-            }
-          }
+      // When dragging custom slider thumb, track pointer moves only while pressed
+      document.addEventListener('pointerdown', (e) => {
+        const slider = e.target?.closest?.('[role="slider"], input[type="range"]');
+        if (slider) {
+          const onMove = () => this.processSlider(slider);
+          const onUp = () => {
+            this.processSlider(slider);
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+          };
+          window.addEventListener('pointermove', onMove, { passive: true });
+          window.addEventListener('pointerup', onUp, { passive: true });
+          this.processSlider(slider);
         }
-      });
-      sliderObserver.observe(document.body, {
-        attributes: true,
-        attributeFilter: ['aria-valuenow'],
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
+      }, { passive: true });
+
+      // Keyboard arrow adjustments on slider
+      document.addEventListener('keyup', (e) => {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+          const slider = e.target?.closest?.('[role="slider"], input[type="range"]');
+          if (slider) this.processSlider(slider);
+        }
+      }, { passive: true });
 
       // Periodic check on URL / adventure navigation
       window.addEventListener('popstate', () => this.debouncedRefresh(500));
@@ -6249,38 +6213,12 @@
       this.debouncedRefresh(1000);
     },
 
-    checkSliderActivity(target) {
-      if (!target) return;
-      let slider = target.closest && target.closest('[role="slider"], input[type="range"]');
-      if (!slider && target.querySelector) {
-        slider = target.querySelector('[role="slider"], input[type="range"]');
-      }
-      if (slider) {
-        this.processSlider(slider);
-        return;
-      }
-      // Fallback: check all sliders in the DOM
-      const sliders = document.querySelectorAll('[role="slider"], input[type="range"]');
-      for (const s of sliders) {
-        if (this.isContextSlider(s)) {
-          this.processSlider(s);
-        }
-      }
-    },
-
     isContextSlider(slider) {
       if (!slider) return false;
       const rawVal = slider.getAttribute('aria-valuenow') || slider.value;
       const tokens = parseInt(rawVal, 10);
       if (tokens && !isNaN(tokens) && tokens >= 500) {
         return true;
-      }
-      let cur = slider.parentElement;
-      let depth = 0;
-      while (cur && depth < 8 && cur !== document.body) {
-        if (/context/i.test(cur.textContent || '')) return true;
-        cur = cur.parentElement;
-        depth++;
       }
       return false;
     },
@@ -6295,8 +6233,9 @@
     },
 
     scanDOMCredits() {
-      // Find any element showing "Credits" in settings (e.g. "1 Credit", "2 Credits", "0 Credits")
-      const candidates = document.querySelectorAll('div[role="button"], p, span');
+      // Find any element showing "Credits" in settings dialog (e.g. "1 Credit", "2 Credits", "0 Credits")
+      const container = document.querySelector('[role="dialog"], [aria-label*="settings" i], [class*="Modal"], [class*="Drawer"]') || document.body;
+      const candidates = container.querySelectorAll('div[role="button"], p, span');
       for (const el of candidates) {
         const text = el.textContent?.trim() || '';
         const m = text.match(/^(\d+)\s+Credits?$/i);
