@@ -1,7 +1,17 @@
-# AID-QoL-Tool (v3.7.1)
+# AID-QoL-Tool
 
-[![Install Userscript](https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white)](https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE.md)
+![AID-QoL-Tool Hero Banner](assets/hero-banner.png)
+
+<p align="center">
+  <strong>Modular Quality-of-Life Enhancement Suite for AI Dungeon</strong>
+</p>
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/viosca/AID-QoL-Tool/main/AID-QoL-Tool.user.js"><img src="https://img.shields.io/badge/Install_Userscript-Tampermonkey-4f46e5?style=for-the-badge&logo=tampermonkey&logoColor=white" alt="Install Userscript" /></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/Version-v3.8.7-orange.svg?style=for-the-badge" alt="Version: v3.8.7" />
+  <img src="https://img.shields.io/badge/Platform-AI_Dungeon-red.svg?style=for-the-badge" alt="Platform: AI Dungeon" />
+</p>
 
 Modern, high-performance Quality-of-Life Tampermonkey userscript for [AI Dungeon](https://play.aidungeon.com/).
 
@@ -138,6 +148,12 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 * **Direct Local Bridge Sync**: Click `🔄 Sync to Antigravity (Port 8765)` to push the active token and current scenario/adventure shortId directly into `AID-LLM-connector`'s `.env` file via `http://127.0.0.1:8765/sync`.
 * **Tampermonkey Menu Shortcuts**: Access sync and token copy directly from Tampermonkey's extension dropdown menu anytime.
 
+### 10. Real-Time Credit Flame Indicator
+* **Live Action-Fee Detection**: Automatically computes active LLM model tier pricing, context length, and free-tier allowance via GraphQL directory models and in-game settings telemetry.
+* **Vivid Flame Glow**: When actions consume credits, the game menu button turns into an animated burning flame with a bright red-orange glow (`#ff2200`), warning you instantly before generating costly turns.
+* **Rich Telemetry Tooltip**: Hovering over the flame button reveals the active model name, context size in tokens, credits charged per action, current credit balance, and memory system mode.
+* **Instant Slider Reactivity**: Adjusting context length or memory settings in the gameplay menu updates the flame indicator and credit calculations in real-time.
+
 ---
 
 ## Installation
@@ -153,6 +169,9 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 ```
 AID-QoL-Tool/
 ├── .gitignore                   # Repository ignore rules
+├── assets/                      # Repository artwork & visual banners
+│   ├── hero-banner.png          # Production hero banner
+│   └── hero-banner-raw.jpg      # Raw digital fantasy artwork
 ├── AID-QoL-Tool.user.js         # Active v3 production script
 ├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
 ├── FEATURE_IDEAS.md             # Future enhancement ideas & roadmap
