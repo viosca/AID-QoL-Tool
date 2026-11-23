@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.8.4
+// @version      3.8.5
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://aidungeon.com/*
@@ -1537,12 +1537,21 @@
         .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) [class*="_maw-480px"],
         .aid-qol-context-modal [role="tablist"],
         .aid-qol-context-modal [role="tab"],
+        .aid-qol-context-modal [role="tabpanel"] [class*="_fw-wrap"] > *,
+        .aid-qol-context-modal [role="tabpanel"] [class*="flex-wrap"] > *,
+        .aid-qol-context-modal [role="tabpanel"] div:has(> [class*="_br-"]) > *,
+        .aid-qol-context-modal [role="tabpanel"] [class*="_br-"],
+        .aid-qol-context-modal [role="tabpanel"] span,
         .aid-qol-context-modal [data-slot="token-badge"],
         .aid-qol-context-modal [class*="token"] {
           width: auto !important;
           max-width: none !important;
           min-width: 0 !important;
-          flex: none !important;
+          flex: 0 0 auto !important;
+          flex-grow: 0 !important;
+          flex-shrink: 0 !important;
+          align-self: auto !important;
+          display: inline-flex !important;
         }
 
         /* Ensure tablist pill buttons remain fully symmetrical rounded pills */
@@ -1722,8 +1731,8 @@
         }
 
         /* Override fixed width and height classes and inline styles on all inner context modal elements */
-        .aid-qol-context-modal [class*="max-w-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
-        .aid-qol-context-modal [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
+        .aid-qol-context-modal [class*="max-w-"]:not([role="tablist"] *):not([role="tabpanel"] *):not([data-slot="token-badge"]):not([class*="token"]),
+        .aid-qol-context-modal [class*="_maw-"]:not([role="tablist"] *):not([role="tabpanel"] *):not([data-slot="token-badge"]):not([class*="token"]),
         .aid-qol-context-modal [class*="_w-480px"],
         .aid-qol-context-modal [class*="_w-420px"],
         .aid-qol-context-modal [class*="_w-400px"],
@@ -1764,10 +1773,42 @@
         }
 
         /* Token view container allows tokens to wrap across full fluid width */
+        .aid-qol-context-modal [role="tabpanel"],
         .aid-qol-context-modal [role="tabpanel"] > div,
-        .aid-qol-context-modal [role="tabpanel"] [class*="flex"] {
+        .aid-qol-context-modal [role="tabpanel"] .is_ScrollView,
+        .aid-qol-context-modal [role="tabpanel"] [data-keyboard-scroll-region],
+        .aid-qol-context-modal [role="tabpanel"] [data-radix-scroll-area-viewport] {
           width: 100% !important;
           max-width: none !important;
+          min-width: 0 !important;
+        }
+
+        /* Token flow wrapper (row flex with wrap) */
+        .aid-qol-context-modal [role="tabpanel"] [class*="_fw-wrap"],
+        .aid-qol-context-modal [role="tabpanel"] [class*="flex-wrap"],
+        .aid-qol-context-modal [role="tabpanel"] div:has(> [class*="_br-"]) {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: wrap !important;
+          width: 100% !important;
+          max-width: none !important;
+        }
+
+        /* Individual token badges: natural inline width, NEVER full width */
+        .aid-qol-context-modal [role="tabpanel"] [class*="_fw-wrap"] > *,
+        .aid-qol-context-modal [role="tabpanel"] [class*="flex-wrap"] > *,
+        .aid-qol-context-modal [role="tabpanel"] div:has(> [class*="_br-"]) > *,
+        .aid-qol-context-modal [role="tabpanel"] [class*="_br-"],
+        .aid-qol-context-modal [role="tabpanel"] [class*="rounded"],
+        .aid-qol-context-modal [role="tabpanel"] span {
+          width: auto !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          flex: 0 0 auto !important;
+          flex-grow: 0 !important;
+          flex-shrink: 0 !important;
+          align-self: auto !important;
+          display: inline-flex !important;
         }
 
         /* Visible sleek 7px scrollbar styling for context viewer scrollables */
@@ -2305,6 +2346,7 @@
         const innerContainers = modal.querySelectorAll(':scope > div, :scope > .is_View, :scope > div > div, :scope > .is_View > div, [data-slot="aid-dialog-content"], [data-slot="aid-dialog-content"] > div');
         innerContainers.forEach(el => {
           if (el.classList.contains('aid-qol-modal-corner-resizer')) return;
+          if (el.closest('[role="tabpanel"]')) return;
           el.classList.remove('max-w-[420px]', 'max-w-[480px]', 'max-w-md', 'max-w-lg', '_maw-420px', '_maw-480px', '_w-420px', '_w-480px');
           el.style.setProperty('max-width', 'none', 'important');
           el.style.setProperty('width', '100%', 'important');
