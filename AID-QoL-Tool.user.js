@@ -6065,8 +6065,9 @@
       this.injectStyles();
 
       // Observe for Game Menu (Flame) button in the DOM
-      observeSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]', () => {
+      observeSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]', (btn) => {
         this.updateFlameUI();
+        this.observeFlameButton(btn);
       });
 
       // Periodic check on URL / adventure navigation
@@ -6080,24 +6081,51 @@
         }
       }, { passive: true });
 
+      // Fallback interval to ensure flame indicator stays applied across React re-renders
+      setInterval(() => {
+        if (this.currentStatus && this.currentStatus.creditsPerAction > 0) {
+          this.updateFlameUI();
+        }
+      }, 3500);
+
       // Initial refresh once token is available
       this.debouncedRefresh(1000);
     },
 
+    observeFlameButton(btn) {
+      if (!btn) return;
+      if (this.currentFlameObserver) {
+        this.currentFlameObserver.disconnect();
+      }
+      this.currentFlameObserver = new MutationObserver(() => {
+        if (this._isUpdatingFlame) return;
+        this.updateFlameUI();
+      });
+      this.currentFlameObserver.observe(btn, { childList: true, subtree: true });
+    },
+
     injectStyles() {
       GM_addStyle(`
-        /* Flame icon turned red when credits are being consumed */
+        /* Flame icon credit usage indicator: bright vivid red foreground */
+        [aria-label="Game Menu" i].aid-qol-flame-credits-active,
+        [data-fs-element="AID Open game menu" i].aid-qol-flame-credits-active,
         .aid-qol-flame-credits-active {
-          color: #ef4444 !important;
-          fill: #ef4444 !important;
-          filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.85)) !important;
-          transition: color 0.25s ease, fill 0.25s ease, filter 0.25s ease !important;
+          background: transparent !important;
+          background-color: transparent !important;
+          filter: none !important;
+          box-shadow: none !important;
         }
 
-        .aid-qol-flame-credits-active svg,
-        .aid-qol-flame-credits-active path {
-          color: #ef4444 !important;
-          fill: #ef4444 !important;
+        [aria-label="Game Menu" i].aid-qol-flame-credits-active *,
+        [data-fs-element="AID Open game menu" i].aid-qol-flame-credits-active *,
+        .aid-qol-flame-credits-active *,
+        .aid-qol-flame-glyph-active {
+          color: #ff2200 !important;
+          fill: #ff2200 !important;
+          stroke: #ff2200 !important;
+          text-shadow: 0 0 6px rgba(255, 34, 0, 0.9), 0 0 12px rgba(255, 34, 0, 0.6) !important;
+          filter: none !important;
+          opacity: 1 !important;
         }
       `);
     },
@@ -6274,34 +6302,63 @@
     },
 
     updateFlameUI() {
-      const flameBtn = document.querySelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
-      if (!flameBtn) return;
+      if (this._isUpdatingFlame) return;
+      this._isUpdatingFlame = true;
+      try {
+        const flameBtn = document.querySelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
+        if (!flameBtn) return;
 
-      const flameIcon = flameBtn.querySelector('p.font_icons, span.font_icons, svg') || flameBtn;
-      const isEnabled = CONFIG.get('creditFlameIndicatorEnabled', true);
+        const isEnabled = CONFIG.get('creditFlameIndicatorEnabled', true);
+        const isConsumingCredits = isEnabled && this.currentStatus && this.currentStatus.creditsPerAction > 0;
 
-      if (!isEnabled || !this.currentStatus) {
-        flameIcon.classList.remove('aid-qol-flame-credits-active');
-        flameBtn.removeAttribute('data-aid-qol-credits');
-        return;
-      }
+        const glyphElements = Array.from(flameBtn.querySelectorAll('p, span, div[dir="auto"], [class*="font_icons"], svg, path'));
+        if (!glyphElements.length) glyphElements.push(flameBtn);
 
-      const { displayName, contextTokens, creditsPerAction, balance, userTier, longTermMemory } = this.currentStatus;
+        if (isConsumingCredits) {
+          const { displayName, contextTokens, creditsPerAction, balance, userTier, longTermMemory } = this.currentStatus;
+          const tooltip = `⚠️ Consuming Credits!\nModel: ${displayName}\nContext Size: ${contextTokens ? contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: ${creditsPerAction} / action\nCredits Balance: ${balance.toLocaleString()}\nMemory System: ${longTermMemory ? 'Long-Term Memory' : 'Standard'}`;
 
-      if (creditsPerAction > 0) {
-        flameIcon.classList.add('aid-qol-flame-credits-active');
-        flameBtn.setAttribute('data-aid-qol-credits', 'true');
+          flameBtn.classList.add('aid-qol-flame-credits-active');
+          flameBtn.setAttribute('data-aid-qol-credits', 'true');
+          flameBtn.title = tooltip;
+          flameBtn.style.removeProperty('background');
+          flameBtn.style.removeProperty('background-color');
+          flameBtn.style.setProperty('filter', 'none', 'important');
+          flameBtn.style.setProperty('box-shadow', 'none', 'important');
 
-        const tooltip = `⚠️ Consuming Credits!\nModel: ${displayName}\nContext Size: ${contextTokens ? contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: ${creditsPerAction} / action\nCredits Balance: ${balance.toLocaleString()}\nMemory System: ${longTermMemory ? 'Long-Term Memory' : 'Standard'}`;
-        flameBtn.title = tooltip;
-        flameIcon.title = tooltip;
-      } else {
-        flameIcon.classList.remove('aid-qol-flame-credits-active');
-        flameBtn.removeAttribute('data-aid-qol-credits');
+          glyphElements.forEach(el => {
+            el.classList.add('aid-qol-flame-glyph-active');
+            el.title = tooltip;
+            el.style.setProperty('color', '#ff2200', 'important');
+            el.style.setProperty('fill', '#ff2200', 'important');
+            el.style.setProperty('stroke', '#ff2200', 'important');
+            el.style.setProperty('text-shadow', '0 0 6px rgba(255, 34, 0, 0.9), 0 0 12px rgba(255, 34, 0, 0.6)', 'important');
+            el.style.setProperty('opacity', '1', 'important');
+          });
+        } else {
+          flameBtn.classList.remove('aid-qol-flame-credits-active');
+          flameBtn.removeAttribute('data-aid-qol-credits');
+          flameBtn.style.removeProperty('filter');
+          flameBtn.style.removeProperty('box-shadow');
 
-        const tooltip = `Game Menu (F)\nModel: ${displayName}\nContext Size: ${contextTokens ? contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: 0 / action (Free on ${userTier.replace(/^aid-/, '').toUpperCase()})\nCredits Balance: ${balance.toLocaleString()}\nMemory System: ${longTermMemory ? 'Long-Term Memory' : 'Standard'}`;
-        flameBtn.title = tooltip;
-        flameIcon.title = tooltip;
+          const tooltip = this.currentStatus
+            ? `Game Menu (F)\nModel: ${this.currentStatus.displayName}\nContext Size: ${this.currentStatus.contextTokens ? this.currentStatus.contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: 0 / action (Free on ${this.currentStatus.userTier.replace(/^aid-/, '').toUpperCase()})\nCredits Balance: ${this.currentStatus.balance.toLocaleString()}\nMemory System: ${this.currentStatus.longTermMemory ? 'Long-Term Memory' : 'Standard'}`
+            : 'Game Menu (F)';
+
+          flameBtn.title = tooltip;
+
+          glyphElements.forEach(el => {
+            el.classList.remove('aid-qol-flame-glyph-active');
+            el.title = tooltip;
+            el.style.removeProperty('color');
+            el.style.removeProperty('fill');
+            el.style.removeProperty('stroke');
+            el.style.removeProperty('text-shadow');
+            el.style.removeProperty('opacity');
+          });
+        }
+      } finally {
+        this._isUpdatingFlame = false;
       }
     }
   };
