@@ -172,6 +172,8 @@ AID-QoL-Tool/
 ├── assets/                      # Repository artwork & visual banners
 │   ├── hero-banner.png          # Production hero banner
 │   └── hero-banner-raw.jpg      # Raw digital fantasy artwork
+├── docs/                        # Project release kits & community documentation
+│   └── DISCORD_ANNOUNCEMENT.md  # Discord release kit & thread templates
 ├── AID-QoL-Tool.user.js         # Active v3 production script
 ├── AID-QoL-Tool.v2-reference.js  # Legacy v2 monolithic script reference
 ├── FEATURE_IDEAS.md             # Future enhancement ideas & roadmap
