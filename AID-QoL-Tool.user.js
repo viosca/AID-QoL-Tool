@@ -3,6 +3,7 @@
 // @version      3.8.1
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
+// @match        https://aidungeon.com/*
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
 // @grant        GM_getValue
