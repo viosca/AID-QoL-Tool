@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.7.2
-// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Antigravity Dev Bridge).
+// @version      3.8.0
+// @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://*.aidungeon.com/*
 // @icon         https://play-lh.googleusercontent.com/ALmVcUVvR8X3q-hOUbcR7S__iicLgIWDwM9K_9PJy87JnK1XfHSi_tp1sUlJJBVsiSc
@@ -13,6 +13,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
 // @connect      localhost
+// @connect      api.aidungeon.com
 // @license      MIT
 // @namespace    https://github.com/viosca/AID-QoL-Tool/tree/main
 // @downloadURL  https://github.com/viosca/AID-QoL-Tool/raw/main/AID-QoL-Tool.user.js
@@ -71,6 +72,9 @@
 
     // Modal Backdrops & Overlays
     disableModalDimming: true,
+
+    // Credit Usage & Flame Indicator
+    creditFlameIndicatorEnabled: true,
 
     // Game Menu (Right Sidebar) Resizing
     gameMenuResizeEnabled: true,
@@ -177,6 +181,16 @@
       CONFIG.set('disableModalDimming', next);
       StoryCardModalModule.updateModalDimmingState();
       ConfigUIModule.showToast(`Modal Dimming: ${next ? 'REMOVED' : 'DEFAULT'}`);
+    }
+  );
+
+  GM_registerMenuCommand(
+    `Flame Credit Indicator: ${CONFIG.get('creditFlameIndicatorEnabled', true) ? 'ENABLED' : 'DISABLED'} (Click to toggle)`,
+    () => {
+      const next = !CONFIG.get('creditFlameIndicatorEnabled', true);
+      CONFIG.set('creditFlameIndicatorEnabled', next);
+      if (typeof CreditIndicatorModule !== 'undefined') CreditIndicatorModule.updateFlameUI();
+      ConfigUIModule.showToast(`Flame Credit Indicator: ${next ? 'ENABLED' : 'DISABLED'}`);
     }
   );
 
@@ -4603,7 +4617,7 @@
             <div class="aid-qol-config-title">
               <span>⚙️</span>
               <span>AID-QoL Configuration</span>
-              <span class="aid-qol-config-badge">v3.7.2</span>
+              <span class="aid-qol-config-badge">v3.8.0</span>
             </div>
             <button class="aid-qol-config-close-btn" id="cfg-btn-x" title="Close (Esc)">✕</button>
           </div>
@@ -4998,6 +5012,16 @@
                 </label>
                 <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; padding-left: 28px;">
                   Removes the dark translucent shading and blur behind all modals (Story Cards, Context Viewer, Script modals, subdialogs, etc.) so the story and game interface remain clearly visible and accessible.
+                </div>
+              </div>
+
+              <div class="aid-qol-section-title">Model & Credit Indicators</div>
+              <div class="aid-qol-field-group">
+                <label class="aid-qol-checkbox-label">
+                  <input type="checkbox" id="cfg-credit-flame-enabled"> Enable Flame Icon Credit Indicator
+                </label>
+                <div style="font-size: 11px; color: #a1a1aa; margin-top: 4px; padding-left: 28px;">
+                  Turns the Game Menu flame icon red when the active model and context size consume credits per action, and displays the context size and credit rate on hover.
                 </div>
               </div>
 
@@ -5436,6 +5460,10 @@
       const modalDimming = document.getElementById('cfg-modal-dimming');
       if (modalDimming) modalDimming.checked = !!CONFIG.get('disableModalDimming', true);
 
+      // Credit Flame Indicator options
+      const creditFlame = document.getElementById('cfg-credit-flame-enabled');
+      if (creditFlame) creditFlame.checked = !!CONFIG.get('creditFlameIndicatorEnabled', true);
+
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');
       const menuW = document.getElementById('cfg-gameMenuWidth');
@@ -5666,6 +5694,15 @@
         StoryCardModalModule.updateModalDimmingState();
       }
 
+      // Credit Flame Indicator options
+      const creditFlame = document.getElementById('cfg-credit-flame-enabled');
+      if (creditFlame) {
+        CONFIG.set('creditFlameIndicatorEnabled', creditFlame.checked);
+        if (typeof CreditIndicatorModule !== 'undefined') {
+          CreditIndicatorModule.updateFlameUI();
+        }
+      }
+
       // Game Menu options
       const menuEnabled = document.getElementById('cfg-menu-enabled');
       const menuW = document.getElementById('cfg-gameMenuWidth');
@@ -5755,6 +5792,7 @@
   const DevBridgeModule = {
     name: 'Antigravity Dev Bridge',
     activeToken: null,
+    apiEndpoint: 'https://api.aidungeon.com/graphql',
 
     init() {
       Logger.info('Initializing DevBridgeModule...');
@@ -5777,6 +5815,11 @@
       window.fetch = async function (...args) {
         try {
           const [res, init] = args;
+          const url = typeof res === 'string' ? res : res?.url;
+          if (url && url.includes('graphql')) {
+            self.apiEndpoint = url;
+          }
+
           if (init && init.headers) {
             let auth = null;
             if (typeof init.headers.get === 'function') {
@@ -5787,9 +5830,22 @@
             if (auth && typeof auth === 'string') {
               const clean = auth.replace(/^firebase\s+/i, '').trim();
               if (clean.length > 20) {
+                const isNew = self.activeToken !== clean;
                 self.activeToken = clean;
                 GM_setValue('aid_last_auth_token', clean);
                 self.updateUI();
+                if (isNew && typeof CreditIndicatorModule !== 'undefined') {
+                  CreditIndicatorModule.debouncedRefresh(300);
+                }
+              }
+            }
+          }
+
+          // Automatically refresh credit indicator if user updates settings in the game menu
+          if (init && init.body && typeof init.body === 'string') {
+            if (init.body.includes('SaveSettings') || init.body.includes('SaveVersionSettings') || init.body.includes('SetAdventure')) {
+              if (typeof CreditIndicatorModule !== 'undefined') {
+                CreditIndicatorModule.debouncedRefresh(700);
               }
             }
           }
@@ -5995,6 +6051,262 @@
   };
 
   // =========================================================================
+  // Feature Module 9: Credit Usage & Flame Indicator
+  // =========================================================================
+  const CreditIndicatorModule = {
+    name: 'Credit Usage & Flame Indicator',
+    currentStatus: null,
+    directoryModelsCache: null,
+    directoryModelsTime: 0,
+    refreshTimer: null,
+
+    init() {
+      Logger.info('Initializing CreditIndicatorModule...');
+      this.injectStyles();
+
+      // Observe for Game Menu (Flame) button in the DOM
+      observeSelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]', () => {
+        this.updateFlameUI();
+      });
+
+      // Periodic check on URL / adventure navigation
+      window.addEventListener('popstate', () => this.debouncedRefresh(500));
+
+      // Re-check when game settings menu or drawer closes
+      document.addEventListener('click', (e) => {
+        const closeBtn = e.target.closest && e.target.closest('[aria-label="Close settings" i], [aria-label="Close" i]');
+        if (closeBtn) {
+          this.debouncedRefresh(600);
+        }
+      }, { passive: true });
+
+      // Initial refresh once token is available
+      this.debouncedRefresh(1000);
+    },
+
+    injectStyles() {
+      GM_addStyle(`
+        /* Flame icon turned red when credits are being consumed */
+        .aid-qol-flame-credits-active {
+          color: #ef4444 !important;
+          fill: #ef4444 !important;
+          filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.85)) !important;
+          transition: color 0.25s ease, fill 0.25s ease, filter 0.25s ease !important;
+        }
+
+        .aid-qol-flame-credits-active svg,
+        .aid-qol-flame-credits-active path {
+          color: #ef4444 !important;
+          fill: #ef4444 !important;
+        }
+      `);
+    },
+
+    debouncedRefresh(delay = 400) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = setTimeout(() => {
+        this.refresh();
+      }, delay);
+    },
+
+    async graphqlRequest(operationName, query, variables = {}) {
+      try {
+        const token = DevBridgeModule.activeToken || (await DevBridgeModule.retrieveToken());
+        if (!token) {
+          return null;
+        }
+
+        const endpoint = DevBridgeModule.apiEndpoint || 'https://api.aidungeon.com/graphql';
+        const fetchFn = (typeof unsafeWindow !== 'undefined' && unsafeWindow.fetch) ? unsafeWindow.fetch : window.fetch;
+
+        const res = await fetchFn(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `firebase ${token}`,
+          },
+          body: JSON.stringify({ operationName, query, variables }),
+        });
+
+        if (!res.ok) {
+          Logger.warn(`GraphQL request failed [${res.status}]:`, operationName);
+          return null;
+        }
+
+        const json = await res.json();
+        return json.data;
+      } catch (err) {
+        Logger.warn('GraphQL request error in CreditIndicatorModule:', err);
+        return null;
+      }
+    },
+
+    async fetchDirectoryModels() {
+      if (this.directoryModelsCache && (Date.now() - this.directoryModelsTime < 30 * 60 * 1000)) {
+        return this.directoryModelsCache;
+      }
+
+      const query = `
+        query GetDirectoryModels {
+          directoryModels(product: aidungeon) {
+            models {
+              slug
+              displayName
+              tokensPerCredit
+              chargeCreditsAfter
+              planAccess
+              contextByTier {
+                groupCode
+                tokens
+                tokensPerCredit
+              }
+            }
+          }
+        }
+      `;
+      const data = await this.graphqlRequest('GetDirectoryModels', query);
+      if (data?.directoryModels?.models) {
+        this.directoryModelsCache = data.directoryModels.models;
+        this.directoryModelsTime = Date.now();
+      }
+      return this.directoryModelsCache || [];
+    },
+
+    findModel(models, versionName) {
+      if (!versionName || !models || !models.length) return null;
+      // 1. Exact slug match
+      let found = models.find(m => m.slug === versionName);
+      if (found) return found;
+
+      // 2. Strip semantic version suffix (e.g. -1.0.0 or -2.0.0)
+      const baseSlug = versionName.replace(/-\d+\.\d+\.\d+.*$/, '');
+      found = models.find(m => m.slug === baseSlug);
+      if (found) return found;
+
+      // 3. Prefix match: versionName starts with m.slug
+      found = models.find(m => versionName.startsWith(m.slug));
+      if (found) return found;
+
+      // 4. Substring match
+      found = models.find(m => versionName.includes(m.slug) || m.slug.includes(baseSlug));
+      return found || null;
+    },
+
+    async calculateCreditStatus() {
+      // 1. Fetch user data (settings & credit balance)
+      const userQuery = `
+        query GetUserCreditInfo {
+          user {
+            id
+            username
+            settings
+            publicCreditsBalance {
+              currentBalance
+            }
+          }
+        }
+      `;
+      const userData = await this.graphqlRequest('GetUserCreditInfo', userQuery);
+      if (!userData?.user) return null;
+
+      const user = userData.user;
+      const activeModelVersion = user.settings?.storyAiVersionName;
+      const userTier = user.settings?.expectedAccess || 'aid-free';
+      const balance = user.publicCreditsBalance?.currentBalance ?? 0;
+
+      if (!activeModelVersion) return null;
+
+      // 2. Fetch version settings for active model (context length, etc.)
+      const vsQuery = `
+        query GetVersionSettings($versionName: String!, $versionType: String!) {
+          versionSettings(versionName: $versionName, versionType: $versionType)
+        }
+      `;
+      const vsData = await this.graphqlRequest('GetVersionSettings', vsQuery, {
+        versionName: activeModelVersion,
+        versionType: 'story'
+      });
+      const vs = vsData?.versionSettings || {};
+      const contextTokens = vs.contextTokens || 0;
+
+      // 3. Fetch directory models and match model
+      const models = await this.fetchDirectoryModels();
+      const model = this.findModel(models, activeModelVersion);
+      const displayName = model?.displayName || activeModelVersion.replace(/-\d+\.\d+\.\d+.*$/, '');
+
+      // 4. Calculate credits per action
+      let creditsPerAction = 0;
+      if (model) {
+        const tierRule = model.contextByTier?.find(t => t.groupCode === userTier);
+        const freeThreshold = model.chargeCreditsAfter !== null && model.chargeCreditsAfter !== undefined
+          ? model.chargeCreditsAfter
+          : (tierRule?.tokens ?? 0);
+
+        const rate = tierRule?.tokensPerCredit || model.tokensPerCredit;
+
+        if (rate && contextTokens > freeThreshold) {
+          creditsPerAction = Math.max(1, Math.ceil((contextTokens - freeThreshold) / rate));
+        }
+      }
+
+      return {
+        activeModel: activeModelVersion,
+        displayName,
+        contextTokens,
+        creditsPerAction,
+        balance,
+        userTier,
+        longTermMemory: !!user.settings?.longTermMemory
+      };
+    },
+
+    async refresh() {
+      try {
+        const status = await this.calculateCreditStatus();
+        if (status) {
+          this.currentStatus = status;
+          Logger.log('Updated Credit Status:', status);
+          this.updateFlameUI();
+        }
+      } catch (err) {
+        Logger.warn('Failed to refresh credit status:', err);
+      }
+    },
+
+    updateFlameUI() {
+      const flameBtn = document.querySelector('[aria-label="Game Menu" i], [data-fs-element="AID Open game menu" i]');
+      if (!flameBtn) return;
+
+      const flameIcon = flameBtn.querySelector('p.font_icons, span.font_icons, svg') || flameBtn;
+      const isEnabled = CONFIG.get('creditFlameIndicatorEnabled', true);
+
+      if (!isEnabled || !this.currentStatus) {
+        flameIcon.classList.remove('aid-qol-flame-credits-active');
+        flameBtn.removeAttribute('data-aid-qol-credits');
+        return;
+      }
+
+      const { displayName, contextTokens, creditsPerAction, balance, userTier, longTermMemory } = this.currentStatus;
+
+      if (creditsPerAction > 0) {
+        flameIcon.classList.add('aid-qol-flame-credits-active');
+        flameBtn.setAttribute('data-aid-qol-credits', 'true');
+
+        const tooltip = `⚠️ Consuming Credits!\nModel: ${displayName}\nContext Size: ${contextTokens ? contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: ${creditsPerAction} / action\nCredits Balance: ${balance.toLocaleString()}\nMemory System: ${longTermMemory ? 'Long-Term Memory' : 'Standard'}`;
+        flameBtn.title = tooltip;
+        flameIcon.title = tooltip;
+      } else {
+        flameIcon.classList.remove('aid-qol-flame-credits-active');
+        flameBtn.removeAttribute('data-aid-qol-credits');
+
+        const tooltip = `Game Menu (F)\nModel: ${displayName}\nContext Size: ${contextTokens ? contextTokens.toLocaleString() : 'Default'} tokens\nCredits Used: 0 / action (Free on ${userTier.replace(/^aid-/, '').toUpperCase()})\nCredits Balance: ${balance.toLocaleString()}\nMemory System: ${longTermMemory ? 'Long-Term Memory' : 'Standard'}`;
+        flameBtn.title = tooltip;
+        flameIcon.title = tooltip;
+      }
+    }
+  };
+
+  // =========================================================================
   // Module Manager (Bootstrap)
   // =========================================================================
   const modules = [
@@ -6007,10 +6319,11 @@
     ThemeManagerModule,
     ConfigUIModule,
     DevBridgeModule,
+    CreditIndicatorModule,
   ];
 
   function bootstrap() {
-    Logger.info(`Bootstrapping AID-QoL-Tool v3.7.2 (${modules.length} active modules)...`);
+    Logger.info(`Bootstrapping AID-QoL-Tool v3.8.0 (${modules.length} active modules)...`);
 
     for (const mod of modules) {
       try {
