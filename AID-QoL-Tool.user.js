@@ -1304,12 +1304,12 @@
             this.setupStoryCardModal(modalNode);
             return true;
           }
-          if (CONFIG.get('scriptModalEnabled', true) && this.isScriptModal(modalNode)) {
-            this.setupScriptModal(modalNode);
-            return true;
-          }
           if (CONFIG.get('contextModalEnabled', true) && this.isContextViewerModal(modalNode)) {
             this.setupContextViewerModal(modalNode);
+            return true;
+          }
+          if (CONFIG.get('scriptModalEnabled', true) && this.isScriptModal(modalNode)) {
+            this.setupScriptModal(modalNode);
             return true;
           }
 
@@ -1518,9 +1518,8 @@
         }
 
         /* Allow inner content containers of Context Viewer and subdialogs to fluidly expand with modal width */
-        .aid-qol-context-modal > .is_View:only-of-type > div:first-child,
-        .aid-qol-context-modal > .is_View:only-of-type > div:last-child,
-        .aid-qol-context-modal > .is_View:first-of-type:not(:only-of-type) > div,
+        .aid-qol-context-modal > div:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal > .is_View,
         .aid-qol-context-modal > .flex.min-h-0,
         .aid-qol-context-modal > .flex.min-h-0 .is_ScrollView {
           max-width: none !important;
@@ -1529,7 +1528,11 @@
         }
 
         /* Ensure token badges inside token viewer flow inline naturally and never expand to full line width */
-        .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) [class*="_maw-480px"] {
+        .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) [class*="_maw-480px"],
+        .aid-qol-context-modal [role="tablist"],
+        .aid-qol-context-modal [role="tab"],
+        .aid-qol-context-modal [data-slot="token-badge"],
+        .aid-qol-context-modal [class*="token"] {
           width: auto !important;
           max-width: none !important;
           min-width: 0 !important;
@@ -1547,10 +1550,13 @@
          * Bottom "Details" toggle button is pinned (flex-shrink: 0).
          * Middle details section expands to fill modal and scrolls its inner is_ScrollView ONLY.
          */
+        .aid-qol-context-overview > div:first-child,
+        .aid-qol-context-overview > .is_View:first-child,
         .aid-qol-context-modal > .is_View:first-of-type:not(:only-of-type) {
           flex-shrink: 0 !important;
         }
 
+        .aid-qol-context-overview > .flex.min-h-0:not([style*="height: 0px"]):not([style*="height:0px"]):not([style*="height: 0"]):not([style*="height:0"]),
         .aid-qol-context-modal > .flex.min-h-0:not([style*="height: 0px"]):not([style*="height:0px"]):not([style*="height: 0"]):not([style*="height:0"]) {
           flex: 1 1 0px !important;
           min-height: 0 !important;
@@ -1559,34 +1565,63 @@
           overflow: hidden !important;
         }
 
+        .aid-qol-context-overview > div:last-child:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-overview > .is_View:last-of-type:not(:only-of-type),
         .aid-qol-context-modal > .is_View:last-of-type:not(:only-of-type) {
           flex-shrink: 0 !important;
         }
 
-        /* Context Viewer subdialogs: single inner container expands fluidly to fill modal height */
-        .aid-qol-context-modal > .is_View:only-of-type {
+        /* 
+         * Context Viewer subdialogs (Adventure, Memories, AI Instructions, Plot Essentials, Story Cards, Complete Text):
+         * Full modal flex column layout with fluid width & height expansion.
+         */
+        .aid-qol-context-submodal,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) {
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+        }
+
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-submodal > .is_View,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > .is_View {
           flex: 1 1 0px !important;
           height: 100% !important;
           min-height: 0 !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
           overflow: hidden !important;
           display: flex !important;
           flex-direction: column !important;
         }
 
         /* Header in subdialogs stays pinned at top */
-        .aid-qol-context-modal > .is_View:only-of-type > div:first-child {
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:first-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:first-child,
+        .aid-qol-context-submodal [data-slot="aid-dialog-header"],
+        .aid-qol-context-submodal [data-slot="platform-dialog-header"] {
           flex-shrink: 0 !important;
+          width: 100% !important;
+          max-width: none !important;
         }
 
         /* 
-         * Ensure the content card in Context Viewer subdialogs strictly respects modal height.
-         * Uses structural selector so token badges and inner elements are never deformed.
-         * Eliminates content blowout, restores the inner scrollbar, and keeps the Copy button pinned in view.
+         * The content card / text & token container in subdialogs:
+         * Expands fluidly with modal width and height.
          */
-        .aid-qol-context-modal > .is_View:only-of-type > div:last-child {
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) {
           flex: 1 1 0px !important;
           min-height: 0 !important;
+          height: 100% !important;
           max-height: 100% !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
           overflow: hidden !important;
           position: relative !important;
           display: flex !important;
@@ -1594,28 +1629,41 @@
           border-bottom-right-radius: 0px !important;
         }
 
-        .aid-qol-context-modal > .is_View:only-of-type > div:last-child > div:first-child {
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) > div:first-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:nth-child(2) > div:first-child {
           flex: 1 1 0px !important;
           min-height: 0 !important;
           height: 100% !important;
           max-height: 100% !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
           overflow: hidden !important;
           display: flex !important;
           flex-direction: column !important;
         }
 
-        /* Non-absolute secondary elements inside content card (such as token approximation notice) stay pinned */
-        .aid-qol-context-modal > .is_View:only-of-type > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]) {
+        /* Non-absolute secondary elements inside content card (such as token approximation notice or copy button) stay pinned */
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]) {
           flex-shrink: 0 !important;
         }
 
-        /* Scroll container for subdialogs, memories, and main view details */
+        /* Scroll container and text areas for subdialogs, memories, and main view details */
         .aid-qol-context-modal .is_ScrollView:not([role="tablist"]),
-        .aid-qol-context-modal [data-keyboard-scroll-region] {
+        .aid-qol-context-modal [data-keyboard-scroll-region],
+        .aid-qol-context-modal [data-radix-scroll-area-viewport],
+        .aid-qol-context-modal textarea,
+        .aid-qol-context-modal .overflow-y-auto {
           flex: 1 1 0px !important;
           min-height: 0 !important;
           height: 100% !important;
           max-height: 100% !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
           overflow-y: auto !important;
           overflow-x: hidden !important;
           scrollbar-gutter: stable !important;
@@ -1623,11 +1671,25 @@
           scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.15) !important;
         }
 
+        /* Allow inner view and cards in submodal to expand horizontally beyond 480px */
+        .aid-qol-context-submodal [class*="max-w-"],
+        .aid-qol-context-submodal [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-submodal [class*="w-\[480px\]"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="max-w-"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="w-\[480px\]"] {
+          max-width: none !important;
+          width: 100% !important;
+        }
+
         /* Scroll content inside ScrollView must expand naturally to fit its content */
         .aid-qol-context-modal .is_ScrollView:not([role="tablist"]) > .css-g5y9jx,
-        .aid-qol-context-modal [data-keyboard-scroll-region] > .css-g5y9jx {
+        .aid-qol-context-modal [data-keyboard-scroll-region] > .css-g5y9jx,
+        .aid-qol-context-modal [data-radix-scroll-area-viewport] > div {
           height: auto !important;
           min-height: min-content !important;
+          width: 100% !important;
+          max-width: none !important;
           flex: none !important;
         }
 
@@ -2134,13 +2196,22 @@
 
       // 4. Enable Context Viewer styling (with pinned header and overflow: hidden)
       modal.classList.add('aid-qol-context-modal');
+      if (isOverview) {
+        modal.classList.add('aid-qol-context-overview');
+        modal.classList.remove('aid-qol-context-submodal');
+        modal.dataset.aidQolContextType = 'overview';
+      } else {
+        modal.classList.add('aid-qol-context-submodal');
+        modal.classList.remove('aid-qol-context-overview');
+        modal.dataset.aidQolContextType = 'submodal';
+      }
 
       // 5. Append dedicated corner resize handle to outer dialog and bind drag resize
       const ensureResizer = () => {
         if (!modal.isConnected) return;
         let resizer = modal.querySelector(':scope > .aid-qol-modal-corner-resizer');
         if (!resizer) {
-          resizer = document.createElement('div');
+          resizer = document.createElement('span');
           resizer.className = 'aid-qol-modal-corner-resizer';
           resizer.title = 'Drag to resize modal';
           modal.appendChild(resizer);
@@ -2158,6 +2229,11 @@
         stripClasses();
         if (!modal.classList.contains('aid-qol-context-modal')) {
           modal.classList.add('aid-qol-context-modal');
+        }
+        if (isOverview && !modal.classList.contains('aid-qol-context-overview')) {
+          modal.classList.add('aid-qol-context-overview');
+        } else if (!isOverview && !modal.classList.contains('aid-qol-context-submodal')) {
+          modal.classList.add('aid-qol-context-submodal');
         }
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
@@ -5843,7 +5919,7 @@
 
           // Automatically refresh credit indicator if user updates settings in the game menu
           if (init && init.body && typeof init.body === 'string') {
-            if (init.body.includes('SaveSettings') || init.body.includes('SaveVersionSettings') || init.body.includes('SetAdventure')) {
+            if (/saveSettings|saveVersionSettings|setAdventure|updateUser|updateSetting/i.test(init.body)) {
               if (typeof CreditIndicatorModule !== 'undefined') {
                 CreditIndicatorModule.debouncedRefresh(700);
               }
@@ -6070,13 +6146,41 @@
         this.observeFlameButton(btn);
       });
 
+      // Immediate slider interaction listeners (0ms visual feedback while adjusting context length)
+      const handleSliderInteraction = (e) => {
+        const slider = e.target.closest && e.target.closest('[role="slider"], input[type="range"]');
+        if (slider) {
+          this.handleSliderChange(slider);
+        }
+      };
+
+      document.addEventListener('input', handleSliderInteraction, { passive: true });
+      document.addEventListener('change', handleSliderInteraction, { passive: true });
+      document.addEventListener('pointerup', handleSliderInteraction, { passive: true });
+      document.addEventListener('mouseup', handleSliderInteraction, { passive: true });
+      document.addEventListener('keyup', handleSliderInteraction, { passive: true });
+
+      // Observe DOM for slider aria-valuenow changes (e.g. animated or programmatic step adjustments)
+      const sliderObserver = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          if (m.type === 'attributes' && m.attributeName === 'aria-valuenow') {
+            this.handleSliderChange(m.target);
+          }
+        }
+      });
+      sliderObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['aria-valuenow'],
+        subtree: true,
+      });
+
       // Periodic check on URL / adventure navigation
       window.addEventListener('popstate', () => this.debouncedRefresh(500));
 
-      // Re-check when game settings menu or drawer closes
+      // Re-check when game settings menu or drawer closes or settings tabs are clicked
       document.addEventListener('click', (e) => {
-        const closeBtn = e.target.closest && e.target.closest('[aria-label="Close settings" i], [aria-label="Close" i]');
-        if (closeBtn) {
+        const inSettings = e.target.closest && e.target.closest('[aria-label="Game settings" i], [aria-label="Story Generator" i], [aria-label="Memory System" i], [aria-label="Close settings" i], [aria-label="Close" i]');
+        if (inSettings) {
           this.debouncedRefresh(600);
         }
       }, { passive: true });
@@ -6090,6 +6194,56 @@
 
       // Initial refresh once token is available
       this.debouncedRefresh(1000);
+    },
+
+    handleSliderChange(slider) {
+      if (!slider || !this.currentStatus) return;
+
+      // Locate surrounding container/row to check setting label
+      const container = slider.closest('div[class*="_fd-"], div[class*="flex"], [role="group"], div') || slider.parentElement;
+      const rowText = (container?.textContent || '').toLowerCase();
+      const ariaLabel = (slider.getAttribute('aria-label') || '').toLowerCase();
+
+      // Check if this slider represents Context Length / Context Size
+      const isContextSlider = ariaLabel.includes('context') || rowText.includes('context');
+      if (!isContextSlider) return;
+
+      const rawVal = slider.getAttribute('aria-valuenow') || slider.value;
+      const tokens = parseInt(rawVal, 10);
+      if (!tokens || isNaN(tokens) || tokens < 500) return;
+
+      this.updateContextTokensLocally(tokens);
+    },
+
+    updateContextTokensLocally(newTokens) {
+      if (!this.currentStatus) return;
+      if (this.currentStatus.contextTokens === newTokens) return;
+
+      Logger.log(`Immediate Context slider change: ${this.currentStatus.contextTokens} -> ${newTokens}`);
+      this.currentStatus.contextTokens = newTokens;
+
+      if (this.directoryModelsCache && this.currentStatus.activeModel) {
+        const model = this.findModel(this.directoryModelsCache, this.currentStatus.activeModel);
+        this.currentStatus.creditsPerAction = this.calculateCredits(model, this.currentStatus.userTier, newTokens);
+      }
+
+      this.updateFlameUI();
+      // Debounce background sync with GraphQL endpoint once user finishes sliding
+      this.debouncedRefresh(1200);
+    },
+
+    calculateCredits(model, userTier, contextTokens) {
+      if (!model) return 0;
+      const tierRule = model.contextByTier?.find(t => t.groupCode === userTier);
+      const freeThreshold = model.chargeCreditsAfter !== null && model.chargeCreditsAfter !== undefined
+        ? model.chargeCreditsAfter
+        : (tierRule?.tokens ?? 0);
+
+      const rate = tierRule?.tokensPerCredit || model.tokensPerCredit;
+      if (rate && contextTokens > freeThreshold) {
+        return Math.max(1, Math.ceil((contextTokens - freeThreshold) / rate));
+      }
+      return 0;
     },
 
     observeFlameButton(btn) {
@@ -6263,19 +6417,7 @@
       const displayName = model?.displayName || activeModelVersion.replace(/-\d+\.\d+\.\d+.*$/, '');
 
       // 4. Calculate credits per action
-      let creditsPerAction = 0;
-      if (model) {
-        const tierRule = model.contextByTier?.find(t => t.groupCode === userTier);
-        const freeThreshold = model.chargeCreditsAfter !== null && model.chargeCreditsAfter !== undefined
-          ? model.chargeCreditsAfter
-          : (tierRule?.tokens ?? 0);
-
-        const rate = tierRule?.tokensPerCredit || model.tokensPerCredit;
-
-        if (rate && contextTokens > freeThreshold) {
-          creditsPerAction = Math.max(1, Math.ceil((contextTokens - freeThreshold) / rate));
-        }
-      }
+      const creditsPerAction = this.calculateCredits(model, userTier, contextTokens);
 
       return {
         activeModel: activeModelVersion,
