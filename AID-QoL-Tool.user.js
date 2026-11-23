@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.8.3
+// @version      3.8.4
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://aidungeon.com/*
@@ -1519,8 +1519,13 @@
         }
 
         /* Allow inner content containers of Context Viewer and subdialogs to fluidly expand with modal width */
+        .aid-qol-context-modal,
         .aid-qol-context-modal > div:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal > div:not(.aid-qol-modal-corner-resizer) > div,
         .aid-qol-context-modal > .is_View,
+        .aid-qol-context-modal > .is_View > div,
+        .aid-qol-context-modal [data-slot="aid-dialog-content"],
+        .aid-qol-context-modal [data-slot="aid-dialog-content"] > div,
         .aid-qol-context-modal > .flex.min-h-0,
         .aid-qol-context-modal > .flex.min-h-0 .is_ScrollView {
           max-width: none !important;
@@ -1553,8 +1558,27 @@
          */
         .aid-qol-context-overview > div:first-child,
         .aid-qol-context-overview > .is_View:first-child,
+        .aid-qol-context-overview > div:not(.aid-qol-modal-corner-resizer):not(.flex.min-h-0),
+        .aid-qol-context-overview > .is_View:not(.flex.min-h-0),
         .aid-qol-context-modal > .is_View:first-of-type:not(:only-of-type) {
           flex-shrink: 0 !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+        }
+
+        .aid-qol-context-overview > div:first-child > div,
+        .aid-qol-context-overview > .is_View:first-child > div,
+        .aid-qol-context-overview [class*="_h-t-size-"],
+        .aid-qol-context-overview [class*="progress"],
+        .aid-qol-context-overview [role="progressbar"],
+        .aid-qol-context-overview div:has(> [role="progressbar"]),
+        .aid-qol-context-overview div:has(> [role="progressbar"]) > div,
+        .aid-qol-context-overview div:has(> [class*="progress"]),
+        .aid-qol-context-overview div:has(> [class*="progress"]) > div {
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
         }
 
         .aid-qol-context-overview > .flex.min-h-0:not([style*="height: 0px"]):not([style*="height:0px"]):not([style*="height: 0"]):not([style*="height:0"]),
@@ -1598,11 +1622,13 @@
           flex-direction: column !important;
         }
 
-        /* Header in subdialogs stays pinned at top */
+        /* Header and Tabs in subdialogs stay pinned at top */
         .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:first-child,
         .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:first-child,
         .aid-qol-context-submodal [data-slot="aid-dialog-header"],
-        .aid-qol-context-submodal [data-slot="platform-dialog-header"] {
+        .aid-qol-context-submodal [data-slot="platform-dialog-header"],
+        .aid-qol-context-submodal [role="tablist"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [role="tablist"] {
           flex-shrink: 0 !important;
           width: 100% !important;
           max-width: none !important;
@@ -1617,6 +1643,7 @@
         .aid-qol-context-submodal [data-slot="aid-dialog-content"] > div:last-child,
         .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
         .aid-qol-context-modal:not(.aid-qol-context-overview) > .is_View > div:last-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) textarea,
         .aid-qol-context-submodal *:has(> .is_ScrollView),
         .aid-qol-context-submodal *:has(> [data-keyboard-scroll-region]),
         .aid-qol-context-submodal *:has(> [data-radix-scroll-area-viewport]),
@@ -1659,9 +1686,8 @@
         .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
         .aid-qol-context-submodal > .is_View > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
         .aid-qol-context-submodal [data-slot*="header"],
-        .aid-qol-context-submodal [role="tablist"],
         .aid-qol-context-submodal button:not([role="tab"]),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [role="tablist"] {
+        .aid-qol-context-modal:not(.aid-qol-context-overview) button:not([role="tab"]) {
           flex-shrink: 0 !important;
         }
 
@@ -1687,30 +1713,27 @@
         }
 
         /* All intermediate containers holding scrollable content or tabpanel expand to full width */
-        .aid-qol-context-submodal :has(.is_ScrollView:not([role="tablist"])),
-        .aid-qol-context-submodal :has([role="tabpanel"]),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) :has(.is_ScrollView:not([role="tablist"])),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) :has([role="tabpanel"]) {
+        .aid-qol-context-modal :has(.is_ScrollView:not([role="tablist"])),
+        .aid-qol-context-modal :has([role="tabpanel"]),
+        .aid-qol-context-modal :has(textarea) {
           max-width: none !important;
           min-width: 0 !important;
           width: 100% !important;
         }
 
-        /* Override fixed width and height classes and inline styles on all inner submodal elements */
-        .aid-qol-context-submodal [class*="max-w-"],
-        .aid-qol-context-submodal [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
-        .aid-qol-context-submodal [class*="_w-480px"],
-        .aid-qol-context-submodal [class*="_w-420px"],
-        .aid-qol-context-submodal [class*="w-\[480px\]"],
-        .aid-qol-context-submodal [style*="480px"]:not(.aid-qol-modal-corner-resizer),
-        .aid-qol-context-submodal [style*="420px"]:not(.aid-qol-modal-corner-resizer),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="max-w-"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-480px"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-420px"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="w-\[480px\]"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [style*="480px"]:not(.aid-qol-modal-corner-resizer),
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [style*="420px"]:not(.aid-qol-modal-corner-resizer) {
+        /* Override fixed width and height classes and inline styles on all inner context modal elements */
+        .aid-qol-context-modal [class*="max-w-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
+        .aid-qol-context-modal [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
+        .aid-qol-context-modal [class*="_w-480px"],
+        .aid-qol-context-modal [class*="_w-420px"],
+        .aid-qol-context-modal [class*="_w-400px"],
+        .aid-qol-context-modal [class*="_w-380px"],
+        .aid-qol-context-modal [class*="w-\[480px\]"],
+        .aid-qol-context-modal [class*="w-\[420px\]"],
+        .aid-qol-context-modal [style*="480px"]:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal [style*="420px"]:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal [style*="400px"]:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal [style*="380px"]:not(.aid-qol-modal-corner-resizer) {
           max-width: none !important;
           width: 100% !important;
           min-width: 0 !important;
@@ -2139,6 +2162,109 @@
     },
 
     /**
+     * Determines whether a given context dialog is the main View Context overview modal
+     * (as opposed to a submodal such as Complete Text, Story Cards, AI Instructions, etc.)
+     * @param {HTMLElement} modal
+     * @returns {boolean}
+     */
+    isContextOverviewModal(modal) {
+      if (!modal) return false;
+      const titleCandidate = modal.querySelector('[data-slot*="dialog-title"], h1, h2, h3, h4');
+      const titleText = (titleCandidate?.textContent || '').trim().toLowerCase();
+      if (titleText === 'view context' || titleText === 'context viewer') return true;
+      if (titleText.length > 0 && titleText !== 'view context' && titleText !== 'context viewer') {
+        return false;
+      }
+      const topElements = modal.querySelectorAll('span, div');
+      for (const el of topElements) {
+        if (el.children.length === 0 && !el.classList.contains('sr-only')) {
+          const t = el.textContent.trim().toLowerCase();
+          if (t === 'complete text' || t === 'memories' || t === 'story cards' || t === 'ai instructions' || t === 'plot essentials' || t === 'author\'s note' || t === 'response buffer') {
+            return false;
+          }
+          if (t === 'view context' || t === 'context viewer') {
+            return true;
+          }
+        }
+      }
+      if (modal.textContent.includes('VIEW COMPLETE TEXT') || modal.textContent.includes('DETAILS')) {
+        return true;
+      }
+      return false;
+    },
+
+    /**
+     * Ensures the colored token distribution bar in View Context scales fluidly to 100% width.
+     * Converts any hardcoded pixel widths on segments to percentage widths.
+     * @param {HTMLElement} modal
+     */
+    makeTokenBarResponsive(modal) {
+      if (!modal || !modal.isConnected) return;
+
+      // 1. Find summary texts containing "Context used for this action" or "TOKENS"
+      const summaryTexts = Array.from(modal.querySelectorAll('span, p, div')).filter(el => {
+        if (el.children.length > 0) return false;
+        const txt = el.textContent.trim().toLowerCase();
+        return txt.includes('context used') || (txt.includes('tokens') && (txt.includes('/') || /\d+/.test(txt)));
+      });
+
+      if (summaryTexts.length === 0) return;
+
+      // 2. Expand summary container and its child rows to full modal width
+      const summaryContainer = summaryTexts[0].closest('._fd-column') || summaryTexts[0].closest('.flex') || summaryTexts[0].parentElement?.parentElement;
+      if (summaryContainer && summaryContainer !== modal) {
+        summaryContainer.style.setProperty('width', '100%', 'important');
+        summaryContainer.style.setProperty('max-width', 'none', 'important');
+        summaryContainer.style.setProperty('align-self', 'stretch', 'important');
+        Array.from(summaryContainer.children).forEach(child => {
+          child.style.setProperty('width', '100%', 'important');
+          child.style.setProperty('max-width', 'none', 'important');
+        });
+      }
+
+      // 3. Find the colored progress bar track
+      const candidateTracks = modal.querySelectorAll('[role="progressbar"], div:has(> [style*="background"]), div:has(> [class*="_bg-"])');
+      for (const track of candidateTracks) {
+        if (track.closest('.is_ScrollView')) continue;
+
+        const segments = Array.from(track.children).filter(c => c.tagName === 'DIV' || c.tagName === 'SPAN');
+        if (segments.length >= 2) {
+          track.style.setProperty('width', '100%', 'important');
+          track.style.setProperty('max-width', 'none', 'important');
+          track.style.setProperty('display', 'flex', 'important');
+
+          let totalPx = 0;
+          segments.forEach(seg => {
+            const origW = seg.dataset.aidQolOrigWidth || seg.style.width || '';
+            if (origW.endsWith('px')) {
+              seg.dataset.aidQolOrigWidth = origW;
+              totalPx += parseFloat(origW);
+            } else if (seg.offsetWidth > 0) {
+              totalPx += seg.offsetWidth;
+            }
+          });
+
+          if (totalPx > 0) {
+            segments.forEach(seg => {
+              const origW = seg.dataset.aidQolOrigWidth || seg.style.width || '';
+              let segPx = 0;
+              if (origW.endsWith('px')) {
+                segPx = parseFloat(origW);
+              } else if (seg.offsetWidth > 0) {
+                segPx = seg.offsetWidth;
+              }
+              if (segPx > 0) {
+                const pct = ((segPx / totalPx) * 100).toFixed(4);
+                seg.style.setProperty('width', `${pct}%`, 'important');
+                seg.style.setProperty('flex-shrink', '0', 'important');
+              }
+            });
+          }
+        }
+      }
+    },
+
+    /**
      * Enhances the Context Viewer modal with drag and top-left anchored resize capabilities.
      * @param {HTMLElement} modal
      */
@@ -2151,10 +2277,7 @@
 
       // Check classes and title BEFORE stripping classes
       const hasH512 = modal.classList.contains('h-[512px]');
-      const hasMaxW420 = modal.classList.contains('max-w-[420px]');
-      const titleEl = modal.querySelector('[data-slot="aid-dialog-title"], [data-slot="platform-dialog-title"], h1, h2, h3');
-      const titleText = (titleEl?.textContent || '').trim().toLowerCase();
-      const isOverview = hasMaxW420 || titleText === 'view context' || titleText === 'context viewer';
+      const isOverview = this.isContextOverviewModal(modal);
 
       // 1. Strip Tailwind classes that lock width or center via transform/transitions:
       const stripClasses = () => {
@@ -2177,6 +2300,15 @@
           'duration-200',
           'overflow-hidden'
         );
+
+        // Strip fixed max-width and width from inner containers
+        const innerContainers = modal.querySelectorAll(':scope > div, :scope > .is_View, :scope > div > div, :scope > .is_View > div, [data-slot="aid-dialog-content"], [data-slot="aid-dialog-content"] > div');
+        innerContainers.forEach(el => {
+          if (el.classList.contains('aid-qol-modal-corner-resizer')) return;
+          el.classList.remove('max-w-[420px]', 'max-w-[480px]', 'max-w-md', 'max-w-lg', '_maw-420px', '_maw-480px', '_w-420px', '_w-480px');
+          el.style.setProperty('max-width', 'none', 'important');
+          el.style.setProperty('width', '100%', 'important');
+        });
       };
       stripClasses();
 
@@ -2282,13 +2414,21 @@
           return;
         }
         stripClasses();
+        const currentIsOverview = this.isContextOverviewModal(modal);
         if (!modal.classList.contains('aid-qol-context-modal')) {
           modal.classList.add('aid-qol-context-modal');
         }
-        if (isOverview && !modal.classList.contains('aid-qol-context-overview')) {
-          modal.classList.add('aid-qol-context-overview');
-        } else if (!isOverview && !modal.classList.contains('aid-qol-context-submodal')) {
-          modal.classList.add('aid-qol-context-submodal');
+        if (currentIsOverview) {
+          if (!modal.classList.contains('aid-qol-context-overview')) {
+            modal.classList.add('aid-qol-context-overview');
+          }
+          modal.classList.remove('aid-qol-context-submodal');
+          this.makeTokenBarResponsive(modal);
+        } else {
+          if (!modal.classList.contains('aid-qol-context-submodal')) {
+            modal.classList.add('aid-qol-context-submodal');
+          }
+          modal.classList.remove('aid-qol-context-overview');
         }
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
@@ -2302,12 +2442,17 @@
         const header = this.findContextModalHeader(modal);
         if (header) {
           header.classList.add('aid-qol-modal-handle');
+          header.style.setProperty('width', '100%', 'important');
+          header.style.setProperty('cursor', 'grab', 'important');
           Logger.log('Attached drag handle to Context Viewer header:', header);
           this.bindDragEvents(modal, header);
           header.addEventListener('dblclick', (e) => {
             if (this.isInteractiveElement(e.target)) return;
             this.toggleMaximize(modal);
           });
+          if (isOverview) {
+            this.makeTokenBarResponsive(modal);
+          }
         } else if (retries > 0) {
           requestAnimationFrame(() => tryAttachHeader(retries - 1));
         } else {
@@ -2573,6 +2718,10 @@
 
             modal.style.setProperty('width', `${newW}px`, 'important');
             modal.style.setProperty('height', `${newH}px`, 'important');
+
+            if (modal.classList.contains('aid-qol-context-overview')) {
+              this.makeTokenBarResponsive(modal);
+            }
           }
         };
 
@@ -2586,6 +2735,10 @@
             resizer.classList.remove('resizing');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+
+            if (modal.classList.contains('aid-qol-context-overview')) {
+              this.makeTokenBarResponsive(modal);
+            }
 
             const finalW = Math.round(modal.offsetWidth);
             const finalH = Math.round(modal.offsetHeight);
@@ -2656,61 +2809,81 @@
 
     /**
      * Finds the visible top header row specifically for Context Viewer dialogs and submenus.
-     * Skips .sr-only titles and targets the row containing the title, category icon, or close button.
+     * Skips .sr-only titles and targets the full-width row containing the title, category icon, and close button.
      * @param {HTMLElement} modal
      * @returns {HTMLElement|null}
      */
     findContextModalHeader(modal) {
       // 1. Look for explicit aid-dialog-header container
-      const dialogHeader = modal.querySelector('[data-slot="aid-dialog-header"], [data-slot="platform-dialog-header"]');
-      if (dialogHeader) return dialogHeader;
-
-      // 2. Look for the top row containing the close button (present in submenus: Adventure, Memories, AI Instructions, Complete Text, etc.)
-      const closeBtn = modal.querySelector('button[data-slot="aid-dialog-close"], button[aria-label*="close" i]');
-      if (closeBtn) {
-        const row = closeBtn.closest('._jc-space-betwe3241') || closeBtn.closest('._fd-row') || closeBtn.closest('[data-slot="aid-dialog-header"]') || closeBtn.parentElement;
-        if (row && row !== modal) {
-          return row;
-        }
+      const dialogHeader = modal.querySelector('[data-slot="aid-dialog-header"], [data-slot="platform-dialog-header"], header');
+      if (dialogHeader) {
+        dialogHeader.style.setProperty('width', '100%', 'important');
+        return dialogHeader;
       }
 
-      // 3. Look for visible h1 heading row
-      const h1 = modal.querySelector('h1');
-      if (h1 && !h1.classList.contains('sr-only')) {
-        const row = h1.closest('._jc-space-betwe3241') || h1.closest('._fd-row') || h1.parentElement;
-        if (row && row !== modal) {
-          return row;
-        }
-      }
-
-      // 4. Look for visible element with "View Context", "Context viewer", or "Memories"
-      const candidates = modal.querySelectorAll('span, div, h2, h3');
+      // 2. Locate close button and title element
+      const closeBtn = modal.querySelector('button[data-slot*="close"], button[aria-label*="close" i], button:has(svg), button:has(.font_icons)');
+      
+      let titleEl = null;
+      const candidates = modal.querySelectorAll('h1, h2, h3, h4, [data-slot*="title"], span, div');
       for (const el of candidates) {
-        if (!el.classList.contains('sr-only')) {
+        if (el.children.length === 0 && !el.classList.contains('sr-only')) {
           const t = el.textContent.trim().toLowerCase();
-          if (t === 'view context' || t === 'memories' || t === 'context viewer') {
-            const row = el.closest('._jc-space-betwe3241') || el.closest('._fd-row') || el.parentElement;
-            if (row && row !== modal) {
-              return row;
-            }
+          if (t === 'view context' || t === 'complete text' || t === 'memories' || t === 'context viewer' || t === 'story cards' || t === 'ai instructions' || t === 'plot essentials' || t === 'author\'s note' || t === 'response buffer') {
+            titleEl = el;
+            break;
           }
         }
       }
 
-      // 5. Look for the first row containing the w_search icon
-      const icon = modal.querySelector('span.font_icons');
-      if (icon && icon.textContent.includes('w_search')) {
-        const row = icon.closest('._jc-space-betwe3241') || icon.closest('._fd-row');
-        if (row && row !== modal) {
-          return row;
+      // If both closeBtn and titleEl are found, their closest common ancestor inside modal is the full-width header
+      if (closeBtn && titleEl) {
+        let ancestor = closeBtn.parentElement;
+        while (ancestor && ancestor !== modal && ancestor !== document.body) {
+          if (ancestor.contains(titleEl)) {
+            ancestor.style.setProperty('width', '100%', 'important');
+            return ancestor;
+          }
+          ancestor = ancestor.parentElement;
         }
       }
 
-      // 6. Fallback to first visible row in the modal
-      const firstRow = modal.querySelector('._fd-row');
-      if (firstRow && firstRow !== modal) return firstRow;
+      // If only titleEl is found, walk up until we find the row containing a button or direct child of modal
+      if (titleEl) {
+        let curr = titleEl;
+        while (curr && curr.parentElement && curr.parentElement !== modal && curr.parentElement !== document.body) {
+          const p = curr.parentElement;
+          if (p.querySelector('button') || p.parentElement === modal || p.parentElement?.parentElement === modal) {
+            p.style.setProperty('width', '100%', 'important');
+            return p;
+          }
+          curr = p;
+        }
+        if (curr && curr !== modal) return curr;
+      }
 
-      // 7. Fallback to standard modal header finder
+      // If only closeBtn is found, walk up
+      if (closeBtn) {
+        let curr = closeBtn;
+        while (curr && curr.parentElement && curr.parentElement !== modal && curr.parentElement !== document.body) {
+          const p = curr.parentElement;
+          if (p.parentElement === modal || p.parentElement?.parentElement === modal) {
+            p.style.setProperty('width', '100%', 'important');
+            return p;
+          }
+          curr = p;
+        }
+        if (curr && curr !== modal) return curr;
+      }
+
+      // Fallback to first visible row in the modal
+      const firstRow = modal.querySelector('._fd-row');
+      if (firstRow && firstRow !== modal) {
+        firstRow.style.setProperty('width', '100%', 'important');
+        return firstRow;
+      }
+
+      // Fallback to standard modal header finder
       return this.findModalHeader(modal);
     },
 
