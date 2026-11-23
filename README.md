@@ -1,6 +1,6 @@
 # AID-QoL-Tool
 
-![AID-QoL-Tool Hero Banner](assets/hero-banner.png)
+![AID-QoL-Tool Hero Banner](assets/hero-banner.jpg)
 
 <p align="center">
   <strong>Modular Quality-of-Life Enhancement Suite for AI Dungeon</strong>
@@ -170,8 +170,10 @@ Configurable shortcuts for story flow and UI navigation without touching the mou
 AID-QoL-Tool/
 ├── .gitignore                   # Repository ignore rules
 ├── assets/                      # Repository artwork & visual banners
-│   ├── hero-banner.png          # Production hero banner
-│   └── hero-banner-raw.jpg      # Raw digital fantasy artwork
+│   ├── hero-banner.jpg          # Optimized production hero banner (< 1MB)
+│   ├── hero-banner.png          # High-resolution lossless master
+│   ├── hero-banner-raw.jpg      # Raw digital fantasy artwork (< 1MB)
+│   └── social-preview.jpg       # GitHub 2:1 social preview card (< 1MB)
 ├── docs/                        # Project release kits & community documentation
 │   └── DISCORD_ANNOUNCEMENT.md  # Discord release kit & thread templates
 ├── AID-QoL-Tool.user.js         # Active v3 production script
