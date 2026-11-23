@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         AID-QoL-Tool
-// @version      3.8.2
+// @version      3.8.3
 // @description  Modular Quality-of-Life enhancements for AI Dungeon (Auto-quoting, Hotkeys, Action Toggle, Story Card, Context & Script Modals, Game Menu Resizing, Theme & Typography Manager, Credit Flame Indicator, Antigravity Dev Bridge).
 // @author       viosca
 // @match        https://aidungeon.com/*
@@ -1612,6 +1612,11 @@
          * The content card / text & token container in subdialogs:
          * Expands fluidly with modal width and height.
          */
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
+        .aid-qol-context-submodal > .is_View > div:last-child,
+        .aid-qol-context-submodal [data-slot="aid-dialog-content"] > div:last-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > .is_View > div:last-child,
         .aid-qol-context-submodal *:has(> .is_ScrollView),
         .aid-qol-context-submodal *:has(> [data-keyboard-scroll-region]),
         .aid-qol-context-submodal *:has(> [data-radix-scroll-area-viewport]),
@@ -1634,7 +1639,25 @@
           border-bottom-right-radius: 0px !important;
         }
 
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
+        .aid-qol-context-submodal > .is_View > div:last-child > div:first-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:first-child,
+        .aid-qol-context-modal:not(.aid-qol-context-overview) > .is_View > div:last-child > div:first-child {
+          flex: 1 1 0px !important;
+          min-height: 0 !important;
+          height: 100% !important;
+          max-height: 100% !important;
+          width: 100% !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          display: flex !important;
+          flex-direction: column !important;
+        }
+
         /* Non-absolute secondary elements inside content card (such as token approximation notice or copy button) stay pinned */
+        .aid-qol-context-submodal > div:not(.aid-qol-modal-corner-resizer) > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
+        .aid-qol-context-submodal > .is_View > div:last-child > div:not(:first-child):not([class*="_pos-absolute"]),
         .aid-qol-context-submodal [data-slot*="header"],
         .aid-qol-context-submodal [role="tablist"],
         .aid-qol-context-submodal button:not([role="tab"]),
@@ -1663,17 +1686,31 @@
           scrollbar-color: rgba(255, 255, 255, 0.3) rgba(0, 0, 0, 0.15) !important;
         }
 
-        /* Override fixed width and height classes on all inner submodal elements */
+        /* All intermediate containers holding scrollable content or tabpanel expand to full width */
+        .aid-qol-context-submodal :has(.is_ScrollView:not([role="tablist"])),
+        .aid-qol-context-submodal :has([role="tabpanel"]),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) :has(.is_ScrollView:not([role="tablist"])),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) :has([role="tabpanel"]) {
+          max-width: none !important;
+          min-width: 0 !important;
+          width: 100% !important;
+        }
+
+        /* Override fixed width and height classes and inline styles on all inner submodal elements */
         .aid-qol-context-submodal [class*="max-w-"],
-        .aid-qol-context-submodal [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-submodal [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
         .aid-qol-context-submodal [class*="_w-480px"],
         .aid-qol-context-submodal [class*="_w-420px"],
         .aid-qol-context-submodal [class*="w-\[480px\]"],
+        .aid-qol-context-submodal [style*="480px"]:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-submodal [style*="420px"]:not(.aid-qol-modal-corner-resizer),
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="max-w-"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_maw-"]:not([role="tablist"] *),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_maw-"]:not([role="tablist"] *):not([data-slot="token-badge"]):not([class*="token"]),
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-480px"],
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_w-420px"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="w-\[480px\]"] {
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="w-\[480px\]"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [style*="480px"]:not(.aid-qol-modal-corner-resizer),
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [style*="420px"]:not(.aid-qol-modal-corner-resizer) {
           max-width: none !important;
           width: 100% !important;
           min-width: 0 !important;
@@ -1682,9 +1719,11 @@
         .aid-qol-context-submodal [class*="h-\[512px\]"],
         .aid-qol-context-submodal [class*="_h-512px"],
         .aid-qol-context-submodal [class*="_mah-512px"],
+        .aid-qol-context-submodal [style*="512px"]:not(.aid-qol-modal-corner-resizer),
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="h-\[512px\]"],
         .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_h-512px"],
-        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_mah-512px"] {
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [class*="_mah-512px"],
+        .aid-qol-context-modal:not(.aid-qol-context-overview) [style*="512px"]:not(.aid-qol-modal-corner-resizer) {
           height: 100% !important;
           max-height: 100% !important;
           min-height: 0 !important;
@@ -1699,6 +1738,13 @@
           width: 100% !important;
           max-width: none !important;
           flex: none !important;
+        }
+
+        /* Token view container allows tokens to wrap across full fluid width */
+        .aid-qol-context-modal [role="tabpanel"] > div,
+        .aid-qol-context-modal [role="tabpanel"] [class*="flex"] {
+          width: 100% !important;
+          max-width: none !important;
         }
 
         /* Visible sleek 7px scrollbar styling for context viewer scrollables */
@@ -2397,9 +2443,8 @@
         if (!modal.querySelector(':scope > .aid-qol-modal-corner-resizer')) {
           ensureResizer();
         }
-        this.expandSubmodalContent(modal);
       });
-      resizerObserver.observe(modal, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      resizerObserver.observe(modal, { childList: true, attributes: true, attributeFilter: ['class'] });
 
       // 6. Locate the visible header row to use as the drag handle
       const tryAttachHeader = (retries = 6) => {
